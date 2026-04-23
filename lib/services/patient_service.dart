@@ -50,10 +50,24 @@ class PatientService {
 
   Future<void> dischargePatient(String patientId) async {
     await _patients.doc(patientId).update({'isActive': false});
+    await _deleteNotesFor(patientId);
   }
 
   Future<void> deletePatient(String patientId) async {
+    await _deleteNotesFor(patientId);
     await _patients.doc(patientId).delete();
+  }
+
+  Future<void> _deleteNotesFor(String patientId) async {
+    final notes = await _firestore
+        .collection(AppConstants.notesCollection)
+        .where('patientId', isEqualTo: patientId)
+        .get();
+    final batch = _firestore.batch();
+    for (final doc in notes.docs) {
+      batch.delete(doc.reference);
+    }
+    if (notes.docs.isNotEmpty) await batch.commit();
   }
 
   Stream<int> getPatientCount(String wardId) {

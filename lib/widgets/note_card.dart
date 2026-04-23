@@ -177,6 +177,13 @@ class _NoteCardState extends State<NoteCard> {
                   ),
                   const SizedBox(width: 8),
                   Text(
+                    'Note by ',
+                    style: GoogleFonts.dmSans(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                  Text(
                     n.authorName,
                     style: GoogleFonts.dmSans(
                       color: AppColors.textPrimary,

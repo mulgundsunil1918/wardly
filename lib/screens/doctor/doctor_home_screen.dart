@@ -10,6 +10,7 @@ import '../../utils/app_theme.dart';
 import '../../widgets/note_card.dart';
 import '../../widgets/notifications_panel.dart';
 import '../../widgets/theme_toggle_button.dart';
+import '../shared/filtered_notes_screen.dart';
 import '../shared/profile_screen.dart';
 import 'add_note_screen.dart';
 import 'patient_detail_screen.dart';
@@ -213,6 +214,14 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
               value: '$todaysNotes',
               icon: Icons.notes_outlined,
               color: AppColors.accent,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const FilteredNotesScreen(
+                    filter: NoteFilterType.today,
+                    title: "Today's Notes",
+                  ),
+                ),
+              ),
             ),
             const SizedBox(width: 10),
             _statCard(
@@ -220,6 +229,14 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
               value: '${noteProvider.urgentNotes.length}',
               icon: Icons.priority_high,
               color: AppColors.danger,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const FilteredNotesScreen(
+                    filter: NoteFilterType.urgent,
+                    title: 'Urgent Notes',
+                  ),
+                ),
+              ),
             ),
           ],
         );
@@ -232,9 +249,13 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
     required String value,
     required IconData icon,
     required Color color,
+    VoidCallback? onTap,
   }) {
     return Expanded(
-      child: Container(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: AppColors.card,
@@ -269,6 +290,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
               ),
             ),
           ],
+        ),
         ),
       ),
     );
