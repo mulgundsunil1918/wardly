@@ -12,8 +12,10 @@ class NoteService {
   CollectionReference<Map<String, dynamic>> get _notes =>
       _firestore.collection(AppConstants.notesCollection);
 
-  Stream<List<Note>> getAllNotes() {
+  Stream<List<Note>> getNotesForWards(List<String> wardIds) {
+    if (wardIds.isEmpty) return Stream.value(const []);
     return _notes
+        .where('wardId', whereIn: wardIds)
         .orderBy('createdAt', descending: true)
         .limit(200)
         .snapshots()
@@ -21,8 +23,10 @@ class NoteService {
             snapshot.docs.map(Note.fromFirestore).toList());
   }
 
-  Stream<int> getAllUnacknowledgedCount() {
+  Stream<int> getUnacknowledgedCountForWards(List<String> wardIds) {
+    if (wardIds.isEmpty) return Stream.value(0);
     return _notes
+        .where('wardId', whereIn: wardIds)
         .where('isAcknowledged', isEqualTo: false)
         .snapshots()
         .map((snapshot) => snapshot.docs.length);

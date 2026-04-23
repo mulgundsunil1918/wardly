@@ -23,13 +23,28 @@ class DoctorHomeScreen extends StatefulWidget {
 }
 
 class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
+  List<String> _subscribedWardIds = const [];
+
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<NoteProvider>().subscribeToAll();
-      context.read<PatientProvider>().subscribeToAll();
-    });
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final wardIds =
+        context.watch<AuthProvider>().currentUser?.wardIds ?? const [];
+    if (!_sameList(wardIds, _subscribedWardIds)) {
+      _subscribedWardIds = List.of(wardIds);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<NoteProvider>().subscribeForWards(_subscribedWardIds);
+        context.read<PatientProvider>().subscribeForWards(_subscribedWardIds);
+      });
+    }
+  }
+
+  bool _sameList(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   String _initials(String name) {

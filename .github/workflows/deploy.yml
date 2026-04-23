@@ -35,6 +35,11 @@ jobs:
           mkdir -p build/web/dashboard
           cp -r landing/* build/web/dashboard/
 
+      - name: Copy status page
+        run: |
+          mkdir -p build/web/status
+          cp -r status/* build/web/status/
+
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v4
         with:

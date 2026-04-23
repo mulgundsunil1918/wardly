@@ -29,8 +29,10 @@ class _NurseHomeScreenState extends State<NurseHomeScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<NoteProvider>().subscribeToAll();
-      context.read<PatientProvider>().subscribeToAll();
+      final wardIds =
+          context.read<AuthProvider>().currentUser?.wardIds ?? const [];
+      context.read<NoteProvider>().subscribeForWards(wardIds);
+      context.read<PatientProvider>().subscribeForWards(wardIds);
     });
   }
 

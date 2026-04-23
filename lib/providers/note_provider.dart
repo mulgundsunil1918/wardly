@@ -29,12 +29,19 @@ class NoteProvider extends ChangeNotifier {
   List<Note> get urgentNotes =>
       _notes.where((n) => n.priority == 'Urgent').toList();
 
-  void subscribeToAll() {
+  void subscribeForWards(List<String> wardIds) {
     _wardNotesSubscription?.cancel();
     _unacknowledgedSubscription?.cancel();
 
+    if (wardIds.isEmpty) {
+      _notes = [];
+      _unacknowledgedCount = 0;
+      notifyListeners();
+      return;
+    }
+
     _wardNotesSubscription =
-        _noteService.getAllNotes().listen((notes) {
+        _noteService.getNotesForWards(wardIds).listen((notes) {
       _notes = notes;
       notifyListeners();
     }, onError: (e) {
@@ -43,7 +50,7 @@ class NoteProvider extends ChangeNotifier {
     });
 
     _unacknowledgedSubscription =
-        _noteService.getAllUnacknowledgedCount().listen((count) {
+        _noteService.getUnacknowledgedCountForWards(wardIds).listen((count) {
       _unacknowledgedCount = count;
       notifyListeners();
     });

@@ -219,10 +219,44 @@ class WardsScreen extends StatelessWidget {
           const SizedBox(width: 8),
         ],
       ),
-      body: StreamBuilder<QuerySnapshot>(
+      body: Builder(builder: (context) {
+        final myWardIds =
+            context.watch<AuthProvider>().currentUser?.wardIds ?? const [];
+        if (myWardIds.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.corporate_fare,
+                  size: 56,
+                  color: AppColors.textSecondary.withOpacity(0.5),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'You are not in any ward yet',
+                  style: GoogleFonts.dmSans(
+                    color: AppColors.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Tap the + button to create one,\nor use Join Ward if you have an ID.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.dmSans(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        return StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection(AppConstants.wardsCollection)
-            .orderBy('createdAt', descending: true)
+            .where(FieldPath.documentId, whereIn: myWardIds)
             .snapshots(),
         builder: (context, snap) {
           if (snap.hasError) {
@@ -284,7 +318,8 @@ class WardsScreen extends StatelessWidget {
             ),
           );
         },
-      ),
+        );
+      }),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,

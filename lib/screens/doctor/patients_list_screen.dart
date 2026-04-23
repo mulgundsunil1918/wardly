@@ -33,10 +33,24 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final myWardIds =
+        context.watch<AuthProvider>().currentUser?.wardIds ?? const [];
+    if (myWardIds.isEmpty) {
+      return Scaffold(
+        backgroundColor: AppColors.surface,
+        appBar: AppBar(title: const Text('Patients')),
+        body: Center(
+          child: Text(
+            'Join a ward to see patients.',
+            style: GoogleFonts.dmSans(color: AppColors.textSecondary),
+          ),
+        ),
+      );
+    }
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection(AppConstants.wardsCollection)
-          .orderBy('createdAt', descending: false)
+          .where(FieldPath.documentId, whereIn: myWardIds)
           .snapshots(),
       builder: (context, snap) {
         if (!snap.hasData) {

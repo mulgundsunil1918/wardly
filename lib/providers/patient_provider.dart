@@ -24,12 +24,18 @@ class PatientProvider extends ChangeNotifier {
   String? get error => _error;
   int get patientCount => _patients.length;
 
-  void subscribeToAll() {
+  void subscribeForWards(List<String> wardIds) {
     _subscription?.cancel();
+    if (wardIds.isEmpty) {
+      _patients = [];
+      _isLoading = false;
+      notifyListeners();
+      return;
+    }
     _isLoading = true;
     notifyListeners();
     _subscription =
-        _patientService.getAllActivePatients().listen((patients) {
+        _patientService.getActivePatientsForWards(wardIds).listen((patients) {
       _patients = patients;
       _isLoading = false;
       notifyListeners();

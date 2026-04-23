@@ -12,8 +12,10 @@ class PatientService {
   CollectionReference<Map<String, dynamic>> get _patients =>
       _firestore.collection(AppConstants.patientsCollection);
 
-  Stream<List<Patient>> getAllActivePatients() {
+  Stream<List<Patient>> getActivePatientsForWards(List<String> wardIds) {
+    if (wardIds.isEmpty) return Stream.value(const []);
     return _patients
+        .where('wardId', whereIn: wardIds)
         .where('isActive', isEqualTo: true)
         .orderBy('admittedAt', descending: true)
         .snapshots()
