@@ -10,6 +10,7 @@ import '../../utils/app_theme.dart';
 import '../../widgets/note_card.dart';
 import '../../widgets/notifications_panel.dart';
 import '../../widgets/theme_toggle_button.dart';
+import '../../widgets/wardly_brand.dart';
 import '../shared/filtered_notes_screen.dart';
 import '../shared/profile_screen.dart';
 import 'add_note_screen.dart';
@@ -127,28 +128,8 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Good morning,',
-                      style: GoogleFonts.dmSans(
-                        color: AppColors.textSecondary,
-                        fontSize: 13,
-                      ),
-                    ),
-                    Text(
-                      'Dr. $name',
-                      style: GoogleFonts.dmSans(
-                        color: AppColors.textPrimary,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              const WardlyBrand(size: 36),
+              const Spacer(),
               Stack(
                 clipBehavior: Clip.none,
                 children: [

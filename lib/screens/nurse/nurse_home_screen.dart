@@ -11,6 +11,7 @@ import '../../utils/app_utils.dart';
 import '../../widgets/note_card.dart';
 import '../../widgets/notifications_panel.dart';
 import '../../widgets/theme_toggle_button.dart';
+import '../../widgets/wardly_brand.dart';
 import '../shared/profile_screen.dart';
 import 'acknowledge_sheet.dart';
 
@@ -81,28 +82,8 @@ class _NurseHomeScreenState extends State<NurseHomeScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Ward Updates,',
-                      style: GoogleFonts.dmSans(
-                        color: AppColors.textSecondary,
-                        fontSize: 13,
-                      ),
-                    ),
-                    Text(
-                      name,
-                      style: GoogleFonts.dmSans(
-                        color: AppColors.textPrimary,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              const WardlyBrand(size: 36),
+              const Spacer(),
               Stack(
                 clipBehavior: Clip.none,
                 children: [

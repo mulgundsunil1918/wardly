@@ -7,3 +7,4 @@ export 'priority_badge.dart';
 export 'role_badge.dart';
 export 'stat_card.dart';
 export 'theme_toggle_button.dart';
+export 'wardly_brand.dart';

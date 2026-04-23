@@ -11,6 +11,7 @@ import '../../utils/app_constants.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/app_utils.dart';
 import '../../widgets/theme_toggle_button.dart';
+import '../../widgets/wardly_brand.dart';
 import '../shared/profile_screen.dart';
 import 'add_ward_screen.dart';
 import 'ward_detail_screen.dart';
@@ -132,28 +133,8 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Admin Panel',
-                  style: GoogleFonts.dmSans(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                  ),
-                ),
-                Text(
-                  name,
-                  style: GoogleFonts.dmSans(
-                    color: AppColors.textPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          const WardlyBrand(size: 36),
+          const Spacer(),
           const ThemeToggleButton(),
         ],
       ),
