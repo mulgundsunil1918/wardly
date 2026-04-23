@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wardly — Ward, connected</title>
+  <meta name="description" content="Real-time clinical notes for ward teams. Doctors post, nurses acknowledge, admins manage. Built on Flutter + Firebase." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="nav">
+    <div class="container nav-inner">
+      <div class="brand">
+        <div class="w-logo">W</div>
+        <span class="brand-text">WARDLY</span>
+      </div>
+      <nav class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="https://github.com/mulgundsunil1918/wardly" target="_blank" rel="noopener">GitHub</a>
+        <a class="btn btn-primary" href="../">Launch app →</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="container">
+      <div class="hero-badge">Real-time clinical notes</div>
+      <h1 class="hero-title">Ward,<br/><span class="accent">connected.</span></h1>
+      <p class="hero-sub">
+        One shared surface for doctors, nurses, and admins. Post a note in one ward,
+        everyone on shift sees it the instant it lands.
+      </p>
+      <div class="hero-ctas">
+        <a class="btn btn-primary btn-large" href="../">Launch Wardly</a>
+        <a class="btn btn-ghost btn-large" href="#features">See features</a>
+      </div>
+    </div>
+    <div class="hero-bg"></div>
+  </section>
+
+  <section id="features" class="section">
+    <div class="container">
+      <div class="section-head">
+        <h2>Built for medical ward workflow</h2>
+        <p>Every surface is tuned to the reality of a hospital shift.</p>
+      </div>
+      <div class="grid grid-3">
+        <div class="card">
+          <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M3 5h18v2H3zm0 6h18v2H3zm0 6h12v2H3z"/></svg></div>
+          <h3>Real-time notes</h3>
+          <p>Post text notes with category + priority (Urgent, Normal, Low). Streamed live to every teammate in the ward.</p>
+        </div>
+        <div class="card">
+          <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 015 5v2a5 5 0 11-10 0V7a5 5 0 015-5zm-7 17a7 7 0 0114 0v3H5v-3z"/></svg></div>
+          <h3>Role-aware UI</h3>
+          <p>Doctors create and manage. Nurses acknowledge. Admins run the house. Three flows, one app.</p>
+        </div>
+        <div class="card">
+          <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h10v2H4z"/></svg></div>
+          <h3>Multi-ward by design</h3>
+          <p>Every ward has a unique ID. Share it, and anyone can join. Doctors run multiple wards at once — no switching.</p>
+        </div>
+        <div class="card">
+          <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M12 1l9 4v6c0 5-4 9-9 11-5-2-9-6-9-11V5l9-4z"/></svg></div>
+          <h3>Firebase-backed</h3>
+          <p>Email/password, Google sign-in, and password reset baked in. Firestore security rules gate every action.</p>
+        </div>
+        <div class="card">
+          <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg></div>
+          <h3>Notification panel</h3>
+          <p>One tap on the bell surfaces every unacknowledged note, grouped by urgency. Ack in one click.</p>
+        </div>
+        <div class="card">
+          <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+          <h3>Light &amp; dark</h3>
+          <p>Material 3 theme with a dark mode tuned for fluorescent wards. Toggle from the top bar, remembered across sessions.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how" class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <h2>How it works</h2>
+        <p>From zero to shared notes in 60 seconds.</p>
+      </div>
+      <ol class="steps">
+        <li>
+          <span class="step-num">1</span>
+          <div>
+            <h3>Sign up</h3>
+            <p>Email, password, role. Or continue with Google. Your account is private to you.</p>
+          </div>
+        </li>
+        <li>
+          <span class="step-num">2</span>
+          <div>
+            <h3>Create or join a ward</h3>
+            <p>Start a ward — you get a short shareable ID. Paste it anywhere to invite teammates; they tap Join Ward and they're in.</p>
+          </div>
+        </li>
+        <li>
+          <span class="step-num">3</span>
+          <div>
+            <h3>Post, see, acknowledge</h3>
+            <p>A note posted in the ward shows up in real time on every teammate's Home. Bells ring until someone acknowledges.</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="cta-section">
+    <div class="container cta-inner">
+      <h2>Ready to try it?</h2>
+      <p>No install. Open in your browser, sign up, share a ward ID.</p>
+      <a class="btn btn-primary btn-large" href="../">Launch Wardly →</a>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="brand">
+        <div class="w-logo small">W</div>
+        <span class="brand-text">WARDLY</span>
+      </div>
+      <div class="footer-links">
+        <a href="../">App</a>
+        <a href="https://github.com/mulgundsunil1918/wardly" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/mulgundsunil1918/wardly/issues" target="_blank" rel="noopener">Report issue</a>
+      </div>
+      <div class="footer-note">Built with Flutter &amp; Firebase.</div>
+    </div>
+  </footer>
+</body>
+</html>
