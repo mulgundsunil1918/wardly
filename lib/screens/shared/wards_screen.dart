@@ -23,6 +23,43 @@ class WardsScreen extends StatelessWidget {
     await Share.share(text, subject: 'Join ward ${w.name}');
   }
 
+  Widget _wardActionButton({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback? onTap,
+  }) {
+    final disabled = onTap == null;
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      icon: Icon(
+        icon,
+        size: 16,
+        color: disabled ? AppColors.textSecondary.withOpacity(0.5) : color,
+      ),
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: disabled ? AppColors.textSecondary.withOpacity(0.5) : color,
+        ),
+      ),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(44),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        side: BorderSide(
+          color: disabled
+              ? AppColors.divider
+              : color,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
   void _showMembers(BuildContext context, Ward w) {
     showModalBottomSheet(
       context: context,
@@ -383,17 +420,20 @@ class WardsScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Ward name row ──
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: const Color(0xFFE6F1FB),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
-                  Icons.local_hospital_outlined,
+                  Icons.add_box_outlined,
                   color: AppColors.primary,
+                  size: 22,
                 ),
               ),
               const SizedBox(width: 12),
@@ -405,7 +445,7 @@ class WardsScreen extends StatelessWidget {
                       w.name,
                       style: GoogleFonts.dmSans(
                         color: AppColors.textPrimary,
-                        fontSize: 15,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -423,84 +463,89 @@ class WardsScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.qr_code,
-                  size: 16,
-                  color: AppColors.textSecondary,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: SelectableText(
-                    w.id,
-                    style: GoogleFonts.robotoMono(
-                      color: AppColors.textPrimary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1,
+
+          // ── Ward code row ──
+          InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: () async {
+              await Clipboard.setData(ClipboardData(text: w.id));
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Ward ID "${w.id}" copied')),
+                );
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 14,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: SelectableText(
+                      w.id,
+                      style: GoogleFonts.dmSans(
+                        color: AppColors.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1,
+                      ),
                     ),
                   ),
-                ),
-                IconButton(
-                  tooltip: 'Copy ward ID',
-                  icon: Icon(
+                  Icon(
                     Icons.copy,
                     size: 18,
                     color: AppColors.textSecondary,
                   ),
-                  onPressed: () async {
-                    await Clipboard.setData(ClipboardData(text: w.id));
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Ward ID "${w.id}" copied')),
-                      );
-                    }
-                  },
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // ── Action buttons ──
+          SizedBox(
+            height: 44,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  flex: 1,
+                  child: _wardActionButton(
+                    label: 'Members',
+                    icon: Icons.group_outlined,
+                    color: AppColors.primary,
+                    onTap: () => _showMembers(context, w),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 1,
+                  child: _wardActionButton(
+                    label: 'Share',
+                    icon: Icons.share_outlined,
+                    color: AppColors.primary,
+                    onTap: () => _shareWard(w),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 1,
+                  child: _wardActionButton(
+                    label: 'Delete',
+                    icon: Icons.delete_outline,
+                    color: AppColors.danger,
+                    onTap:
+                        isCreator ? () => _deleteWard(context, w) : null,
+                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              OutlinedButton.icon(
-                onPressed: () => _showMembers(context, w),
-                icon: const Icon(Icons.people_outline, size: 16),
-                label: const Text('Members'),
-              ),
-              const Spacer(),
-              OutlinedButton.icon(
-                onPressed: () => _shareWard(w),
-                icon: const Icon(Icons.share_outlined, size: 16),
-                label: const Text('Share'),
-              ),
-              if (isCreator) ...[
-                const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  onPressed: () => _deleteWard(context, w),
-                  icon: const Icon(
-                    Icons.delete_outline,
-                    size: 16,
-                    color: AppColors.danger,
-                  ),
-                  label: const Text(
-                    'Delete',
-                    style: TextStyle(color: AppColors.danger),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.danger),
-                  ),
-                ),
-              ],
-            ],
           ),
         ],
       ),
