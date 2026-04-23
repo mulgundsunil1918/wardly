@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "525482754887",
+    "project_id": "wardly-24081996",
+    "storage_bucket": "wardly-24081996.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:525482754887:android:b0f24e9efd880cd78a8262",
+        "android_client_info": {
+          "package_name": "com.example.wardly"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "525482754887-9oi8ni4b8c37ppnck3k34l8h5i3v59n8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDeYr3qQ4Mpy8yq7qRM3pt-bY3xC4SWJSg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "525482754887-9oi8ni4b8c37ppnck3k34l8h5i3v59n8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
