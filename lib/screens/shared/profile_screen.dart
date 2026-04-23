@@ -29,7 +29,7 @@ class ProfileScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _headerCard(user),
+                  _headerCard(context, user, auth),
                   const SizedBox(height: 20),
                   _sectionLabel('Account'),
                   const SizedBox(height: 8),
@@ -63,7 +63,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _headerCard(AppUser user) {
+  Widget _headerCard(BuildContext context, AppUser user, AuthProvider auth) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -73,17 +73,47 @@ class ProfileScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          CircleAvatar(
-            radius: 40,
-            backgroundColor: user.roleColor.withOpacity(0.15),
-            child: Text(
-              getInitials(user.name),
-              style: TextStyle(
-                color: user.roleColor,
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
+          Stack(
+            children: [
+              GestureDetector(
+                onTap: () => _showEmojiPicker(context, auth),
+                child: CircleAvatar(
+                  radius: 40,
+                  backgroundColor: user.roleColor.withOpacity(0.15),
+                  child: user.avatarEmoji != null &&
+                          user.avatarEmoji!.isNotEmpty
+                      ? Text(
+                          user.avatarEmoji!,
+                          style: const TextStyle(fontSize: 40),
+                        )
+                      : Text(
+                          getInitials(user.name),
+                          style: TextStyle(
+                            color: user.roleColor,
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
               ),
-            ),
+              Positioned(
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.divider),
+                  ),
+                  child: const Icon(
+                    Icons.edit,
+                    size: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 14),
           Text(
@@ -97,6 +127,78 @@ class ProfileScreen extends StatelessWidget {
           const SizedBox(height: 6),
           RoleBadge(role: user.role),
         ],
+      ),
+    );
+  }
+
+  static const List<String> _emojiOptions = [
+    '👨‍⚕️', '👩‍⚕️', '🧑‍⚕️', '🩺', '💉', '🧬', '🧪',
+    '❤️', '🩷', '💙', '💚', '🔥', '⭐', '✨',
+    '😀', '😎', '🤓', '🧐', '🤗', '🙂', '😇',
+    '🐱', '🐶', '🦊', '🐼', '🦁', '🐯', '🐻',
+    '🚀', '⚡', '🎯', '🏆', '🌟', '🌈', '☕',
+  ];
+
+  void _showEmojiPicker(BuildContext context, AuthProvider auth) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 12),
+              child: Text(
+                'Pick an avatar',
+                style: GoogleFonts.dmSans(
+                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            GridView.count(
+              shrinkWrap: true,
+              crossAxisCount: 7,
+              children: [
+                for (final e in _emojiOptions)
+                  InkWell(
+                    onTap: () {
+                      Navigator.pop(context);
+                      Future.microtask(
+                        () => auth.updateProfile(avatarEmoji: e),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Center(
+                      child: Text(
+                        e,
+                        style: const TextStyle(fontSize: 28),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Center(
+              child: TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Future.microtask(
+                    () => auth.updateProfile(avatarEmoji: ''),
+                  );
+                },
+                child: const Text('Remove emoji · use initials'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -243,9 +345,10 @@ class ProfileScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: () async {
-                  await auth.updateProfile(name: nameController.text.trim());
-                  if (context.mounted) Navigator.pop(context);
+                onPressed: () {
+                  final newName = nameController.text.trim();
+                  Navigator.pop(context);
+                  Future.microtask(() => auth.updateProfile(name: newName));
                 },
                 child: const Text('Save changes'),
               ),

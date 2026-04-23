@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/app_user.dart';
 import '../../providers/auth_provider.dart';
@@ -18,6 +19,37 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _rememberDevice = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedEmail();
+  }
+
+  Future<void> _loadSavedEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    final remember = prefs.getBool('remember_device') ?? true;
+    final saved = prefs.getString('saved_email');
+    if (!mounted) return;
+    setState(() {
+      _rememberDevice = remember;
+      if (remember && saved != null && saved.isNotEmpty) {
+        _emailController.text = saved;
+      }
+    });
+  }
+
+  Future<void> _persistRememberDevice(String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_rememberDevice) {
+      await prefs.setBool('remember_device', true);
+      await prefs.setString('saved_email', email);
+    } else {
+      await prefs.setBool('remember_device', false);
+      await prefs.remove('saved_email');
+    }
+  }
 
   @override
   void dispose() {
@@ -99,12 +131,14 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     final authProvider = context.read<AuthProvider>();
-    final ok = await authProvider.signIn(
-      _emailController.text.trim(),
-      _passwordController.text,
-    );
+    final email = _emailController.text.trim();
+    final ok = await authProvider.signIn(email, _passwordController.text);
     if (!mounted) return;
     if (ok && authProvider.currentUser != null) {
+      await _persistRememberDevice(email);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('onboarding_complete', true);
+      if (!mounted) return;
       Navigator.of(context).pushReplacementNamed(
         _routeForRole(authProvider.currentUser!.role),
       );
@@ -248,12 +282,54 @@ class _LoginScreenState extends State<LoginScreen> {
                           return null;
                         },
                       ),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () => _forgotPassword(context),
-                          child: const Text('Forgot password?'),
-                        ),
+                      Row(
+                        children: [
+                          SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: Checkbox(
+                              value: _rememberDevice,
+                              activeColor: AppColors.primary,
+                              onChanged: (v) => setState(() {
+                                _rememberDevice = v ?? false;
+                              }),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () => setState(() {
+                              _rememberDevice = !_rememberDevice;
+                            }),
+                            child: Text(
+                              'Remember this device',
+                              style: GoogleFonts.dmSans(
+                                color: AppColors.textSecondary,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.info_outline,
+                              size: 16,
+                              color: AppColors.textSecondary,
+                            ),
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    "You won't be asked to log in again on this device",
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          const Spacer(),
+                          TextButton(
+                            onPressed: () => _forgotPassword(context),
+                            child: const Text('Forgot?'),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 4),
                       SizedBox(

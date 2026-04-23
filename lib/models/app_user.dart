@@ -28,6 +28,7 @@ class AppUser {
   final String wardId;
   final List<String> wardIds;
   final String? avatarUrl;
+  final String? avatarEmoji;
   final DateTime createdAt;
 
   const AppUser({
@@ -38,6 +39,7 @@ class AppUser {
     required this.wardId,
     this.wardIds = const [],
     this.avatarUrl,
+    this.avatarEmoji,
     required this.createdAt,
   });
 
@@ -52,6 +54,7 @@ class AppUser {
       wardIds: (data['wardIds'] as List?)?.whereType<String>().toList() ??
           const [],
       avatarUrl: data['avatarUrl'] as String?,
+      avatarEmoji: data['avatarEmoji'] as String?,
       createdAt:
           (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
@@ -65,6 +68,7 @@ class AppUser {
       'wardId': wardId,
       'wardIds': wardIds,
       'avatarUrl': avatarUrl,
+      'avatarEmoji': avatarEmoji,
       'createdAt': Timestamp.fromDate(createdAt),
     };
   }

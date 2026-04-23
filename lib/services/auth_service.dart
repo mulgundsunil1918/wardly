@@ -125,12 +125,17 @@ class AuthService {
     await _auth.signOut();
   }
 
-  Future<void> updateProfile({String? name, String? avatarUrl}) async {
+  Future<void> updateProfile({
+    String? name,
+    String? avatarUrl,
+    String? avatarEmoji,
+  }) async {
     final user = _auth.currentUser;
     if (user == null) return;
     final updates = <String, dynamic>{};
     if (name != null) updates['name'] = name;
     if (avatarUrl != null) updates['avatarUrl'] = avatarUrl;
+    if (avatarEmoji != null) updates['avatarEmoji'] = avatarEmoji;
     if (updates.isEmpty) return;
     await _users.doc(user.uid).update(updates);
     if (name != null) {

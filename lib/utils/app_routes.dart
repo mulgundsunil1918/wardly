@@ -8,6 +8,7 @@ import '../screens/admin/admin_home_screen.dart';
 import '../screens/admin/admin_staff_screen.dart';
 import '../screens/admin/ward_detail_screen.dart';
 import '../screens/auth/login_screen.dart';
+import '../screens/auth/onboarding_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../screens/auth/splash_screen.dart';
 import '../screens/doctor/add_patient_screen.dart';
@@ -19,6 +20,7 @@ import '../screens/shared/main_scaffold.dart';
 
 class AppRoutes {
   static const String splash = '/';
+  static const String onboarding = '/onboarding';
   static const String login = '/login';
   static const String register = '/register';
 
@@ -38,6 +40,7 @@ class AppRoutes {
 
   static Map<String, WidgetBuilder> get routes => {
         splash: (_) => const SplashScreen(),
+        onboarding: (_) => const OnboardingScreen(),
         login: (_) => const LoginScreen(),
         register: (_) => const RegisterScreen(),
         doctorHome: (_) => const MainScaffold(role: UserRole.doctor),

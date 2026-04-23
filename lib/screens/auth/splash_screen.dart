@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/app_user.dart';
 import '../../providers/auth_provider.dart';
@@ -28,9 +29,16 @@ class _SplashScreenState extends State<SplashScreen> {
     await Future.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
     final authProvider = context.read<AuthProvider>();
+    final prefs = await SharedPreferences.getInstance();
+    final onboardingDone = prefs.getBool('onboarding_complete') ?? false;
 
     if (FirebaseAuth.instance.currentUser == null) {
-      Navigator.of(context).pushReplacementNamed('/login');
+      if (!mounted) return;
+      if (!onboardingDone) {
+        Navigator.of(context).pushReplacementNamed('/onboarding');
+      } else {
+        Navigator.of(context).pushReplacementNamed('/login');
+      }
       return;
     }
 
@@ -38,7 +46,9 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (authProvider.currentUser == null) {
-      Navigator.of(context).pushReplacementNamed('/login');
+      Navigator.of(context).pushReplacementNamed(
+        onboardingDone ? '/login' : '/onboarding',
+      );
       return;
     }
 

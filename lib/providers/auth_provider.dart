@@ -111,9 +111,17 @@ class AuthProvider extends ChangeNotifier {
     _setLoading(false);
   }
 
-  Future<void> updateProfile({String? name, String? avatarUrl}) async {
+  Future<void> updateProfile({
+    String? name,
+    String? avatarUrl,
+    String? avatarEmoji,
+  }) async {
     try {
-      await _authService.updateProfile(name: name, avatarUrl: avatarUrl);
+      await _authService.updateProfile(
+        name: name,
+        avatarUrl: avatarUrl,
+        avatarEmoji: avatarEmoji,
+      );
     } catch (_) {}
     final current = _currentUser;
     if (current != null) {
@@ -125,6 +133,7 @@ class AuthProvider extends ChangeNotifier {
         wardId: current.wardId,
         wardIds: current.wardIds,
         avatarUrl: avatarUrl ?? current.avatarUrl,
+        avatarEmoji: avatarEmoji ?? current.avatarEmoji,
         createdAt: current.createdAt,
       );
       notifyListeners();
