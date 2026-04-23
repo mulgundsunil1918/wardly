@@ -211,9 +211,9 @@ class ProfileScreen extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => Padding(
+      builder: (sheetCtx) => Padding(
         padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
+          bottom: MediaQuery.of(sheetCtx).viewInsets.bottom,
         ),
         child: Container(
           padding: const EdgeInsets.all(20),
