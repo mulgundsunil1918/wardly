@@ -164,7 +164,7 @@ class WardsScreen extends StatelessWidget {
       builder: (_) => AlertDialog(
         title: Text('Delete ward "${w.name}"?'),
         content: const Text(
-          'This cannot be undone. Notes and patients linked to this ward will remain but be orphaned.',
+          'This will permanently delete the ward along with every patient and note inside it. Members will lose access. This cannot be undone.',
         ),
         actions: [
           TextButton(
@@ -176,17 +176,57 @@ class WardsScreen extends StatelessWidget {
               backgroundColor: AppColors.danger,
             ),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
+            child: const Text('Delete everything'),
           ),
         ],
       ),
     );
     if (confirm != true) return;
     try {
-      await FirebaseFirestore.instance
-          .collection(AppConstants.wardsCollection)
-          .doc(w.id)
-          .delete();
+      final fs = FirebaseFirestore.instance;
+
+      // 1. Delete every note in this ward (and its comment subcollection).
+      final notes = await fs
+          .collection(AppConstants.notesCollection)
+          .where('wardId', isEqualTo: w.id)
+          .get();
+      for (final n in notes.docs) {
+        final comments = await n.reference.collection('comments').get();
+        for (final c in comments.docs) {
+          await c.reference.delete();
+        }
+        await n.reference.delete();
+      }
+
+      // 2. Delete every patient in this ward.
+      final patients = await fs
+          .collection(AppConstants.patientsCollection)
+          .where('wardId', isEqualTo: w.id)
+          .get();
+      final batch = fs.batch();
+      for (final p in patients.docs) {
+        batch.delete(p.reference);
+      }
+      if (patients.docs.isNotEmpty) await batch.commit();
+
+      // 3. Remove this ward from every member's wardIds array.
+      final members = await fs
+          .collection(AppConstants.usersCollection)
+          .where('wardIds', arrayContains: w.id)
+          .get();
+      for (final u in members.docs) {
+        await u.reference.update({
+          'wardIds': FieldValue.arrayRemove([w.id]),
+        });
+      }
+
+      // 4. Finally delete the ward doc.
+      await fs.collection(AppConstants.wardsCollection).doc(w.id).delete();
+
+      // Refresh local user so the ward vanishes from the UI immediately.
+      if (context.mounted) {
+        await context.read<AuthProvider>().loadCurrentUser();
+      }
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Ward "${w.name}" deleted')),
@@ -331,7 +371,8 @@ class WardsScreen extends StatelessWidget {
   }
 
   Widget _wardCard(BuildContext context, Ward w, String currentUid) {
-    final isCreator = w.creatorId.isEmpty || w.creatorId == currentUid;
+    final isCreator =
+        w.creatorId.isNotEmpty && w.creatorId == currentUid;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
