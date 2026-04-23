@@ -66,30 +66,36 @@ class _SplashScreenState extends State<SplashScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
-                    Icons.add_box_outlined,
-                    size: 64,
-                    color: Colors.white,
+                  Text(
+                    'W',
+                    style: GoogleFonts.dmSans(
+                      color: Colors.white,
+                      fontSize: 180,
+                      fontWeight: FontWeight.w900,
+                      height: 1,
+                      letterSpacing: -8,
+                    ),
                   )
                       .animate()
                       .fadeIn(duration: 600.ms)
-                      .scale(begin: const Offset(0.8, 0.8)),
-                  const SizedBox(height: 20),
+                      .scale(begin: const Offset(0.85, 0.85)),
+                  const SizedBox(height: 8),
                   Text(
-                    'Wardly',
+                    'WARDLY',
                     style: GoogleFonts.dmSans(
                       color: Colors.white,
-                      fontSize: 42,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.5,
+                      fontSize: 34,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 8,
                     ),
                   ).animate().fadeIn(delay: 200.ms, duration: 600.ms),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   Text(
                     'Ward, connected',
                     style: GoogleFonts.dmSans(
-                      color: Colors.white.withOpacity(0.5),
+                      color: Colors.white.withOpacity(0.75),
                       fontSize: 14,
+                      letterSpacing: 1.2,
                     ),
                   ).animate().fadeIn(delay: 400.ms, duration: 600.ms),
                 ],
