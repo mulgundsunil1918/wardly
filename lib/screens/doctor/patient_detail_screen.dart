@@ -237,10 +237,11 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
           itemBuilder: (_, i) => NoteCard(
             note: notes[i],
             onAcknowledge: () {
-              final uid = context.read<AuthProvider>().currentUser?.uid;
-              if (uid != null) {
-                context.read<NoteProvider>().acknowledgeNote(notes[i].id, uid);
-              }
+              final name =
+                  context.read<AuthProvider>().currentUser?.name ?? 'Staff';
+              context
+                  .read<NoteProvider>()
+                  .acknowledgeNote(notes[i].id, name);
             },
           ),
         );

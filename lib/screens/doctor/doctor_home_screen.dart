@@ -436,13 +436,12 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                 child: NoteCard(
                   note: n,
                   onAcknowledge: () {
-                    final uid =
-                        context.read<AuthProvider>().currentUser?.uid;
-                    if (uid != null) {
-                      context
-                          .read<NoteProvider>()
-                          .acknowledgeNote(n.id, uid);
-                    }
+                    final name =
+                        context.read<AuthProvider>().currentUser?.name ??
+                            'Staff';
+                    context
+                        .read<NoteProvider>()
+                        .acknowledgeNote(n.id, name);
                   },
                   onDelete: () => _confirmDelete(context, n.id),
                 ),

@@ -236,15 +236,14 @@ class _DoctorNotesList extends StatelessWidget {
                 onAcknowledge: note.isAcknowledged
                     ? null
                     : () {
-                        final uid = context
-                            .read<AuthProvider>()
-                            .currentUser
-                            ?.uid;
-                        if (uid != null) {
-                          context
-                              .read<NoteProvider>()
-                              .acknowledgeNote(note.id, uid);
-                        }
+                        final name = context
+                                .read<AuthProvider>()
+                                .currentUser
+                                ?.name ??
+                            'Staff';
+                        context
+                            .read<NoteProvider>()
+                            .acknowledgeNote(note.id, name);
                       },
                 onDelete: () async {
                   final confirm = await showDialog<bool>(
