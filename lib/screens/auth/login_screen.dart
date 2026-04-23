@@ -309,7 +309,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(
+                            icon: Icon(
                               Icons.info_outline,
                               size: 16,
                               color: AppColors.textSecondary,

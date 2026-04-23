@@ -106,7 +106,7 @@ class ProfileScreen extends StatelessWidget {
                     shape: BoxShape.circle,
                     border: Border.all(color: AppColors.divider),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.edit,
                     size: 12,
                     color: AppColors.textSecondary,
