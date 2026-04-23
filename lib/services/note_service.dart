@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/note.dart';
+import '../models/note_comment.dart';
 import '../utils/app_constants.dart';
 
 class NoteService {
@@ -82,6 +83,24 @@ class NoteService {
 
   Future<void> deleteNote(String noteId) async {
     await _notes.doc(noteId).delete();
+  }
+
+  CollectionReference<Map<String, dynamic>> _commentsRef(String noteId) =>
+      _notes.doc(noteId).collection('comments');
+
+  Stream<List<NoteComment>> commentsStream(String noteId) {
+    return _commentsRef(noteId)
+        .orderBy('createdAt')
+        .snapshots()
+        .map((s) => s.docs.map(NoteComment.fromFirestore).toList());
+  }
+
+  Future<void> addComment(String noteId, NoteComment comment) async {
+    await _commentsRef(noteId).add(comment.toMap());
+  }
+
+  Future<void> deleteComment(String noteId, String commentId) async {
+    await _commentsRef(noteId).doc(commentId).delete();
   }
 
   Stream<int> getUnacknowledgedCount(String wardId) {

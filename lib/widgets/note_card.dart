@@ -4,6 +4,7 @@ import 'package:timeago/timeago.dart' as timeago;
 
 import '../models/note.dart';
 import '../utils/app_theme.dart';
+import 'note_comments_sheet.dart';
 
 class NoteCard extends StatefulWidget {
   final Note note;
@@ -70,7 +71,8 @@ class _NoteCardState extends State<NoteCard> {
       opacity: acknowledged ? 0.85 : 1,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: widget.onTap,
+        onTap: widget.onTap ??
+            () => showNoteCommentsSheet(context, widget.note),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -287,6 +289,26 @@ class _NoteCardState extends State<NoteCard> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 0,
+                      ),
+                      minimumSize: const Size(0, 30),
+                    ),
+                    icon: const Icon(Icons.chat_bubble_outline, size: 14),
+                    label: const Text(
+                      'Open thread',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    onPressed: () =>
+                        showNoteCommentsSheet(context, widget.note),
+                  ),
+                ),
               ] else if (widget.onAcknowledge != null) ...[
                 const SizedBox(height: 12),
                 Row(
@@ -305,6 +327,25 @@ class _NoteCardState extends State<NoteCard> {
                       ),
                     ),
                     const Spacer(),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: const BorderSide(color: AppColors.primary),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 0,
+                        ),
+                        minimumSize: const Size(0, 32),
+                      ),
+                      icon: const Icon(Icons.chat_bubble_outline, size: 14),
+                      label: const Text(
+                        'Reply',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      onPressed: () =>
+                          showNoteCommentsSheet(context, widget.note),
+                    ),
+                    const SizedBox(width: 8),
                     OutlinedButton(
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.accent,
