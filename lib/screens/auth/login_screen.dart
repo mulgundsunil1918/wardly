@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../models/app_user.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/app_theme.dart';
 
@@ -14,8 +13,13 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
+enum _Mode { signIn, signUp }
+
 class _LoginScreenState extends State<LoginScreen> {
+  _Mode _mode = _Mode.signIn;
+
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
@@ -51,32 +55,44 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _markOnboardingDone() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('onboarding_complete', true);
+  }
+
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  String _routeForRole(UserRole role) {
-    switch (role) {
-      case UserRole.doctor:
-        return '/doctor/home';
-      case UserRole.nurse:
-        return '/nurse/home';
-      case UserRole.admin:
-        return '/admin/home';
-    }
-  }
-
-  Future<void> _signInGoogle(BuildContext context) async {
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
     final authProvider = context.read<AuthProvider>();
-    final ok = await authProvider.signInWithGoogle();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    bool ok;
+    if (_mode == _Mode.signIn) {
+      ok = await authProvider.signIn(email, password);
+    } else {
+      final name = _nameController.text.trim();
+      ok = await authProvider.register(
+        name: name,
+        email: email,
+        password: password,
+        role: 'doctor', // roles hidden — everyone is a ward member
+      );
+    }
+
     if (!mounted) return;
     if (ok && authProvider.currentUser != null) {
-      Navigator.of(context).pushReplacementNamed(
-        _routeForRole(authProvider.currentUser!.role),
-      );
+      await _persistRememberDevice(email);
+      await _markOnboardingDone();
+      if (!mounted) return;
+      Navigator.of(context).pushReplacementNamed('/doctor/home');
     } else if (authProvider.error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -87,15 +103,84 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _forgotPassword(BuildContext context) async {
-    final emailController =
-        TextEditingController(text: _emailController.text.trim());
+  Future<void> _signInGoogle() async {
+    final authProvider = context.read<AuthProvider>();
+    final ok = await authProvider.signInWithGoogle();
+    if (!mounted) return;
+    if (ok && authProvider.currentUser != null) {
+      await _markOnboardingDone();
+      final user = authProvider.currentUser!;
+      final needsName = user.name.trim().isEmpty ||
+          user.name.trim() == user.email.split('@').first;
+      if (!mounted) return;
+      if (needsName) {
+        await _promptForName(authProvider);
+      }
+      if (!mounted) return;
+      Navigator.of(context).pushReplacementNamed('/doctor/home');
+    } else if (authProvider.error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.danger,
+          content: Text(authProvider.error!),
+        ),
+      );
+    }
+  }
+
+  Future<void> _promptForName(AuthProvider auth) async {
+    final controller = TextEditingController(text: auth.currentUser?.name ?? '');
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text('What should we call you?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Please use your real name — it makes tracking who posted or acknowledged a note much easier for your ward team.',
+              style: GoogleFonts.dmSans(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(
+                labelText: 'Your full name',
+                hintText: 'e.g. Ravi Kumar',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () async {
+              final name = controller.text.trim();
+              if (name.isEmpty) return;
+              await auth.updateProfile(name: name);
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _forgotPassword() async {
+    final ec = TextEditingController(text: _emailController.text.trim());
     final result = await showDialog<String>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Reset password'),
         content: TextField(
-          controller: emailController,
+          controller: ec,
           keyboardType: TextInputType.emailAddress,
           decoration: const InputDecoration(labelText: 'Email'),
           autofocus: true,
@@ -106,8 +191,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () =>
-                Navigator.pop(context, emailController.text.trim()),
+            onPressed: () => Navigator.pop(context, ec.text.trim()),
             child: const Text('Send link'),
           ),
         ],
@@ -128,30 +212,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    final authProvider = context.read<AuthProvider>();
-    final email = _emailController.text.trim();
-    final ok = await authProvider.signIn(email, _passwordController.text);
-    if (!mounted) return;
-    if (ok && authProvider.currentUser != null) {
-      await _persistRememberDevice(email);
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('onboarding_complete', true);
-      if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed(
-        _routeForRole(authProvider.currentUser!.role),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: AppColors.danger,
-          content: Text(authProvider.error ?? 'Sign in failed'),
-        ),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
@@ -164,40 +224,58 @@ class _LoginScreenState extends State<LoginScreen> {
           Column(
             children: [
               Container(
-                height: size.height * 0.42,
+                height: size.height * 0.34,
                 width: double.infinity,
                 color: AppColors.primary,
                 child: SafeArea(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: const Icon(
-                          Icons.add_box,
-                          color: AppColors.danger,
-                          size: 36,
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(18),
+                        child: Image.asset(
+                          'assets/icon.png',
+                          width: 86,
+                          height: 86,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 86,
+                            height: 86,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'W',
+                                style: GoogleFonts.dmSans(
+                                  color: Colors.white,
+                                  fontSize: 46,
+                                  fontWeight: FontWeight.w900,
+                                  height: 1,
+                                  letterSpacing: -2,
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
                       Text(
-                        'Wardly',
+                        'WARDLY',
                         style: GoogleFonts.dmSans(
                           color: Colors.white,
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 26,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 6,
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Text(
                         'Ward, connected',
                         style: GoogleFonts.dmSans(
-                          color: Colors.white.withOpacity(0.7),
-                          fontSize: 15,
+                          color: Colors.white.withOpacity(0.75),
+                          fontSize: 13,
+                          letterSpacing: 1.2,
                         ),
                       ),
                     ],
@@ -208,7 +286,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
           Positioned.fill(
-            top: size.height * 0.36,
+            top: size.height * 0.28,
             child: Container(
               decoration: const BoxDecoration(
                 color: Colors.white,
@@ -218,29 +296,31 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
                 child: Form(
                   key: _formKey,
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(
-                        'Welcome back',
-                        style: GoogleFonts.dmSans(
-                          color: AppColors.textPrimary,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Sign in to your ward',
-                        style: GoogleFonts.dmSans(
-                          color: AppColors.textSecondary,
-                          fontSize: 14,
-                        ),
-                      ),
+                      _modeToggle(),
                       const SizedBox(height: 24),
+                      if (_mode == _Mode.signUp) ...[
+                        TextFormField(
+                          controller: _nameController,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: const InputDecoration(
+                            labelText: 'Full name',
+                            hintText: 'Use your real name',
+                            prefixIcon: Icon(Icons.person_outline),
+                          ),
+                          validator: (v) =>
+                              _mode == _Mode.signUp &&
+                                      (v == null || v.trim().isEmpty)
+                                  ? 'Please enter your name'
+                                  : null,
+                        ),
+                        const SizedBox(height: 12),
+                      ],
                       TextFormField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
@@ -257,7 +337,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 12),
                       TextFormField(
                         controller: _passwordController,
                         obscureText: _obscurePassword,
@@ -282,6 +362,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           return null;
                         },
                       ),
+                      const SizedBox(height: 8),
                       Row(
                         children: [
                           SizedBox(
@@ -308,71 +389,57 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                           ),
-                          IconButton(
-                            icon: Icon(
-                              Icons.info_outline,
-                              size: 16,
-                              color: AppColors.textSecondary,
-                            ),
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    "You won't be asked to log in again on this device",
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
                           const Spacer(),
-                          TextButton(
-                            onPressed: () => _forgotPassword(context),
-                            child: const Text('Forgot?'),
-                          ),
+                          if (_mode == _Mode.signIn)
+                            TextButton(
+                              onPressed: _forgotPassword,
+                              child: const Text('Forgot?'),
+                            ),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: authProvider.isLoading ? null : _submit,
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 4),
-                            child: Text('Sign In'),
+                      const SizedBox(height: 10),
+                      ElevatedButton(
+                        onPressed: authProvider.isLoading ? null : _submit,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Text(
+                            _mode == _Mode.signIn
+                                ? 'Sign In'
+                                : 'Create Account',
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: authProvider.isLoading
-                              ? null
-                              : () => _signInGoogle(context),
-                          icon: const Icon(Icons.g_mobiledata, size: 28),
-                          label: const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 4),
-                            child: Text('Continue with Google'),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 14),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(
-                            'New to Wardly?',
-                            style: GoogleFonts.dmSans(
-                              color: AppColors.textSecondary,
-                              fontSize: 14,
+                          const Expanded(child: Divider()),
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
+                              'OR',
+                              style: GoogleFonts.dmSans(
+                                color: AppColors.textSecondary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
-                          TextButton(
-                            onPressed: () => Navigator.of(context)
-                                .pushNamed('/register'),
-                            child: const Text('Create account'),
-                          ),
+                          const Expanded(child: Divider()),
                         ],
+                      ),
+                      const SizedBox(height: 14),
+                      OutlinedButton.icon(
+                        onPressed: authProvider.isLoading ? null : _signInGoogle,
+                        icon: const Icon(Icons.g_mobiledata, size: 28),
+                        label: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Text(
+                            _mode == _Mode.signIn
+                                ? 'Continue with Google'
+                                : 'Sign up with Google',
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -388,6 +455,48 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _modeToggle() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          _toggleTab('Sign In', _Mode.signIn),
+          _toggleTab('Sign Up', _Mode.signUp),
+        ],
+      ),
+    );
+  }
+
+  Widget _toggleTab(String label, _Mode mode) {
+    final selected = _mode == mode;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _mode = mode),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.dmSans(
+              color: selected ? Colors.white : AppColors.textSecondary,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
       ),
     );
   }
