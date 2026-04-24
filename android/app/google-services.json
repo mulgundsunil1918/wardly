@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "525482754887-et7ndv2eocboes0i6qqvahloi42mrn8j.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.wardly",
+            "certificate_hash": "75f6917c118201cd08c14189eb8dc5edbadd2684"
+          }
+        },
+        {
           "client_id": "525482754887-9oi8ni4b8c37ppnck3k34l8h5i3v59n8.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -29,6 +37,13 @@
             {
               "client_id": "525482754887-9oi8ni4b8c37ppnck3k34l8h5i3v59n8.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "525482754887-ajnml4mjhqdbsl2mk5pvst9i9c2lidg4.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.wardly"
+              }
             }
           ]
         }

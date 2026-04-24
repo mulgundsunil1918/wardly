@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -76,8 +77,58 @@ class _LoginScreenState extends State<LoginScreen> {
 
     bool ok;
     if (_mode == _Mode.signIn) {
+      // Pre-check: if this email is a Google-only account, redirect them.
+      try {
+        final methods =
+            await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
+        if (methods.isNotEmpty &&
+            methods.contains('google.com') &&
+            !methods.contains('password')) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: AppColors.warning,
+              duration: const Duration(seconds: 6),
+              content: const Text(
+                'This email is linked to Google. Tap "Continue with Google" to sign in.',
+              ),
+            ),
+          );
+          return;
+        }
+      } catch (_) {}
       ok = await authProvider.signIn(email, password);
     } else {
+      // Sign-up pre-check: email already registered with Google?
+      try {
+        final methods =
+            await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
+        if (methods.contains('google.com') && !methods.contains('password')) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: AppColors.warning,
+              duration: const Duration(seconds: 6),
+              content: const Text(
+                'This email already has a Google account. Tap "Sign up with Google" instead.',
+              ),
+            ),
+          );
+          return;
+        }
+        if (methods.contains('password')) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: AppColors.warning,
+              content: const Text(
+                'This email is already registered. Switch to Sign In.',
+              ),
+            ),
+          );
+          return;
+        }
+      } catch (_) {}
       final name = _nameController.text.trim();
       ok = await authProvider.register(
         name: name,
