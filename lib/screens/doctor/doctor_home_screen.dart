@@ -9,6 +9,8 @@ import '../../providers/patient_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/note_card.dart';
 import '../../widgets/notifications_panel.dart';
+import 'package:share_plus/share_plus.dart';
+
 import '../../widgets/theme_toggle_button.dart';
 import '../../widgets/wardly_brand.dart';
 import '../shared/filtered_notes_screen.dart';
@@ -195,6 +197,16 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                       ),
                     ),
                 ],
+              ),
+              IconButton(
+                tooltip: 'Share Wardly',
+                icon: const Icon(Icons.share_outlined),
+                onPressed: () => Share.share(
+                  'Try Wardly — real-time clinical notes for ward teams.\n\n'
+                  'Web: https://mulgundsunil1918.github.io/wardly/\n'
+                  'GitHub: https://github.com/mulgundsunil1918/wardly',
+                  subject: 'Check out Wardly',
+                ),
               ),
               const ThemeToggleButton(),
             ],

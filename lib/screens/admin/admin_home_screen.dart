@@ -10,6 +10,8 @@ import '../../providers/ward_provider.dart';
 import '../../utils/app_constants.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/app_utils.dart';
+import 'package:share_plus/share_plus.dart';
+
 import '../../widgets/theme_toggle_button.dart';
 import '../../widgets/wardly_brand.dart';
 import '../shared/profile_screen.dart';
@@ -140,6 +142,16 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         children: [
           const WardlyBrand(size: 36),
           const Spacer(),
+          IconButton(
+            tooltip: 'Share Wardly',
+            icon: const Icon(Icons.share_outlined),
+            onPressed: () => Share.share(
+              'Try Wardly — real-time clinical notes for ward teams.\n\n'
+              'Web: https://mulgundsunil1918.github.io/wardly/\n'
+              'GitHub: https://github.com/mulgundsunil1918/wardly',
+              subject: 'Check out Wardly',
+            ),
+          ),
           const ThemeToggleButton(),
         ],
       ),
