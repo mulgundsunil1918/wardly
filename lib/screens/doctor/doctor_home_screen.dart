@@ -69,7 +69,19 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
           children: [
             _buildHeader(user?.name ?? 'Doctor'),
             Expanded(
-              child: SingleChildScrollView(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      AppColors.appBarBg,
+                      AppColors.surface,
+                    ],
+                    stops: const [0.0, 0.18],
+                  ),
+                ),
+                child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -90,20 +102,35 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                     const SizedBox(height: 12),
                     _buildPatientsRow(),
                     const SizedBox(height: 24),
-                    _sectionHeader(
-                      'Recent Notes',
-                      trailing: IconButton(
-                        icon: const Icon(
-                          Icons.add_circle,
-                          color: AppColors.primary,
-                        ),
-                        onPressed: () => showAddNoteBottomSheet(context),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.appBarBg,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: AppColors.divider),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _sectionHeader(
+                            'Recent Notes',
+                            trailing: IconButton(
+                              icon: const Icon(
+                                Icons.add_circle,
+                                color: AppColors.primary,
+                              ),
+                              onPressed: () =>
+                                  showAddNoteBottomSheet(context),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildNotesList(),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    _buildNotesList(),
                     const SizedBox(height: 80),
                   ],
+                ),
                 ),
               ),
             ),
@@ -124,7 +151,12 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
     return Consumer<NoteProvider>(
       builder: (context, noteProvider, _) {
         return Container(
-          color: AppColors.appBarBg,
+          decoration: BoxDecoration(
+            color: AppColors.appBarBg,
+            border: Border(
+              bottom: BorderSide(color: AppColors.divider),
+            ),
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
@@ -210,6 +242,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
               value: '${noteProvider.urgentNotes.length}',
               icon: Icons.priority_high,
               color: AppColors.danger,
+              emphasised: noteProvider.urgentNotes.isNotEmpty,
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => const FilteredNotesScreen(
@@ -231,6 +264,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
     required IconData icon,
     required Color color,
     VoidCallback? onTap,
+    bool emphasised = false,
   }) {
     return Expanded(
       child: InkWell(
@@ -241,7 +275,19 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
         decoration: BoxDecoration(
           color: AppColors.card,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.divider),
+          border: Border.all(
+            color: emphasised ? color : AppColors.divider,
+            width: emphasised ? 1.5 : 1,
+          ),
+          boxShadow: emphasised
+              ? [
+                  BoxShadow(
+                    color: color.withOpacity(0.25),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+              : AppColors.cardShadow,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -249,7 +295,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withOpacity(AppColors.iconChipOpacity),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, color: color, size: 18),
@@ -350,6 +396,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
         decoration: BoxDecoration(
           color: AppColors.card,
           borderRadius: BorderRadius.circular(16),
+          boxShadow: AppColors.cardShadow,
           border: Border.all(color: AppColors.divider),
         ),
         child: Column(

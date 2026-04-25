@@ -28,6 +28,24 @@ class AppColors {
   static const Color darkTextSecondary = Color(0xFFA8BAD2);
   static const Color darkPrimary = Color(0xFF4FA3D1);
 
+  static List<BoxShadow> get cardShadow => isDark
+      ? [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.45),
+            blurRadius: 22,
+            offset: const Offset(0, 8),
+          ),
+        ]
+      : [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ];
+
+  static double get iconChipOpacity => isDark ? 0.18 : 0.10;
+
   static Color get surface => isDark ? darkScaffold : lightSurface;
   static Color get background => surface;
   static Color get card => isDark ? darkCard : lightCard;

@@ -79,6 +79,7 @@ class _NoteCardState extends State<NoteCard> {
             color: AppColors.card,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppColors.divider),
+            boxShadow: AppColors.cardShadow,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

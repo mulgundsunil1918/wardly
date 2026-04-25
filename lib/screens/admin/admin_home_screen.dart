@@ -129,7 +129,12 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
   Widget _header(String name) {
     return Container(
-      color: AppColors.appBarBg,
+      decoration: BoxDecoration(
+        color: AppColors.appBarBg,
+        border: Border(
+          bottom: BorderSide(color: AppColors.divider),
+        ),
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [

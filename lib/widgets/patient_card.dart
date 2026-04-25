@@ -33,6 +33,7 @@ class PatientCard extends StatelessWidget {
           color: AppColors.card,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.divider),
+          boxShadow: AppColors.cardShadow,
         ),
         child: Row(
           children: [

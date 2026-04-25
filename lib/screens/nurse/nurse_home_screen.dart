@@ -78,7 +78,12 @@ class _NurseHomeScreenState extends State<NurseHomeScreen> {
     return Consumer<NoteProvider>(
       builder: (context, np, _) {
         return Container(
-          color: AppColors.appBarBg,
+          decoration: BoxDecoration(
+            color: AppColors.appBarBg,
+            border: Border(
+              bottom: BorderSide(color: AppColors.divider),
+            ),
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
