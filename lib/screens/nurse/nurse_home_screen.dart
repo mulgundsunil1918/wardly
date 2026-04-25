@@ -10,8 +10,7 @@ import '../../utils/app_theme.dart';
 import '../../utils/app_utils.dart';
 import '../../widgets/note_card.dart';
 import '../../widgets/notifications_panel.dart';
-import 'package:share_plus/share_plus.dart';
-
+import '../../utils/share_helper.dart';
 import '../../widgets/theme_toggle_button.dart';
 import '../../widgets/wardly_brand.dart';
 import '../shared/profile_screen.dart';
@@ -128,12 +127,7 @@ class _NurseHomeScreenState extends State<NurseHomeScreen> {
               IconButton(
                 tooltip: 'Share Wardly',
                 icon: const Icon(Icons.share_outlined),
-                onPressed: () => Share.share(
-                  'Try Wardly — real-time clinical notes for ward teams.\n\n'
-                  'Web: https://mulgundsunil1918.github.io/wardly/\n'
-                  'GitHub: https://github.com/mulgundsunil1918/wardly',
-                  subject: 'Check out Wardly',
-                ),
+                onPressed: () => ShareHelper.shareApp(),
               ),
               const ThemeToggleButton(),
             ],

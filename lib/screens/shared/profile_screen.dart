@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart' as fba show EmailAuthProvider;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
+import '../../utils/share_helper.dart';
 
 import '../../models/app_user.dart';
 import '../../providers/auth_provider.dart';
@@ -263,14 +263,7 @@ class ProfileScreen extends StatelessWidget {
           title: const Text('Share Wardly'),
           subtitle: const Text('Invite your team to download the app'),
           trailing: const Icon(Icons.chevron_right),
-          onTap: () {
-            Share.share(
-              'Try Wardly — real-time clinical notes for ward teams.\n\n'
-              'Web: https://mulgundsunil1918.github.io/wardly/\n'
-              'GitHub: https://github.com/mulgundsunil1918/wardly',
-              subject: 'Check out Wardly',
-            );
-          },
+          onTap: () => ShareHelper.shareApp(),
         ),
       ],
     );
