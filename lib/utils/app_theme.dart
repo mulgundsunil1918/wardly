@@ -19,12 +19,13 @@ class AppColors {
   static const Color lightTextSecondary = Color(0xFF5A7184);
   static const Color lightDivider = Color(0xFFE2EAF3);
 
-  static const Color darkScaffold = Color(0xFF0B1220);
-  static const Color darkCard = Color(0xFF152238);
-  static const Color darkAppBar = Color(0xFF0E1628);
-  static const Color darkDivider = Color(0xFF1E2C46);
-  static const Color darkTextPrimary = Color(0xFFE5EEF9);
-  static const Color darkTextSecondary = Color(0xFF93A7BF);
+  static const Color darkScaffold = Color(0xFF06101F);
+  static const Color darkCard = Color(0xFF142036);
+  static const Color darkCardElevated = Color(0xFF1A2842);
+  static const Color darkAppBar = Color(0xFF0A1422);
+  static const Color darkDivider = Color(0xFF253454);
+  static const Color darkTextPrimary = Color(0xFFEEF4FB);
+  static const Color darkTextSecondary = Color(0xFFA8BAD2);
   static const Color darkPrimary = Color(0xFF4FA3D1);
 
   static Color get surface => isDark ? darkScaffold : lightSurface;

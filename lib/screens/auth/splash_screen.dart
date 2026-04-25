@@ -26,7 +26,6 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _bootstrap() async {
-    await Future.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
     final authProvider = context.read<AuthProvider>();
     final prefs = await SharedPreferences.getInstance();
