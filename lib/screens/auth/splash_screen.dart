@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/app_user.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/push_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/web_notice.dart';
 
@@ -46,6 +47,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
     await authProvider.loadCurrentUser();
     if (!mounted) return;
+    PushService.register();
 
     if (authProvider.currentUser == null) {
       Navigator.of(context).pushReplacementNamed(

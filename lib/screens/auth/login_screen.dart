@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../providers/auth_provider.dart';
+import '../../services/push_service.dart';
 import '../../utils/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -142,6 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (ok && authProvider.currentUser != null) {
       await _persistRememberDevice(email);
       await _markOnboardingDone();
+      PushService.register();
       if (!mounted) return;
       Navigator.of(context).pushReplacementNamed('/doctor/home');
     } else if (authProvider.error != null) {
@@ -160,6 +162,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     if (ok && authProvider.currentUser != null) {
       await _markOnboardingDone();
+      PushService.register();
       final user = authProvider.currentUser!;
       final needsName = user.name.trim().isEmpty ||
           user.name.trim() == user.email.split('@').first;
