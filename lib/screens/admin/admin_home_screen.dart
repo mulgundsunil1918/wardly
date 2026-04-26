@@ -11,6 +11,7 @@ import '../../utils/app_constants.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/app_utils.dart';
 import '../../utils/share_helper.dart';
+import '../../widgets/support_sheet.dart';
 import '../../widgets/theme_toggle_button.dart';
 import '../../widgets/wardly_brand.dart';
 import '../shared/profile_screen.dart';
@@ -146,6 +147,14 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             tooltip: 'Share Wardly',
             icon: const Icon(Icons.share_outlined),
             onPressed: () => ShareHelper.shareApp(),
+          ),
+          IconButton(
+            tooltip: 'Support the developer',
+            icon: const Icon(
+              Icons.local_cafe_outlined,
+              color: Color(0xFFE57F00),
+            ),
+            onPressed: () => showSupportSheet(context),
           ),
         ],
       ),

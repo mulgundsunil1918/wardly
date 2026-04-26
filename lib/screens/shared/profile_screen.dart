@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import '../../utils/share_helper.dart';
+import '../../widgets/support_sheet.dart';
 
 import '../../models/app_user.dart';
 import '../../providers/auth_provider.dart';
@@ -271,6 +272,17 @@ class ProfileScreen extends StatelessWidget {
           subtitle: const Text('Invite your team to download the app'),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => ShareHelper.shareApp(),
+        ),
+        const Divider(height: 1, indent: 60),
+        ListTile(
+          leading: const Icon(
+            Icons.local_cafe_outlined,
+            color: Color(0xFFE57F00),
+          ),
+          title: const Text('Support Wardly'),
+          subtitle: const Text('Buy me a chai · keep the servers running'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => showSupportSheet(context),
         ),
       ],
     );

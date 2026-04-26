@@ -11,6 +11,7 @@ import '../../utils/app_utils.dart';
 import '../../widgets/note_card.dart';
 import '../../widgets/notifications_panel.dart';
 import '../../utils/share_helper.dart';
+import '../../widgets/support_sheet.dart';
 import '../../widgets/theme_toggle_button.dart';
 import '../../widgets/wardly_brand.dart';
 import '../shared/profile_screen.dart';
@@ -129,6 +130,14 @@ class _NurseHomeScreenState extends State<NurseHomeScreen> {
                 tooltip: 'Share Wardly',
                 icon: const Icon(Icons.share_outlined),
                 onPressed: () => ShareHelper.shareApp(),
+              ),
+              IconButton(
+                tooltip: 'Support the developer',
+                icon: const Icon(
+                  Icons.local_cafe_outlined,
+                  color: Color(0xFFE57F00),
+                ),
+                onPressed: () => showSupportSheet(context),
               ),
             ],
           ),
