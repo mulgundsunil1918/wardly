@@ -15,7 +15,6 @@ import '../../widgets/support_sheet.dart';
 import '../../widgets/theme_toggle_button.dart';
 import '../../widgets/wardly_brand.dart';
 import '../shared/filtered_notes_screen.dart';
-import '../shared/profile_screen.dart';
 import 'add_note_screen.dart';
 import 'patient_detail_screen.dart';
 import 'patients_list_screen.dart';
@@ -50,14 +49,6 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
       if (a[i] != b[i]) return false;
     }
     return true;
-  }
-
-  String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.isEmpty || parts.first.isEmpty) return '?';
-    final a = parts.first[0];
-    final b = parts.length > 1 && parts[1].isNotEmpty ? parts[1][0] : '';
-    return (a + b).toUpperCase();
   }
 
   @override

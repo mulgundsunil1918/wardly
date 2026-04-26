@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/app_user.dart';
@@ -422,6 +421,3 @@ class _WardDetailScreenState extends State<WardDetailScreen>
   }
 }
 
-extension _AdmittedAt on Patient {
-  String get formattedAdmittedAt => DateFormat.yMMMd().format(admittedAt);
-}

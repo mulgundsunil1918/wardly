@@ -35,7 +35,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _goRegister() async {
     await _markDone();
     if (!mounted) return;
-    Navigator.of(context).pushReplacementNamed('/register');
+    Navigator.of(context).pushReplacementNamed('/login');
   }
 
   void _next() {

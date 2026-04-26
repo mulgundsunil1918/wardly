@@ -4,12 +4,10 @@ import '../models/app_user.dart';
 import '../models/patient.dart';
 import '../models/ward.dart';
 import '../screens/admin/add_ward_screen.dart';
-import '../screens/admin/admin_home_screen.dart';
 import '../screens/admin/admin_staff_screen.dart';
 import '../screens/admin/ward_detail_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/onboarding_screen.dart';
-import '../screens/auth/register_screen.dart';
 import '../screens/auth/splash_screen.dart';
 import '../screens/doctor/add_patient_screen.dart';
 import '../screens/doctor/patient_detail_screen.dart';
@@ -22,7 +20,6 @@ class AppRoutes {
   static const String splash = '/';
   static const String onboarding = '/onboarding';
   static const String login = '/login';
-  static const String register = '/register';
 
   static const String doctorHome = '/doctor/home';
   static const String doctorPatients = '/doctor/patients';
@@ -42,7 +39,6 @@ class AppRoutes {
         splash: (_) => const SplashScreen(),
         onboarding: (_) => const OnboardingScreen(),
         login: (_) => const LoginScreen(),
-        register: (_) => const RegisterScreen(),
         doctorHome: (_) => const MainScaffold(role: UserRole.doctor),
         doctorPatients: (_) => const PatientsListScreen(),
         doctorAddPatient: (_) => const AddPatientScreen(),

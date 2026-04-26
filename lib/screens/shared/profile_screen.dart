@@ -14,7 +14,6 @@ import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/app_utils.dart';
-import '../../widgets/role_badge.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
