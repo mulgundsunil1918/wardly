@@ -16,6 +16,7 @@ import '../nurse/nurse_home_screen.dart';
 import '../nurse/nurse_patients_screen.dart';
 import '../../widgets/support_sheet.dart';
 import 'profile_screen.dart';
+import 'tutorial_screen.dart';
 import 'wards_screen.dart';
 
 class MainScaffold extends StatefulWidget {
@@ -33,7 +34,17 @@ class _MainScaffoldState extends State<MainScaffold> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      if (!await TutorialScreen.isDone()) {
+        if (!mounted) return;
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const TutorialScreen(),
+            fullscreenDialog: true,
+          ),
+        );
+      }
       if (mounted) SupportPrompt.maybeShowDaily(context);
     });
   }
