@@ -5,7 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../utils/app_theme.dart';
 
-const String _chaiUrl = 'https://chai4.me/mulgundsunil';
+const String _chaiUrl = 'https://www.chai4.me/mulgundsunil';
 const String _kLastShownKey = 'support_popup_last_shown';
 const String _kDisabledKey = 'support_popup_disabled';
 const Duration _interval = Duration(hours: 24);
