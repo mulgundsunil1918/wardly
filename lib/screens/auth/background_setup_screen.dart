@@ -329,7 +329,7 @@ class _BackgroundSetupScreenState extends State<BackgroundSetupScreen> {
                             const TextSpan(text: ' · '),
                             TextSpan(
                               text: b.$2,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppColors.textSecondary,
                               ),
                             ),
