@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/push_service.dart';
 import '../../utils/app_theme.dart';
+import 'background_setup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -145,7 +146,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await _markOnboardingDone();
       PushService.register();
       if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed('/doctor/home');
+      await _routePostAuth();
     } else if (authProvider.error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -154,6 +155,18 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     }
+  }
+
+  Future<void> _routePostAuth() async {
+    if (BackgroundSetupScreen.shouldSkip()) {
+      Navigator.of(context).pushReplacementNamed('/doctor/home');
+      return;
+    }
+    final done = await BackgroundSetupScreen.isDone();
+    if (!mounted) return;
+    Navigator.of(context).pushReplacementNamed(
+      done ? '/doctor/home' : '/background-setup',
+    );
   }
 
   Future<void> _signInGoogle() async {
@@ -171,7 +184,7 @@ class _LoginScreenState extends State<LoginScreen> {
         await _promptForName(authProvider);
       }
       if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed('/doctor/home');
+      await _routePostAuth();
     } else if (authProvider.error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

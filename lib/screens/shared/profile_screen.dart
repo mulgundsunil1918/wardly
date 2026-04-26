@@ -8,6 +8,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import '../../utils/share_helper.dart';
 import '../../widgets/support_sheet.dart';
+import '../auth/background_setup_screen.dart';
 
 import '../../models/app_user.dart';
 import '../../providers/auth_provider.dart';
@@ -283,6 +284,22 @@ class ProfileScreen extends StatelessWidget {
           trailing: const Icon(Icons.chevron_right),
           onTap: () => showSupportSheet(context),
         ),
+        if (!BackgroundSetupScreen.shouldSkip()) ...[
+          const Divider(height: 1, indent: 60),
+          ListTile(
+            leading: const Icon(Icons.notifications_active_outlined),
+            title: const Text('Notification setup'),
+            subtitle: const Text(
+              'Re-run the background reliability wizard',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const BackgroundSetupScreen(),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }

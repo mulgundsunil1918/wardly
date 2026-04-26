@@ -12,6 +12,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/push_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/web_notice.dart';
+import 'background_setup_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -53,6 +54,16 @@ class _SplashScreenState extends State<SplashScreen> {
       Navigator.of(context).pushReplacementNamed(
         onboardingDone ? '/login' : '/onboarding',
       );
+      return;
+    }
+
+    final wizardSkip = BackgroundSetupScreen.shouldSkip();
+    final wizardDone = wizardSkip
+        ? true
+        : await BackgroundSetupScreen.isDone();
+    if (!mounted) return;
+    if (!wizardDone) {
+      Navigator.of(context).pushReplacementNamed('/background-setup');
       return;
     }
 
