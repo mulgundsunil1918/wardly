@@ -162,8 +162,13 @@ class _SupportSheet extends StatelessWidget {
 
   Future<void> _open(String url) async {
     final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
+    try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      // Fall back to in-app web view if no external browser available.
+      try {
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
+      } catch (_) {/* swallow */}
     }
   }
 }

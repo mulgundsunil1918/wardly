@@ -147,9 +147,9 @@ class WebNotice {
 
   static Future<void> _open(String url) async {
     final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
+    try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+    } catch (_) {/* swallow */}
   }
 
   static Future<void> _requestNotificationPermission() async {
