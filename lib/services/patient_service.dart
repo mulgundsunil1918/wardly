@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/patient.dart';
 import '../utils/app_constants.dart';
+import 'metrics_service.dart';
 
 class PatientService {
   final FirebaseFirestore _firestore;
@@ -41,6 +42,7 @@ class PatientService {
 
   Future<String> addPatient(Patient patient) async {
     final ref = await _patients.add(patient.toMap());
+    MetricsService.bump('patient', summary: 'Admitted ${patient.name}');
     return ref.id;
   }
 

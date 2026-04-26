@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/note.dart';
 import '../models/note_comment.dart';
 import '../utils/app_constants.dart';
+import 'metrics_service.dart';
 
 class NoteService {
   final FirebaseFirestore _firestore;
@@ -63,6 +64,8 @@ class NoteService {
 
   Future<String> addNote(Note note) async {
     final ref = await _notes.add(note.toMap());
+    MetricsService.bump('note',
+        summary: '${note.authorName} → ${note.patientName}');
     return ref.id;
   }
 
@@ -79,6 +82,7 @@ class NoteService {
       'acknowledgedBy': acknowledgedBy,
       'acknowledgedAt': Timestamp.fromDate(DateTime.now()),
     });
+    MetricsService.bump('ack', summary: '$acknowledgedBy ack\'d a note');
   }
 
   Future<void> deleteNote(String noteId) async {
@@ -97,6 +101,8 @@ class NoteService {
 
   Future<void> addComment(String noteId, NoteComment comment) async {
     await _commentsRef(noteId).add(comment.toMap());
+    MetricsService.bump('comment',
+        summary: '${comment.authorName} replied');
   }
 
   Future<void> deleteComment(String noteId, String commentId) async {

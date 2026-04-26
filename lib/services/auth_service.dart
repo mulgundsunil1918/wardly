@@ -5,6 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import '../models/app_user.dart';
 import '../utils/app_constants.dart';
+import 'metrics_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth;
@@ -70,6 +71,7 @@ class AuthService {
       'createdAt': Timestamp.fromDate(now),
     };
     await _users.doc(user.uid).set(data);
+    MetricsService.bump('user', summary: 'New account: $name');
 
     final doc = await _users.doc(user.uid).get();
     return AppUser.fromFirestore(doc);

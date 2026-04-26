@@ -1,6 +1,5 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
-import { getAuth } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
-import { getFirestore, collection, getDocs, limit, query } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+import { getFirestore, doc, onSnapshot, collection, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyBS8MKN-vzLCFLDmGfws7uJg5_I4fJKnqM',
@@ -12,9 +11,9 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-getAuth(app);
 const db = getFirestore(app);
 
+// ────────── Health checks ──────────
 function setStatus(cardId, state, detailText) {
   const card = document.getElementById(cardId);
   if (!card) return;
@@ -38,7 +37,6 @@ async function checkAuth() {
       { method: 'POST', body: JSON.stringify({ idToken: 'none' }) }
     );
     const ms = Math.round(performance.now() - start);
-    // We expect 400 (INVALID_ID_TOKEN) — that means the API is up.
     if (res.status < 500) {
       setStatus('svc-auth', 'green',
         `Auth API reachable · ${ms}ms · Email/Password + Google enabled`);
@@ -54,19 +52,20 @@ async function checkAuth() {
 async function checkFirestore() {
   const start = performance.now();
   try {
-    const q = query(collection(db, 'wards'), limit(1));
-    await getDocs(q);
+    // Probe the public metrics doc
+    await new Promise((resolve, reject) => {
+      const unsub = onSnapshot(doc(db, 'metrics', 'totals'), () => {
+        unsub();
+        resolve();
+      }, reject);
+      setTimeout(() => reject(new Error('timeout')), 8000);
+    });
     const ms = Math.round(performance.now() - start);
     setStatus('svc-firestore', 'green',
-      `Connected · ${ms}ms · Reads succeeded`);
+      `Connected · ${ms}ms · Public metrics readable`);
   } catch (e) {
-    const ms = Math.round(performance.now() - start);
-    if (e.code === 'permission-denied' || /permission/i.test(e.message)) {
-      setStatus('svc-firestore', 'green',
-        `Reachable · ${ms}ms · Rules require auth (expected)`);
-    } else {
-      setStatus('svc-firestore', 'red', `${e.code || 'error'} — ${e.message}`);
-    }
+    setStatus('svc-firestore', 'red',
+      `${e.code || 'error'} — ${e.message}`);
   }
 }
 
@@ -77,10 +76,9 @@ function updateHeader() {
 
 function tally() {
   const pills = document.querySelectorAll('.status-pill');
-  let ok = 0, degraded = 0, down = 0;
+  let degraded = 0, down = 0;
   pills.forEach(p => {
-    if (p.classList.contains('green')) ok++;
-    else if (p.classList.contains('amber')) degraded++;
+    if (p.classList.contains('amber')) degraded++;
     else if (p.classList.contains('red')) down++;
   });
   const el = document.getElementById('overall');
@@ -114,5 +112,81 @@ async function runAll() {
 
 document.getElementById('recheck').addEventListener('click', runAll);
 runAll();
-// Auto-refresh every 30 seconds
 setInterval(runAll, 30000);
+
+// ────────── Live counters ──────────
+function setCounter(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value ?? '—';
+}
+
+onSnapshot(doc(db, 'metrics', 'totals'), (snap) => {
+  if (!snap.exists()) {
+    ['ct-users','ct-wards','ct-patients','ct-notes','ct-acks','ct-comments']
+      .forEach(id => setCounter(id, '0'));
+    setCounter('last-activity', 'no activity yet');
+    return;
+  }
+  const d = snap.data();
+  setCounter('ct-users', d.userCount ?? 0);
+  setCounter('ct-wards', d.wardCount ?? 0);
+  setCounter('ct-patients', d.patientCount ?? 0);
+  setCounter('ct-notes', d.noteCount ?? 0);
+  setCounter('ct-acks', d.ackCount ?? 0);
+  setCounter('ct-comments', d.commentCount ?? 0);
+
+  const ts = d.lastActivityAt?.toDate?.();
+  if (ts) {
+    setCounter('last-activity', timeAgo(ts));
+    document.getElementById('live-pulse').classList.add('pulsing');
+  }
+});
+
+// ────────── Live activity feed ──────────
+const feed = document.getElementById('activity-feed');
+const q = query(
+  collection(db, 'recent_activity'),
+  orderBy('at', 'desc'),
+  limit(25)
+);
+onSnapshot(q, (snap) => {
+  if (snap.empty) {
+    feed.innerHTML = '<div class="feed-empty">No activity yet — once your team starts using Wardly, events appear here in real time.</div>';
+    return;
+  }
+  const items = [];
+  snap.forEach((d) => {
+    const data = d.data();
+    const at = data.at?.toDate?.() || new Date();
+    items.push(`
+      <div class="feed-item">
+        <div class="feed-icon ${typeColor(data.type)}">${typeEmoji(data.type)}</div>
+        <div class="feed-body">
+          <div class="feed-summary">${escape(data.summary || labelFor(data.type))}</div>
+          <div class="feed-meta">${labelFor(data.type)} · ${timeAgo(at)}</div>
+        </div>
+      </div>`);
+  });
+  feed.innerHTML = items.join('');
+});
+
+function typeEmoji(t) {
+  return ({note:'📝', ack:'✅', comment:'💬', patient:'🛏️', ward:'🏥', user:'👤'})[t] || '•';
+}
+function typeColor(t) {
+  return ({note:'blue', ack:'green', comment:'purple', patient:'amber', ward:'teal', user:'pink'})[t] || 'blue';
+}
+function labelFor(t) {
+  return ({note:'Note posted', ack:'Note acknowledged', comment:'Reply', patient:'Patient admitted', ward:'Ward created', user:'User signed up'})[t] || t;
+}
+function timeAgo(d) {
+  const sec = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (sec < 60) return `${sec}s ago`;
+  if (sec < 3600) return `${Math.floor(sec/60)}m ago`;
+  if (sec < 86400) return `${Math.floor(sec/3600)}h ago`;
+  return `${Math.floor(sec/86400)}d ago`;
+}
+function escape(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+}

@@ -44,6 +44,37 @@
 
   <section class="section">
     <div class="container">
+      <div class="live-row">
+        <div class="live-pill">
+          <span id="live-pulse" class="pulse-dot"></span>
+          <span>LIVE</span>
+          <span class="live-sep">·</span>
+          <span>last activity <span id="last-activity">—</span></span>
+        </div>
+      </div>
+      <h2 class="section-head-title">Activity counters</h2>
+      <div class="counter-grid">
+        <div class="counter-card"><span class="counter-label">Users</span><span class="counter-value" id="ct-users">—</span></div>
+        <div class="counter-card"><span class="counter-label">Wards</span><span class="counter-value" id="ct-wards">—</span></div>
+        <div class="counter-card"><span class="counter-label">Patients</span><span class="counter-value" id="ct-patients">—</span></div>
+        <div class="counter-card"><span class="counter-label">Notes</span><span class="counter-value" id="ct-notes">—</span></div>
+        <div class="counter-card"><span class="counter-label">Acks</span><span class="counter-value" id="ct-acks">—</span></div>
+        <div class="counter-card"><span class="counter-label">Replies</span><span class="counter-value" id="ct-comments">—</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <h2 class="section-head-title">Live activity feed</h2>
+      <div id="activity-feed" class="activity-feed">
+        <div class="feed-empty">Connecting…</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
       <h2 class="section-head-title">Core services</h2>
       <div class="grid grid-2">
         <div class="status-card" id="svc-hosting">

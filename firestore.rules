@@ -28,6 +28,17 @@ service cloud.firestore {
       allow write: if signedIn();
     }
 
+    // Public-readable metrics for the admin dashboard.
+    match /metrics/{doc} {
+      allow read: if true;
+      allow write: if signedIn();
+    }
+    match /recent_activity/{doc} {
+      allow read: if true;
+      allow create: if signedIn();
+      allow update, delete: if false;
+    }
+
     match /notes/{noteId} {
       allow read: if signedIn();
       allow create: if signedIn();

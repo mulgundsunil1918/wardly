@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/app_user.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/web_notice.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -26,6 +27,8 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _bootstrap() async {
+    if (!mounted) return;
+    await WebNotice.maybeShow(context);
     if (!mounted) return;
     final authProvider = context.read<AuthProvider>();
     final prefs = await SharedPreferences.getInstance();

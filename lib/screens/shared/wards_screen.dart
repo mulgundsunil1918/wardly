@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../models/ward.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/metrics_service.dart';
 import '../../utils/app_constants.dart';
 import '../../utils/app_theme.dart';
 
@@ -680,6 +681,8 @@ class WardsScreen extends StatelessWidget {
                   'creatorId': uid,
                   'createdAt': Timestamp.fromDate(DateTime.now()),
                 });
+                MetricsService.bump('ward',
+                    summary: 'New ward "$name"');
                 if (uid.isNotEmpty) {
                   await FirebaseFirestore.instance
                       .collection(AppConstants.usersCollection)
