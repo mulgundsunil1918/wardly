@@ -124,12 +124,12 @@ class _NurseHomeScreenState extends State<NurseHomeScreen> {
                     ),
                 ],
               ),
+              const ThemeToggleButton(),
               IconButton(
                 tooltip: 'Share Wardly',
                 icon: const Icon(Icons.share_outlined),
                 onPressed: () => ShareHelper.shareApp(),
               ),
-              const ThemeToggleButton(),
             ],
           ),
         );

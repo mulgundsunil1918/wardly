@@ -197,12 +197,12 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                     ),
                 ],
               ),
+              const ThemeToggleButton(),
               IconButton(
                 tooltip: 'Share Wardly',
                 icon: const Icon(Icons.share_outlined),
                 onPressed: () => ShareHelper.shareApp(),
               ),
-              const ThemeToggleButton(),
             ],
           ),
         );

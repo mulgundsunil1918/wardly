@@ -141,12 +141,12 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         children: [
           const WardlyBrand(size: 36),
           const Spacer(),
+          const ThemeToggleButton(),
           IconButton(
             tooltip: 'Share Wardly',
             icon: const Icon(Icons.share_outlined),
             onPressed: () => ShareHelper.shareApp(),
           ),
-          const ThemeToggleButton(),
         ],
       ),
     );
