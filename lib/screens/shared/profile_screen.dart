@@ -134,6 +134,17 @@ class ProfileScreen extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
+          if (user.specialty != null && user.specialty!.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              user.specialty!,
+              style: GoogleFonts.dmSans(
+                color: AppColors.primary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
           const SizedBox(height: 6),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -525,7 +536,10 @@ class ProfileScreen extends StatelessWidget {
   }
 
   void _showEditProfile(BuildContext context, AuthProvider auth) {
-    final nameController = TextEditingController(text: auth.currentUser?.name);
+    final nameController =
+        TextEditingController(text: auth.currentUser?.name);
+    final specialtyController =
+        TextEditingController(text: auth.currentUser?.specialty ?? '');
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -560,12 +574,25 @@ class ProfileScreen extends StatelessWidget {
                 textCapitalization: TextCapitalization.words,
                 decoration: const InputDecoration(labelText: 'Full name'),
               ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: specialtyController,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'Specialty (optional)',
+                  hintText: 'e.g. Cardiologist, ICU, Paediatrics',
+                ),
+              ),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () {
                   final newName = nameController.text.trim();
+                  final newSpecialty = specialtyController.text.trim();
                   Navigator.pop(context);
-                  Future.microtask(() => auth.updateProfile(name: newName));
+                  Future.microtask(() => auth.updateProfile(
+                        name: newName,
+                        specialty: newSpecialty,
+                      ));
                 },
                 child: const Text('Save changes'),
               ),

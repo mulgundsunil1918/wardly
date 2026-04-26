@@ -17,10 +17,16 @@ class WardsScreen extends StatelessWidget {
   const WardsScreen({super.key});
 
 
-  Future<void> _shareWard(Ward w) async {
+  Future<void> _shareWard(BuildContext context, Ward w) async {
+    final me = context.read<AuthProvider>().currentUser;
+    final byLine = me == null
+        ? ''
+        : (me.specialty != null && me.specialty!.isNotEmpty
+            ? '\nShared by Dr. ${me.name} · ${me.specialty}'
+            : '\nShared by ${me.name}');
     final text =
-        'Join my ward on Wardly!\n\n${w.name}\nWard ID: ${w.id}\n\n'
-        'Open the Wardly app, go to Wards, tap the login icon, and paste this ID.';
+        'Join my ward on Wardly!$byLine\n\n${w.name}\nWard ID: ${w.id}\n\n'
+        'Open the Wardly app → Wards → tap "Join Ward" → paste this ID.';
     await Share.share(text, subject: 'Join ward ${w.name}');
   }
 
@@ -531,7 +537,7 @@ class WardsScreen extends StatelessWidget {
                     label: 'Share',
                     icon: Icons.share_outlined,
                     color: AppColors.primary,
-                    onTap: () => _shareWard(w),
+                    onTap: () => _shareWard(context, w),
                   ),
                 ),
                 const SizedBox(width: 8),

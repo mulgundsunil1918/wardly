@@ -115,12 +115,14 @@ class AuthProvider extends ChangeNotifier {
     String? name,
     String? avatarUrl,
     String? avatarEmoji,
+    String? specialty,
   }) async {
     try {
       await _authService.updateProfile(
         name: name,
         avatarUrl: avatarUrl,
         avatarEmoji: avatarEmoji,
+        specialty: specialty,
       );
     } catch (_) {}
     final current = _currentUser;
@@ -134,6 +136,7 @@ class AuthProvider extends ChangeNotifier {
         wardIds: current.wardIds,
         avatarUrl: avatarUrl ?? current.avatarUrl,
         avatarEmoji: avatarEmoji ?? current.avatarEmoji,
+        specialty: specialty ?? current.specialty,
         createdAt: current.createdAt,
       );
       notifyListeners();

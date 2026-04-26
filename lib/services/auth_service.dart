@@ -131,6 +131,7 @@ class AuthService {
     String? name,
     String? avatarUrl,
     String? avatarEmoji,
+    String? specialty,
   }) async {
     final user = _auth.currentUser;
     if (user == null) return;
@@ -138,6 +139,7 @@ class AuthService {
     if (name != null) updates['name'] = name;
     if (avatarUrl != null) updates['avatarUrl'] = avatarUrl;
     if (avatarEmoji != null) updates['avatarEmoji'] = avatarEmoji;
+    if (specialty != null) updates['specialty'] = specialty;
     if (updates.isEmpty) return;
     await _users.doc(user.uid).update(updates);
     if (name != null) {
