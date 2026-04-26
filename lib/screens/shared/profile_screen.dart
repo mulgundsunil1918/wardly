@@ -301,6 +301,32 @@ class ProfileScreen extends StatelessWidget {
           value: tp.isDark,
           onChanged: (_) => tp.toggle(),
         ),
+        const Divider(height: 1, indent: 60),
+        FutureBuilder<bool>(
+          future: SupportPrompt.isEnabled(),
+          builder: (context, snap) {
+            final enabled = snap.data ?? true;
+            return SwitchListTile(
+              secondary: const Icon(
+                Icons.local_cafe_outlined,
+                color: Color(0xFFE57F00),
+              ),
+              title: const Text('Daily support reminder'),
+              subtitle: Text(
+                enabled
+                    ? 'Once a day, a friendly chai prompt'
+                    : 'Off — you can still tap the chai icon any time',
+              ),
+              value: enabled,
+              onChanged: (v) async {
+                await SupportPrompt.setEnabled(v);
+                if (context.mounted) {
+                  (context as Element).markNeedsBuild();
+                }
+              },
+            );
+          },
+        ),
       ],
     );
   }

@@ -1,10 +1,49 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../utils/app_theme.dart';
 
 const String _chaiUrl = 'https://chai4.me/mulgundsunil';
+const String _kLastShownKey = 'support_popup_last_shown';
+const String _kDisabledKey = 'support_popup_disabled';
+const Duration _interval = Duration(hours: 24);
+
+class SupportPrompt {
+  /// Returns whether the daily chai popup is enabled.
+  static Future<bool> isEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return !(prefs.getBool(_kDisabledKey) ?? false);
+  }
+
+  static Future<void> setEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kDisabledKey, !enabled);
+  }
+
+  /// Shows the popup if more than 24h have passed since the last show
+  /// AND the user hasn't disabled it. Safe to call on every home open.
+  static Future<void> maybeShowDaily(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    final disabled = prefs.getBool(_kDisabledKey) ?? false;
+    if (disabled) return;
+
+    final lastShownMillis = prefs.getInt(_kLastShownKey) ?? 0;
+    final lastShown = DateTime.fromMillisecondsSinceEpoch(lastShownMillis);
+    final elapsed = DateTime.now().difference(lastShown);
+    if (elapsed < _interval) return;
+
+    if (!context.mounted) return;
+    await Future.delayed(const Duration(seconds: 2));
+    if (!context.mounted) return;
+    await showSupportSheet(context);
+    await prefs.setInt(
+      _kLastShownKey,
+      DateTime.now().millisecondsSinceEpoch,
+    );
+  }
+}
 
 Future<void> showSupportSheet(BuildContext context) {
   return showModalBottomSheet(

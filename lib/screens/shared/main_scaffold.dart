@@ -14,6 +14,7 @@ import '../doctor/doctor_home_screen.dart';
 import '../doctor/patients_list_screen.dart';
 import '../nurse/nurse_home_screen.dart';
 import '../nurse/nurse_patients_screen.dart';
+import '../../widgets/support_sheet.dart';
 import 'profile_screen.dart';
 import 'wards_screen.dart';
 
@@ -28,6 +29,14 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) SupportPrompt.maybeShowDaily(context);
+    });
+  }
 
   List<Widget> get _screensForRole {
     switch (widget.role) {
