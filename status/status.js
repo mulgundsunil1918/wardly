@@ -84,15 +84,25 @@ function tally() {
     else if (p.classList.contains('red')) down++;
   });
   const el = document.getElementById('overall');
+  const banner = document.getElementById('alert-banner');
+  const bannerIcon = document.getElementById('alert-icon');
+  const bannerText = document.getElementById('alert-text');
   if (down > 0) {
     el.textContent = `⚠ ${down} service(s) down.`;
     el.style.color = '#ff6b6b';
+    banner.className = 'alert-banner red';
+    bannerIcon.textContent = '✕';
+    bannerText.textContent = `${down} service${down>1?'s are':' is'} down — investigate now.`;
   } else if (degraded > 0) {
     el.textContent = `All core systems operational · ${degraded} pending setup.`;
     el.style.color = '#f6b93b';
+    banner.className = 'alert-banner amber';
+    bannerIcon.textContent = '⚠';
+    bannerText.textContent = `${degraded} service${degraded>1?'s need':' needs'} attention.`;
   } else {
-    el.textContent = 'All systems operational.';
+    el.textContent = '✓ All systems operational.';
     el.style.color = '#00c896';
+    banner.className = 'alert-banner hidden';
   }
 }
 
@@ -104,3 +114,5 @@ async function runAll() {
 
 document.getElementById('recheck').addEventListener('click', runAll);
 runAll();
+// Auto-refresh every 30 seconds
+setInterval(runAll, 30000);

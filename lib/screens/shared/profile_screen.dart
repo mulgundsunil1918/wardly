@@ -1,7 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider, EmailAuthProvider;
 import 'package:firebase_auth/firebase_auth.dart' as fba show EmailAuthProvider;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import '../../utils/share_helper.dart';
 
@@ -39,6 +42,10 @@ class ProfileScreen extends StatelessWidget {
                   _sectionLabel('Preferences'),
                   const SizedBox(height: 8),
                   _preferencesCard(context),
+                  const SizedBox(height: 20),
+                  _sectionLabel('About'),
+                  const SizedBox(height: 8),
+                  _aboutCard(context),
                   const SizedBox(height: 20),
                   _sectionLabel('Danger zone'),
                   const SizedBox(height: 8),
@@ -286,6 +293,47 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+  Widget _aboutCard(BuildContext context) {
+    final fbUser = FirebaseAuth.instance.currentUser;
+    final lastSignIn = fbUser?.metadata.lastSignInTime;
+    final created = fbUser?.metadata.creationTime;
+    return _cardWrapper(children: [
+      FutureBuilder<PackageInfo>(
+        future: PackageInfo.fromPlatform(),
+        builder: (context, snap) {
+          final v = snap.hasData
+              ? '${snap.data!.version} · build ${snap.data!.buildNumber}'
+              : '—';
+          return ListTile(
+            leading: const Icon(Icons.tag),
+            title: const Text('App version'),
+            subtitle: Text(v),
+          );
+        },
+      ),
+      const Divider(height: 1, indent: 60),
+      ListTile(
+        leading: const Icon(Icons.login_outlined),
+        title: const Text('Last sign-in'),
+        subtitle: Text(
+          lastSignIn == null
+              ? 'unknown'
+              : DateFormat('d MMM y · HH:mm').format(lastSignIn),
+        ),
+      ),
+      const Divider(height: 1, indent: 60),
+      ListTile(
+        leading: const Icon(Icons.calendar_today_outlined),
+        title: const Text('Account created'),
+        subtitle: Text(
+          created == null
+              ? 'unknown'
+              : DateFormat('d MMM y').format(created),
+        ),
+      ),
+    ]);
+  }
+
   Widget _dangerCard(BuildContext context, AuthProvider auth) {
     return _cardWrapper(
       children: [
@@ -297,8 +345,80 @@ class ProfileScreen extends StatelessWidget {
           ),
           onTap: () => _confirmSignOut(context, auth),
         ),
+        const Divider(height: 1, indent: 60),
+        ListTile(
+          leading: const Icon(
+            Icons.delete_forever_outlined,
+            color: AppColors.danger,
+          ),
+          title: const Text(
+            'Delete account',
+            style: TextStyle(color: AppColors.danger),
+          ),
+          subtitle: const Text(
+            'Removes your account and profile data permanently',
+          ),
+          onTap: () => _confirmDeleteAccount(context, auth),
+        ),
       ],
     );
+  }
+
+  Future<void> _confirmDeleteAccount(
+    BuildContext context,
+    AuthProvider auth,
+  ) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete your account?'),
+        content: const Text(
+          'This permanently deletes your account and removes you from all wards. Notes and patients you created will remain in the wards but their author will be marked as Deleted user. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.danger,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete forever'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      final fbUser = FirebaseAuth.instance.currentUser;
+      if (fbUser != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(fbUser.uid)
+            .delete();
+        await fbUser.delete();
+      }
+      await auth.signOut();
+      if (context.mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/login',
+          (_) => false,
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.danger,
+            content: Text(
+              'Could not delete: $e\nSign out and back in, then try again.',
+            ),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _confirmSignOut(

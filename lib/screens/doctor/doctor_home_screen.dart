@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
@@ -82,8 +83,27 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                     stops: const [0.0, 0.18],
                   ),
                 ),
-                child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+                child: RefreshIndicator(
+                  color: AppColors.primary,
+                  onRefresh: () async {
+                    HapticFeedback.lightImpact();
+                    final wardIds = context
+                            .read<AuthProvider>()
+                            .currentUser
+                            ?.wardIds ??
+                        const [];
+                    context
+                        .read<NoteProvider>()
+                        .subscribeForWards(wardIds);
+                    context
+                        .read<PatientProvider>()
+                        .subscribeForWards(wardIds);
+                    await Future.delayed(
+                        const Duration(milliseconds: 300));
+                  },
+                  child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -131,6 +151,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                     ),
                     const SizedBox(height: 80),
                   ],
+                ),
                 ),
                 ),
               ),
@@ -226,6 +247,11 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
               value: '${patientProvider.patientCount}',
               icon: Icons.people_outline,
               color: AppColors.doctorColor,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const PatientsListScreen(),
+                ),
+              ),
             ),
             const SizedBox(width: 10),
             _statCard(

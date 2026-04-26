@@ -27,12 +27,17 @@
 
   <section class="hero-small">
     <div class="container">
+      <div id="alert-banner" class="alert-banner hidden">
+        <span id="alert-icon">⚠</span>
+        <span id="alert-text">Issue detected.</span>
+      </div>
       <h1>System Status</h1>
       <p id="overall">Checking services…</p>
       <div class="meta">
         <span>Project: <code>wardly-24081996</code></span>
         <span>Last check: <code id="last-check">—</code></span>
-        <button id="recheck" class="btn btn-ghost">Re-check</button>
+        <span class="auto-refresh">⟳ auto-refresh every 30s</span>
+        <button id="recheck" class="btn btn-ghost">Re-check now</button>
       </div>
     </div>
   </section>

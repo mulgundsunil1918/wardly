@@ -73,6 +73,32 @@ code {
   background:
     radial-gradient(500px 300px at 80% 0%, rgba(10,92,138,0.35), transparent 70%);
 }
+.alert-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  margin-bottom: 22px;
+  font-weight: 600;
+  font-size: 14px;
+  border: 1px solid var(--divider);
+}
+.alert-banner.hidden { display: none; }
+.alert-banner.amber {
+  background: rgba(246, 185, 59, 0.12);
+  color: var(--amber);
+  border-color: rgba(246, 185, 59, 0.4);
+}
+.alert-banner.red {
+  background: rgba(255, 107, 107, 0.14);
+  color: var(--red);
+  border-color: rgba(255, 107, 107, 0.4);
+}
+.auto-refresh {
+  color: var(--accent);
+  font-size: 12px;
+}
 .hero-small h1 {
   font-size: clamp(32px, 4vw, 48px);
   font-weight: 900; letter-spacing: -1px; margin: 0 0 10px;
