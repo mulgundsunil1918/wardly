@@ -110,6 +110,17 @@ class NoteProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> unacknowledgeNote(String noteId) async {
+    try {
+      await _noteService.unacknowledgeNote(noteId);
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> deleteNote(String noteId) async {
     try {
       await _noteService.deleteNote(noteId);

@@ -243,6 +243,9 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
                   .read<NoteProvider>()
                   .acknowledgeNote(notes[i].id, name);
             },
+            onUnacknowledge: () => context
+                .read<NoteProvider>()
+                .unacknowledgeNote(notes[i].id),
           ),
         );
       },

@@ -9,6 +9,7 @@ import 'note_comments_sheet.dart';
 class NoteCard extends StatefulWidget {
   final Note note;
   final VoidCallback? onAcknowledge;
+  final VoidCallback? onUnacknowledge;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
 
@@ -16,6 +17,7 @@ class NoteCard extends StatefulWidget {
     super.key,
     required this.note,
     this.onAcknowledge,
+    this.onUnacknowledge,
     this.onTap,
     this.onDelete,
   });
@@ -298,24 +300,43 @@ class _NoteCardState extends State<NoteCard> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton.icon(
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 0,
+                Row(
+                  children: [
+                    if (widget.onUnacknowledge != null)
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.textSecondary,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 0,
+                          ),
+                          minimumSize: const Size(0, 30),
+                        ),
+                        icon: const Icon(Icons.undo, size: 14),
+                        label: const Text(
+                          'Unacknowledge',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        onPressed: widget.onUnacknowledge,
                       ),
-                      minimumSize: const Size(0, 30),
+                    const Spacer(),
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 0,
+                        ),
+                        minimumSize: const Size(0, 30),
+                      ),
+                      icon: const Icon(Icons.chat_bubble_outline, size: 14),
+                      label: const Text(
+                        'Open thread',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      onPressed: () =>
+                          showNoteCommentsSheet(context, widget.note),
                     ),
-                    icon: const Icon(Icons.chat_bubble_outline, size: 14),
-                    label: const Text(
-                      'Open thread',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                    onPressed: () =>
-                        showNoteCommentsSheet(context, widget.note),
-                  ),
+                  ],
                 ),
               ] else if (widget.onAcknowledge != null) ...[
                 const SizedBox(height: 12),

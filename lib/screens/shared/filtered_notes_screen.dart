@@ -96,6 +96,11 @@ class FilteredNotesScreen extends StatelessWidget {
                         .read<NoteProvider>()
                         .acknowledgeNote(n.id, name);
                   },
+            onUnacknowledge: !n.isAcknowledged
+                ? null
+                : () => context
+                    .read<NoteProvider>()
+                    .unacknowledgeNote(n.id),
           ),
         ));
       }

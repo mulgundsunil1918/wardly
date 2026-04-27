@@ -525,6 +525,9 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                         .read<NoteProvider>()
                         .acknowledgeNote(n.id, name);
                   },
+                  onUnacknowledge: () => context
+                      .read<NoteProvider>()
+                      .unacknowledgeNote(n.id),
                   onDelete: () => _confirmDelete(context, n.id),
                 ),
               ),

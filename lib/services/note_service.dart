@@ -85,6 +85,14 @@ class NoteService {
     MetricsService.bump('ack', summary: '$acknowledgedBy ack\'d a note');
   }
 
+  Future<void> unacknowledgeNote(String noteId) async {
+    await _notes.doc(noteId).update({
+      'isAcknowledged': false,
+      'acknowledgedBy': null,
+      'acknowledgedAt': null,
+    });
+  }
+
   Future<void> deleteNote(String noteId) async {
     await _notes.doc(noteId).delete();
   }

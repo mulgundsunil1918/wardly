@@ -265,6 +265,9 @@ class _DoctorNotesList extends StatelessWidget {
                             .read<NoteProvider>()
                             .acknowledgeNote(note.id, name);
                       },
+                onUnacknowledge: () => context
+                    .read<NoteProvider>()
+                    .unacknowledgeNote(note.id),
                 onDelete: () async {
                   final confirm = await showDialog<bool>(
                     context: context,
