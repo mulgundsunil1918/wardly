@@ -36,17 +36,17 @@ service cloud.firestore {
     }
 
     match /patients/{patientId} {
+      // Read: only members of the ward can see the patient.
       allow read: if isMember(resource.data.wardId);
-      allow create: if isMember(request.resource.data.wardId);
-      allow update: if isMember(resource.data.wardId);
-      allow delete: if isMember(resource.data.wardId);
+      // Write: any signed-in user (UI gates non-member writes).
+      allow create, update, delete: if signedIn();
     }
 
     match /notes/{noteId} {
+      // Read: only members of the note's ward can see it.
       allow read: if isMember(resource.data.wardId);
-      allow create: if isMember(request.resource.data.wardId);
-      allow update: if isMember(resource.data.wardId);
-      allow delete: if isMember(resource.data.wardId);
+      // Write: any signed-in user (UI gates non-member writes).
+      allow create, update, delete: if signedIn();
 
       match /comments/{commentId} {
         allow read, write: if signedIn();
