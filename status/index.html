@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wardly · System Status</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="nav">
+    <div class="container nav-inner">
+      <div class="brand">
+        <div class="w-logo">W</div>
+        <span class="brand-text">WARDLY · STATUS</span>
+      </div>
+      <nav class="nav-links">
+        <a href="../">App</a>
+        <a href="../dashboard/">Landing</a>
+        <a href="https://github.com/mulgundsunil1918/wardly" target="_blank" rel="noopener">Repo</a>
+        <a href="https://github.com/mulgundsunil1918/wardly/actions" target="_blank" rel="noopener">CI</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero-small">
+    <div class="container">
+      <div id="alert-banner" class="alert-banner hidden">
+        <span id="alert-icon">⚠</span>
+        <span id="alert-text">Issue detected.</span>
+      </div>
+      <h1>System Status</h1>
+      <p id="overall">Checking services…</p>
+      <div class="meta">
+        <span>Project: <code>wardly-24081996</code></span>
+        <span>Last check: <code id="last-check">—</code></span>
+        <span class="auto-refresh">⟳ auto-refresh every 30s</span>
+        <button id="recheck" class="btn btn-ghost">Re-check now</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="live-row">
+        <div class="live-pill">
+          <span id="live-pulse" class="pulse-dot"></span>
+          <span>LIVE</span>
+          <span class="live-sep">·</span>
+          <span>last activity <span id="last-activity">—</span></span>
+        </div>
+      </div>
+      <h2 class="section-head-title">Activity counters</h2>
+      <div class="counter-grid">
+        <div class="counter-card"><span class="counter-label">Users</span><span class="counter-value" id="ct-users">—</span></div>
+        <div class="counter-card"><span class="counter-label">Wards</span><span class="counter-value" id="ct-wards">—</span></div>
+        <div class="counter-card"><span class="counter-label">Patients</span><span class="counter-value" id="ct-patients">—</span></div>
+        <div class="counter-card"><span class="counter-label">Notes</span><span class="counter-value" id="ct-notes">—</span></div>
+        <div class="counter-card"><span class="counter-label">Acks</span><span class="counter-value" id="ct-acks">—</span></div>
+        <div class="counter-card"><span class="counter-label">Replies</span><span class="counter-value" id="ct-comments">—</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <h2 class="section-head-title">Live activity feed</h2>
+      <div id="activity-feed" class="activity-feed">
+        <div class="feed-empty">Connecting…</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2 class="section-head-title">Core services</h2>
+      <div class="grid grid-2">
+        <div class="status-card" id="svc-hosting">
+          <div class="status-row">
+            <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M12 2l10 6-10 6L2 8l10-6zm0 9l8 5-8 5-8-5 8-5z"/></svg></div>
+            <div class="status-title">
+              <h3>GitHub Pages Hosting</h3>
+              <p>Serves the built Flutter web app</p>
+            </div>
+            <div class="status-pill green">LIVE</div>
+          </div>
+          <div class="status-detail">If you can read this page, hosting is up.</div>
+        </div>
+
+        <div class="status-card" id="svc-auth">
+          <div class="status-row">
+            <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M12 1l9 4v6c0 5-4 9-9 11-5-2-9-6-9-11V5l9-4z"/></svg></div>
+            <div class="status-title">
+              <h3>Firebase Authentication</h3>
+              <p>Email/password · Google · Password reset</p>
+            </div>
+            <div class="status-pill" data-slot="pill">…</div>
+          </div>
+          <div class="status-detail" data-slot="detail">Checking…</div>
+        </div>
+
+        <div class="status-card" id="svc-firestore">
+          <div class="status-row">
+            <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M4 4h16v4H4zm0 6h16v4H4zm0 6h16v4H4z"/></svg></div>
+            <div class="status-title">
+              <h3>Cloud Firestore</h3>
+              <p>Realtime DB for notes, patients, wards</p>
+            </div>
+            <div class="status-pill" data-slot="pill">…</div>
+          </div>
+          <div class="status-detail" data-slot="detail">Checking…</div>
+        </div>
+
+        <div class="status-card" id="svc-storage">
+          <div class="status-row">
+            <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M2 6a2 2 0 012-2h6l2 2h8a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg></div>
+            <div class="status-title">
+              <h3>Firebase Storage</h3>
+              <p>Binary assets</p>
+            </div>
+            <div class="status-pill neutral">DISABLED</div>
+          </div>
+          <div class="status-detail">Not used. App is text-only — no uploads.</div>
+        </div>
+
+        <div class="status-card" id="svc-fcm">
+          <div class="status-row">
+            <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 00-7 7v4l-2 3v1h18v-1l-2-3V9a7 7 0 00-7-7zm0 20a3 3 0 003-3h-6a3 3 0 003 3z"/></svg></div>
+            <div class="status-title">
+              <h3>Cloud Messaging (FCM)</h3>
+              <p>Push notifications</p>
+            </div>
+            <div class="status-pill amber">PENDING</div>
+          </div>
+          <div class="status-detail">SDK wired. Needs a Cloud Function trigger on new notes to actually push. Web push also requires VAPID key config.</div>
+        </div>
+
+        <div class="status-card" id="svc-ci">
+          <div class="status-row">
+            <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/></svg></div>
+            <div class="status-title">
+              <h3>GitHub Actions CI</h3>
+              <p>Auto-build &amp; deploy on push to main</p>
+            </div>
+            <div class="status-pill green">ACTIVE</div>
+          </div>
+          <div class="status-detail">Builds Flutter web on every push and redeploys <code>gh-pages</code>.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <h2 class="section-head-title">Integrations</h2>
+      <div class="grid grid-2">
+        <div class="status-card">
+          <div class="status-row">
+            <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z" fill="none" stroke="currentColor" stroke-width="2"/></svg></div>
+            <div class="status-title">
+              <h3>Share (share_plus)</h3>
+              <p>Ward ID share to WhatsApp / any app</p>
+            </div>
+            <div class="status-pill green">OK</div>
+          </div>
+          <div class="status-detail">Uses native OS share sheet on mobile, Web Share API in browser.</div>
+        </div>
+        <div class="status-card">
+          <div class="status-row">
+            <div class="icon-wrap"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/></svg></div>
+            <div class="status-title">
+              <h3>Google Fonts (DM Sans)</h3>
+              <p>Brand typeface</p>
+            </div>
+            <div class="status-pill green">OK</div>
+          </div>
+          <div class="status-detail">Loaded from fonts.gstatic.com.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2 class="section-head-title">Planned for mobile release</h2>
+      <ul class="checklist">
+        <li><strong>Android (Play Store):</strong> <code>flutter build appbundle</code> → Play Console internal test → review.</li>
+        <li><strong>iOS (App Store):</strong> Xcode archive → TestFlight → App Review.</li>
+        <li><strong>FCM push:</strong> Write a Cloud Function that listens on <code>notes</code> writes and sends FCM to users whose <code>wardIds</code> contains the note's ward.</li>
+        <li><strong>Analytics &amp; Crashlytics:</strong> Add <code>firebase_analytics</code> + <code>firebase_crashlytics</code> plugins.</li>
+        <li><strong>Deep links:</strong> Wire universal links so shared ward IDs open the app directly.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="brand">
+        <div class="w-logo small">W</div>
+        <span class="brand-text">WARDLY</span>
+      </div>
+      <div class="footer-links">
+        <a href="../">App</a>
+        <a href="../dashboard/">Landing</a>
+        <a href="https://github.com/mulgundsunil1918/wardly" target="_blank" rel="noopener">GitHub</a>
+      </div>
+      <div class="footer-note">Built with Flutter &amp; Firebase.</div>
+    </div>
+  </footer>
+
+  <script type="module" src="status.js"></script>
+</body>
+</html>
