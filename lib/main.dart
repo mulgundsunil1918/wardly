@@ -43,9 +43,10 @@ class WardlyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => PatientProvider()),
         ChangeNotifierProvider(create: (_) => WardProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()..load()),
+        ChangeNotifierProvider(create: (_) => TextScaleProvider()..load()),
       ],
-      child: Consumer<ThemeProvider>(
-        builder: (context, themeProvider, _) {
+      child: Consumer2<ThemeProvider, TextScaleProvider>(
+        builder: (context, themeProvider, textScale, _) {
           return MaterialApp(
             key: ValueKey(themeProvider.isDark),
             title: 'Wardly',
@@ -56,6 +57,15 @@ class WardlyApp extends StatelessWidget {
             routes: AppRoutes.routes,
             onGenerateRoute: AppRoutes.generateRoute,
             debugShowCheckedModeBanner: false,
+            builder: (context, child) {
+              final mq = MediaQuery.of(context);
+              return MediaQuery(
+                data: mq.copyWith(
+                  textScaler: TextScaler.linear(textScale.scale),
+                ),
+                child: child ?? const SizedBox.shrink(),
+              );
+            },
           );
         },
       ),

@@ -331,6 +331,7 @@ class ProfileScreen extends StatelessWidget {
 
   Widget _preferencesCard(BuildContext context) {
     final tp = context.watch<ThemeProvider>();
+    final ts = context.watch<TextScaleProvider>();
     return _cardWrapper(
       children: [
         SwitchListTile(
@@ -341,6 +342,66 @@ class ProfileScreen extends StatelessWidget {
           subtitle: Text(tp.isDark ? 'On' : 'Off'),
           value: tp.isDark,
           onChanged: (_) => tp.toggle(),
+        ),
+        const Divider(height: 1, indent: 60),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.format_size,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Text size',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      '${(ts.scale * 100).round()}% of default',
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (ts.scale != 1.0)
+                TextButton(
+                  onPressed: () => ts.setScale(1.0),
+                  child: const Text('Reset'),
+                ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: Row(
+            children: [
+              const Text('A', style: TextStyle(fontSize: 12)),
+              Expanded(
+                child: Slider(
+                  value: ts.scale,
+                  min: TextScaleProvider.minScale,
+                  max: TextScaleProvider.maxScale,
+                  divisions: ((TextScaleProvider.maxScale -
+                              TextScaleProvider.minScale) /
+                          TextScaleProvider.step)
+                      .round(),
+                  label: '${(ts.scale * 100).round()}%',
+                  onChanged: ts.setScale,
+                ),
+              ),
+              const Text('A', style: TextStyle(fontSize: 20)),
+            ],
+          ),
         ),
         const Divider(height: 1, indent: 60),
         FutureBuilder<bool>(
