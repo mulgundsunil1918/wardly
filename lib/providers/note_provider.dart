@@ -132,6 +132,17 @@ class NoteProvider extends ChangeNotifier {
     }
   }
 
+  /// Cancel all listeners but preserve currently-loaded data so the UI
+  /// keeps showing it. Used when the app goes to the background.
+  void pauseStreams() {
+    _wardNotesSubscription?.cancel();
+    _patientNotesSubscription?.cancel();
+    _unacknowledgedSubscription?.cancel();
+    _wardNotesSubscription = null;
+    _patientNotesSubscription = null;
+    _unacknowledgedSubscription = null;
+  }
+
   void cancelSubscriptions() {
     _wardNotesSubscription?.cancel();
     _patientNotesSubscription?.cancel();

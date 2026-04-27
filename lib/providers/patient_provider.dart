@@ -116,6 +116,11 @@ class PatientProvider extends ChangeNotifier {
     }
   }
 
+  void pauseStream() {
+    _subscription?.cancel();
+    _subscription = null;
+  }
+
   void cancelSubscription() {
     _subscription?.cancel();
     _subscription = null;

@@ -28,12 +28,14 @@ class MainScaffold extends StatefulWidget {
   State<MainScaffold> createState() => _MainScaffoldState();
 }
 
-class _MainScaffoldState extends State<MainScaffold> {
+class _MainScaffoldState extends State<MainScaffold>
+    with WidgetsBindingObserver {
   int _index = 0;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       if (!await TutorialScreen.isDone()) {
@@ -47,6 +49,27 @@ class _MainScaffoldState extends State<MainScaffold> {
       }
       if (mounted) SupportPrompt.maybeShowDaily(context);
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      // App is backgrounded — drop listeners to stop billing reads.
+      context.read<NoteProvider>().pauseStreams();
+      context.read<PatientProvider>().pauseStream();
+    } else if (state == AppLifecycleState.resumed) {
+      final wardIds = context.read<AuthProvider>().currentUser?.wardIds ??
+          const <String>[];
+      context.read<NoteProvider>().subscribeForWards(wardIds);
+      context.read<PatientProvider>().subscribeForWards(wardIds);
+    }
   }
 
   List<Widget> get _screensForRole {
@@ -245,11 +268,26 @@ class _DoctorNotesList extends StatelessWidget {
               ),
             );
           }
+          final showLimitNotice = np.notes.length >= 150;
           return ListView.separated(
             padding: const EdgeInsets.all(16),
-            itemCount: np.notes.length,
+            itemCount: np.notes.length + (showLimitNotice ? 1 : 0),
             separatorBuilder: (_, __) => const SizedBox(height: 10),
             itemBuilder: (_, i) {
+              if (showLimitNotice && i == np.notes.length) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Center(
+                    child: Text(
+                      'Showing the last 150 notes',
+                      style: GoogleFonts.dmSans(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                );
+              }
               final note = np.notes[i];
               return NoteCard(
                 note: note,

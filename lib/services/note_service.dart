@@ -14,12 +14,16 @@ class NoteService {
   CollectionReference<Map<String, dynamic>> get _notes =>
       _firestore.collection(AppConstants.notesCollection);
 
+  /// Hard-capped at 150 to keep Firestore reads predictable. Older notes
+  /// remain in the database — they just don't stream into the live feed.
+  static const int kNoteFeedLimit = 150;
+
   Stream<List<Note>> getNotesForWards(List<String> wardIds) {
     if (wardIds.isEmpty) return Stream.value(const []);
     return _notes
         .where('wardId', whereIn: wardIds)
         .orderBy('createdAt', descending: true)
-        .limit(200)
+        .limit(kNoteFeedLimit)
         .snapshots()
         .map((snapshot) =>
             snapshot.docs.map(Note.fromFirestore).toList());
