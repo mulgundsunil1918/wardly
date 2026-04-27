@@ -4,6 +4,16 @@
  * Trigger: a new doc in /notes/{noteId}
  * Action:  push a notification to every user whose `wardIds` array
  *          contains the note's wardId — except the author.
+ *
+ * Cost notes (Blaze pay-as-you-go):
+ * - memory pinned at 256 MiB. The function does a small Firestore query
+ *   plus an FCM multicast — there's no need for the v2 default of 256
+ *   MiB to creep up; explicitly setting it locks in cost.
+ * - minInstances: 0 → never keep a warm container. We accept a ~1s
+ *   cold start in exchange for not paying for idle compute.
+ * - concurrency: 80 → one container can fan out many notes at once,
+ *   reducing total active container time.
+ * - timeoutSeconds: 30 → bounded so a stuck FCM call can't burn budget.
  */
 const {
   onDocumentCreated,
@@ -15,8 +25,16 @@ const { getMessaging } = require('firebase-admin/messaging');
 
 initializeApp();
 
+const COMMON_OPTS = {
+  region: 'us-central1',
+  memory: '256MiB',
+  minInstances: 0,
+  concurrency: 80,
+  timeoutSeconds: 30,
+};
+
 exports.onNoteCreated = onDocumentCreated(
-  { document: 'notes/{noteId}', region: 'us-central1' },
+  { ...COMMON_OPTS, document: 'notes/{noteId}' },
   async (event) => {
     const note = event.data?.data();
     if (!note) return;
@@ -111,7 +129,7 @@ exports.onNoteCreated = onDocumentCreated(
  *          which the security rules don't allow them to do directly.
  */
 exports.onWardDeleted = onDocumentDeleted(
-  { document: 'wards/{wardId}', region: 'us-central1' },
+  { ...COMMON_OPTS, document: 'wards/{wardId}' },
   async (event) => {
     const wardId = event.params.wardId;
     if (!wardId) return;

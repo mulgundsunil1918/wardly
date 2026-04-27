@@ -88,6 +88,15 @@ class NoteProvider extends ChangeNotifier {
     });
   }
 
+  /// Cancels just the per-patient stream. PatientDetailScreen calls this
+  /// in `dispose()` so the patient-notes listener doesn't keep ticking
+  /// (and billing reads) after the user navigates away.
+  void unsubscribeFromPatient() {
+    _patientNotesSubscription?.cancel();
+    _patientNotesSubscription = null;
+    _patientNotes = const [];
+  }
+
   Future<bool> addNote(Note note) async {
     try {
       await _noteService.addNote(note);

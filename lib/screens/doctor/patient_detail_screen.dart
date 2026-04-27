@@ -24,19 +24,27 @@ class PatientDetailScreen extends StatefulWidget {
 class _PatientDetailScreenState extends State<PatientDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  // Captured once so we can safely call it from dispose without touching
+  // `context` after the widget tree is torn down.
+  NoteProvider? _noteProvider;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<NoteProvider>().subscribeToPatient(widget.patientId);
+      if (!mounted) return;
+      _noteProvider = context.read<NoteProvider>();
+      _noteProvider!.subscribeToPatient(widget.patientId);
     });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    // Stop the per-patient notes stream so it doesn't keep billing reads
+    // after the user leaves this screen.
+    _noteProvider?.unsubscribeFromPatient();
     super.dispose();
   }
 

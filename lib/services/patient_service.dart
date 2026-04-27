@@ -13,12 +13,17 @@ class PatientService {
   CollectionReference<Map<String, dynamic>> get _patients =>
       _firestore.collection(AppConstants.patientsCollection);
 
+  /// Cap to keep Firestore reads predictable. Even a busy ward rarely has
+  /// >100 active patients at a time; 200 is a generous ceiling.
+  static const int kPatientsListCap = 200;
+
   Stream<List<Patient>> getActivePatientsForWards(List<String> wardIds) {
     if (wardIds.isEmpty) return Stream.value(const []);
     return _patients
         .where('wardId', whereIn: wardIds)
         .where('isActive', isEqualTo: true)
         .orderBy('admittedAt', descending: true)
+        .limit(kPatientsListCap)
         .snapshots()
         .map((snapshot) =>
             snapshot.docs.map(Patient.fromFirestore).toList());
@@ -29,6 +34,7 @@ class PatientService {
         .where('wardId', isEqualTo: wardId)
         .where('isActive', isEqualTo: true)
         .orderBy('admittedAt', descending: true)
+        .limit(kPatientsListCap)
         .snapshots()
         .map((snapshot) =>
             snapshot.docs.map(Patient.fromFirestore).toList());
@@ -60,25 +66,47 @@ class PatientService {
     await _patients.doc(patientId).delete();
   }
 
+  /// Deletes every note tagged to a patient — and the comments inside
+  /// each note — using batched writes (max 500 ops per batch). Without
+  /// the batch this fired one Firestore call per doc, multiplying both
+  /// latency and write cost.
   Future<void> _deleteNotesFor(String patientId) async {
     final notes = await _firestore
         .collection(AppConstants.notesCollection)
         .where('patientId', isEqualTo: patientId)
         .get();
+
+    var batch = _firestore.batch();
+    var ops = 0;
+    Future<void> flushIfNeeded() async {
+      if (ops >= 450) {
+        await batch.commit();
+        batch = _firestore.batch();
+        ops = 0;
+      }
+    }
+
     for (final note in notes.docs) {
-      // Firestore doesn't cascade subcollections; delete comments first.
+      // Subcollections don't cascade — schedule comment deletes first.
       final comments = await note.reference.collection('comments').get();
       for (final c in comments.docs) {
-        await c.reference.delete();
+        batch.delete(c.reference);
+        ops++;
+        await flushIfNeeded();
       }
-      await note.reference.delete();
+      batch.delete(note.reference);
+      ops++;
+      await flushIfNeeded();
     }
+    if (ops > 0) await batch.commit();
   }
 
+  /// Capped at the same ceiling as the patient list.
   Stream<int> getPatientCount(String wardId) {
     return _patients
         .where('wardId', isEqualTo: wardId)
         .where('isActive', isEqualTo: true)
+        .limit(kPatientsListCap)
         .snapshots()
         .map((snapshot) => snapshot.docs.length);
   }

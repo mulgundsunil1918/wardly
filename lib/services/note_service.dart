@@ -29,11 +29,18 @@ class NoteService {
             snapshot.docs.map(Note.fromFirestore).toList());
   }
 
+  /// Capped at 150 — the badge shows '150+' if there are more, but we
+  /// never read more than 150 docs to compute it. Without this cap a ward
+  /// with thousands of un-ack'd notes would burn thousands of Firestore
+  /// reads on every snapshot tick.
+  static const int kUnackCountCap = 150;
+
   Stream<int> getUnacknowledgedCountForWards(List<String> wardIds) {
     if (wardIds.isEmpty) return Stream.value(0);
     return _notes
         .where('wardId', whereIn: wardIds)
         .where('isAcknowledged', isEqualTo: false)
+        .limit(kUnackCountCap)
         .snapshots()
         .map((snapshot) => snapshot.docs.length);
   }
@@ -42,15 +49,19 @@ class NoteService {
     return _notes
         .where('wardId', isEqualTo: wardId)
         .orderBy('createdAt', descending: true)
+        .limit(kNoteFeedLimit)
         .snapshots()
         .map((snapshot) =>
             snapshot.docs.map(Note.fromFirestore).toList());
   }
 
+  /// Per-patient timeline. Capped at 100 — older notes still exist in
+  /// Firestore, they just don't stream into the UI in one go.
   Stream<List<Note>> getNotesByPatient(String patientId) {
     return _notes
         .where('patientId', isEqualTo: patientId)
         .orderBy('createdAt', descending: true)
+        .limit(100)
         .snapshots()
         .map((snapshot) =>
             snapshot.docs.map(Note.fromFirestore).toList());
@@ -125,6 +136,7 @@ class NoteService {
     return _notes
         .where('wardId', isEqualTo: wardId)
         .where('isAcknowledged', isEqualTo: false)
+        .limit(kUnackCountCap)
         .snapshots()
         .map((snapshot) => snapshot.docs.length);
   }

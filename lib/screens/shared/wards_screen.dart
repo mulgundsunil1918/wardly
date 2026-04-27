@@ -118,11 +118,15 @@ class WardsScreen extends StatelessWidget {
                 ),
                 const Divider(height: 1),
                 Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
+                  // One-shot get() instead of a live snapshots stream.
+                  // Members lists barely change while the sheet is open;
+                  // a stream here would have billed reads on every minor
+                  // user-doc tweak (push token refresh, etc).
+                  child: FutureBuilder<QuerySnapshot>(
+                    future: FirebaseFirestore.instance
                         .collection(AppConstants.usersCollection)
                         .where('wardIds', arrayContains: w.id)
-                        .snapshots(),
+                        .get(),
                     builder: (context, snap) {
                       if (!snap.hasData) {
                         return const Center(
@@ -283,6 +287,19 @@ class WardsScreen extends StatelessWidget {
     try {
       final fs = FirebaseFirestore.instance;
 
+      // Batched cascade — one big atomic-ish chain instead of one network
+      // round-trip per doc. Caps at 450 ops per batch (Firestore allows
+      // 500); flushes and resets when the cap is hit.
+      var batch = fs.batch();
+      var ops = 0;
+      Future<void> flushIfNeeded() async {
+        if (ops >= 450) {
+          await batch.commit();
+          batch = fs.batch();
+          ops = 0;
+        }
+      }
+
       // 1. Delete every note in this ward (and its comment subcollection).
       final notes = await fs
           .collection(AppConstants.notesCollection)
@@ -291,9 +308,13 @@ class WardsScreen extends StatelessWidget {
       for (final n in notes.docs) {
         final comments = await n.reference.collection('comments').get();
         for (final c in comments.docs) {
-          await c.reference.delete();
+          batch.delete(c.reference);
+          ops++;
+          await flushIfNeeded();
         }
-        await n.reference.delete();
+        batch.delete(n.reference);
+        ops++;
+        await flushIfNeeded();
       }
 
       // 2. Delete every patient in this ward.
@@ -301,11 +322,12 @@ class WardsScreen extends StatelessWidget {
           .collection(AppConstants.patientsCollection)
           .where('wardId', isEqualTo: w.id)
           .get();
-      final batch = fs.batch();
       for (final p in patients.docs) {
         batch.delete(p.reference);
+        ops++;
+        await flushIfNeeded();
       }
-      if (patients.docs.isNotEmpty) await batch.commit();
+      if (ops > 0) await batch.commit();
 
       // 3. Remove this ward from the deleter's own wardIds (the only user
       // doc they're allowed to update). Other members' wardIds will hold
