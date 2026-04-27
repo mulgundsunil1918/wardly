@@ -472,8 +472,17 @@ class WardsScreen extends StatelessWidget {
   }
 
   Widget _wardCard(BuildContext context, Ward w, String currentUid) {
+    final me = context.watch<AuthProvider>().currentUser;
+    final fbUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final myUid = fbUid.isNotEmpty ? fbUid : (me?.uid ?? currentUid);
     final isCreator =
-        w.creatorId.isNotEmpty && w.creatorId == currentUid;
+        w.creatorId.isNotEmpty && myUid.isNotEmpty && w.creatorId == myUid;
+    final ownerName = isCreator
+        ? (me?.name.isNotEmpty == true ? me!.name : 'You')
+        : (w.headDoctorName.isNotEmpty ? w.headDoctorName : 'Unknown');
+    final ownerEmail = isCreator
+        ? (me?.email ?? w.creatorEmail)
+        : w.creatorEmail;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -557,8 +566,8 @@ class WardsScreen extends StatelessWidget {
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
                         isCreator
-                            ? 'Owner · You'
-                            : 'Owner · ${w.headDoctorName.isNotEmpty ? w.headDoctorName : 'Unknown'}',
+                            ? 'Owned by you · $ownerName'
+                            : 'Owned by $ownerName',
                         style: GoogleFonts.dmSans(
                           color: AppColors.textPrimary,
                           fontSize: 14,
@@ -566,11 +575,11 @@ class WardsScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if (w.creatorEmail.isNotEmpty)
+                    if (ownerEmail.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 1),
                         child: Text(
-                          w.creatorEmail,
+                          ownerEmail,
                           style: GoogleFonts.dmSans(
                             color: AppColors.textSecondary,
                             fontSize: 13,
