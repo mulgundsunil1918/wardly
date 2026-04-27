@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -10,6 +12,13 @@ import '../utils/app_constants.dart';
 class PushService {
   static final FirebaseMessaging _msg = FirebaseMessaging.instance;
   static final FirebaseFirestore _fs = FirebaseFirestore.instance;
+
+  // Hold onto the FCM stream subscriptions so a re-register doesn't
+  // stack a second listener on top of an already-running one (which is
+  // exactly what happened before — every login appended another live
+  // listener that never cancelled).
+  static StreamSubscription<String>? _tokenRefreshSub;
+  static StreamSubscription<RemoteMessage>? _foregroundMsgSub;
 
   /// Call once after sign-in / sign-up.
   static Future<void> register() async {
@@ -42,8 +51,13 @@ class PushService {
         'fcmTokens': FieldValue.arrayUnion([token]),
       }, SetOptions(merge: true));
 
+      // Cancel any prior subscriptions before rewiring — sign-in twice in
+      // one session shouldn't leave two listeners running.
+      await _tokenRefreshSub?.cancel();
+      await _foregroundMsgSub?.cancel();
+
       // Refresh on rotation.
-      _msg.onTokenRefresh.listen((newToken) async {
+      _tokenRefreshSub = _msg.onTokenRefresh.listen((newToken) async {
         try {
           await _fs
               .collection(AppConstants.usersCollection)
@@ -56,7 +70,7 @@ class PushService {
 
       // Foreground messages — show as in-app SnackBar via the app's
       // navigator key if you wire one up. For now just print to debug.
-      FirebaseMessaging.onMessage.listen((m) {
+      _foregroundMsgSub = FirebaseMessaging.onMessage.listen((m) {
         debugPrint('FCM foreground: ${m.notification?.title} — '
             '${m.notification?.body}');
       });
@@ -65,9 +79,15 @@ class PushService {
     }
   }
 
-  /// Call on sign-out to remove the device's token from the user doc.
+  /// Call on sign-out to remove the device's token from the user doc and
+  /// tear down the FCM listeners we set up in [register].
   static Future<void> unregister(String uid) async {
     try {
+      await _tokenRefreshSub?.cancel();
+      await _foregroundMsgSub?.cancel();
+      _tokenRefreshSub = null;
+      _foregroundMsgSub = null;
+
       final token = await _msg.getToken();
       if (token == null) return;
       await _fs

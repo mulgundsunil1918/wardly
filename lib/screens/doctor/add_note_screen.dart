@@ -384,6 +384,7 @@ class _AddNoteBottomSheetState extends State<AddNoteBottomSheet> {
           .collection(AppConstants.patientsCollection)
           .where('wardId', isEqualTo: _selectedWardId)
           .where('isActive', isEqualTo: true)
+          .limit(200) // hard cap on reads
           .snapshots(),
       builder: (context, snap) {
         final patients = snap.hasData

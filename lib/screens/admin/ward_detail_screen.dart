@@ -350,6 +350,7 @@ class _WardDetailScreenState extends State<WardDetailScreen>
           .where('wardId', isEqualTo: widget.wardId)
           .where('isActive', isEqualTo: true)
           .orderBy('admittedAt', descending: true)
+          .limit(200) // hard cap on reads
           .snapshots(),
       builder: (context, snap) {
         if (!snap.hasData) {

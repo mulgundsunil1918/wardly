@@ -52,9 +52,12 @@ class WardService {
     await _wards.doc(ward.id).update(ward.toMap());
   }
 
+  /// Capped at 100 — even a large hospital ward rarely has more staff
+  /// than that. Hard cap stops any runaway live-stream cost.
   Stream<List<AppUser>> getWardStaff(String wardId) {
     return _users
         .where('wardId', isEqualTo: wardId)
+        .limit(100)
         .snapshots()
         .map((snapshot) =>
             snapshot.docs.map(AppUser.fromFirestore).toList());

@@ -72,6 +72,7 @@ class NoteService {
         .where('wardId', isEqualTo: wardId)
         .where('isAcknowledged', isEqualTo: false)
         .orderBy('createdAt', descending: true)
+        .limit(kUnackCountCap)
         .snapshots()
         .map((snapshot) =>
             snapshot.docs.map(Note.fromFirestore).toList());
@@ -115,9 +116,13 @@ class NoteService {
   CollectionReference<Map<String, dynamic>> _commentsRef(String noteId) =>
       _notes.doc(noteId).collection('comments');
 
+  /// Capped at 100 — a single note rarely needs more comments than that.
+  /// Older replies still exist in Firestore, they just don't stream into
+  /// the thread bubble in one go.
   Stream<List<NoteComment>> commentsStream(String noteId) {
     return _commentsRef(noteId)
         .orderBy('createdAt')
+        .limit(100)
         .snapshots()
         .map((s) => s.docs.map(NoteComment.fromFirestore).toList());
   }

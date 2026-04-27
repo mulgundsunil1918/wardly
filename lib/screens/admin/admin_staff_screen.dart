@@ -75,10 +75,15 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
         children: [
           _filterChips(),
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
+            // One-shot get() rather than a live stream over the whole
+            // users collection. The admin sees a snapshot of all staff at
+            // open-time; pull-to-refresh would re-fetch. A live stream
+            // here billed reads on every fcmToken refresh of every user.
+            child: FutureBuilder<QuerySnapshot>(
+              future: FirebaseFirestore.instance
                   .collection(AppConstants.usersCollection)
-                  .snapshots(),
+                  .limit(500)
+                  .get(),
               builder: (context, snap) {
                 if (!snap.hasData) {
                   return const Center(child: CircularProgressIndicator());
