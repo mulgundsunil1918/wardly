@@ -1,11 +1,14 @@
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider, EmailAuthProvider;
 import 'package:firebase_auth/firebase_auth.dart' as fba show EmailAuthProvider;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../utils/share_helper.dart';
 import '../../widgets/support_sheet.dart';
 import '../auth/background_setup_screen.dart';
@@ -50,6 +53,10 @@ class ProfileScreen extends StatelessWidget {
                   _sectionLabel('About'),
                   const SizedBox(height: 8),
                   _aboutCard(context),
+                  const SizedBox(height: 20),
+                  _sectionLabel('Feedback & support'),
+                  const SizedBox(height: 8),
+                  _feedbackCard(context),
                   const SizedBox(height: 20),
                   _sectionLabel('Danger zone'),
                   const SizedBox(height: 8),
@@ -474,6 +481,217 @@ class ProfileScreen extends StatelessWidget {
         ),
       ),
     ]);
+  }
+
+  // ───────────────────────── Feedback & support ─────────────────────────
+
+  static const String _supportEmail = 'mulgundsunil@gmail.com';
+  static const String _androidPackage = 'com.example.wardly';
+
+  Widget _feedbackCard(BuildContext context) {
+    return _cardWrapper(
+      children: [
+        ListTile(
+          leading: const Icon(Icons.lightbulb_outline),
+          title: const Text('Suggest a feature'),
+          subtitle: const Text(
+            'Idea for the app? Tell me — I read every email.',
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _emailDeveloper(
+            context,
+            subject: 'Wardly · Feature suggestion',
+            body: "Here's an idea for Wardly:\n\n",
+            label: 'Feature suggestion',
+          ),
+        ),
+        const Divider(height: 1, indent: 60),
+        ListTile(
+          leading: const Icon(Icons.chat_bubble_outline),
+          title: const Text('Give feedback'),
+          subtitle: const Text(
+            'What works, what doesn\'t, what feels awkward',
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _emailDeveloper(
+            context,
+            subject: 'Wardly · Feedback',
+            body: 'My feedback on Wardly:\n\n',
+            label: 'Feedback',
+          ),
+        ),
+        const Divider(height: 1, indent: 60),
+        ListTile(
+          leading: const Icon(Icons.star_outline, color: Color(0xFFE57F00)),
+          title: const Text('Rate on Play Store'),
+          subtitle: const Text(
+            'A 5-star rating helps the next ward find Wardly',
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _openPlayStoreRating(context),
+        ),
+        const Divider(height: 1, indent: 60),
+        ListTile(
+          leading: const Icon(
+            Icons.bug_report_outlined,
+            color: AppColors.danger,
+          ),
+          title: const Text(
+            'Report a bug',
+            style: TextStyle(color: AppColors.danger),
+          ),
+          subtitle: const Text(
+            'Something broke or behaved weird? Send the details',
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _reportBug(context),
+        ),
+      ],
+    );
+  }
+
+  /// Opens the user's email app with a pre-filled mailto: link to the
+  /// developer. Falls back to copying the address if no mail handler
+  /// is registered on the device.
+  Future<void> _emailDeveloper(
+    BuildContext context, {
+    required String subject,
+    required String body,
+    required String label,
+  }) async {
+    final uri = Uri(
+      scheme: 'mailto',
+      path: _supportEmail,
+      query: _encodeQueryParameters({
+        'subject': subject,
+        'body': body,
+      }),
+    );
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && context.mounted) {
+      _showCopyEmailFallback(context, label);
+    }
+  }
+
+  /// Bug-report intent: same as feedback but the body already has version
+  /// + platform info filled in so the user doesn't have to.
+  Future<void> _reportBug(BuildContext context) async {
+    String version = 'unknown';
+    try {
+      final info = await PackageInfo.fromPlatform();
+      version = '${info.version} · build ${info.buildNumber}';
+    } catch (_) {}
+    final auth = context.read<AuthProvider>();
+    final email = auth.currentUser?.email ?? '(not signed in)';
+    final body = '''
+What happened:
+
+
+What you expected:
+
+
+Steps to reproduce:
+1.
+2.
+3.
+
+— diagnostics —
+App version: $version
+Platform: ${_platformLabel()}
+Account: $email
+''';
+    if (!context.mounted) return;
+    await _emailDeveloper(
+      context,
+      subject: 'Wardly · Bug report',
+      body: body,
+      label: 'Bug report',
+    );
+  }
+
+  String _platformLabel() {
+    if (kIsWeb) return 'Web';
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return 'Android';
+      case TargetPlatform.iOS:
+        return 'iOS';
+      case TargetPlatform.macOS:
+        return 'macOS';
+      case TargetPlatform.windows:
+        return 'Windows';
+      case TargetPlatform.linux:
+        return 'Linux';
+      case TargetPlatform.fuchsia:
+        return 'Fuchsia';
+    }
+  }
+
+  /// Opens the Play Store listing — `market://` first (jumps straight
+  /// into the Play Store app on Android), HTTPS fallback for any other
+  /// platform / when Play Store isn't installed.
+  Future<void> _openPlayStoreRating(BuildContext context) async {
+    final marketUri =
+        Uri.parse('market://details?id=$_androidPackage');
+    final webUri = Uri.parse(
+      'https://play.google.com/store/apps/details?id=$_androidPackage',
+    );
+    bool launched = false;
+    if (!kIsWeb) {
+      try {
+        launched = await launchUrl(
+          marketUri,
+          mode: LaunchMode.externalApplication,
+        );
+      } catch (_) {}
+    }
+    if (!launched) {
+      launched = await launchUrl(
+        webUri,
+        mode: LaunchMode.externalApplication,
+      );
+    }
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Couldn't open the Play Store — search for 'Wardly' there.",
+          ),
+        ),
+      );
+    }
+  }
+
+  /// Shown when no mail app is configured. Copies the address to the
+  /// clipboard and tells the user about it.
+  void _showCopyEmailFallback(BuildContext context, String label) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('Send $label by email'),
+        content: const SelectableText(
+          'No email app is set up on this device. '
+          'Copy this address and email it from anywhere:\n\n'
+          '$_supportEmail',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// mailto: query strings need their own encoding — Uri's default
+  /// encoder can produce '+' for spaces, which some mail clients don't
+  /// decode back into spaces.
+  String? _encodeQueryParameters(Map<String, String> params) {
+    return params.entries
+        .map((e) =>
+            '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value)}')
+        .join('&');
   }
 
   Widget _dangerCard(BuildContext context, AuthProvider auth) {
