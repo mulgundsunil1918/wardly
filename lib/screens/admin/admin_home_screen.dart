@@ -25,9 +25,19 @@ class AdminHomeScreen extends StatefulWidget {
 }
 
 class _AdminHomeScreenState extends State<AdminHomeScreen> {
+  // Cheap analytics surface — most counts come from Firestore aggregation
+  // queries (each costs 1 read per up to 1000 docs counted, vs N reads
+  // for fetching them).
   int _staffCount = 0;
+  int _wardCount = 0;
   int _activePatientCount = 0;
+  int _totalPatientCount = 0;
+  int _totalNoteCount = 0;
   int _notesToday = 0;
+  int _ackedNoteCount = 0;
+  int _commentCount = 0;
+  int _urgentNoteCount = 0;
+  bool _loadingCounts = true;
   List<_RecentActivityItem> _recent = [];
 
   @override
@@ -41,45 +51,106 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
   Future<void> _loadCounts() async {
     final db = FirebaseFirestore.instance;
-    final results = await Future.wait([
-      db.collection(AppConstants.usersCollection).get(),
-      db
-          .collection(AppConstants.patientsCollection)
-          .where('isActive', isEqualTo: true)
-          .get(),
-      db
-          .collection(AppConstants.notesCollection)
-          .orderBy('createdAt', descending: true)
-          .limit(50)
-          .get(),
-    ]);
-    final today = DateTime.now();
-    final notesDocs = results[2].docs;
-    final todays = notesDocs.where((d) {
-      final t = (d.data()['createdAt'] as Timestamp?)?.toDate();
-      return t != null &&
-          t.year == today.year &&
-          t.month == today.month &&
-          t.day == today.day;
-    }).length;
-
-    final recent = notesDocs.take(5).map((d) {
-      final data = d.data();
-      return _RecentActivityItem(
-        authorName: data['authorName'] as String? ?? '',
-        patientName: data['patientName'] as String? ?? '',
-        createdAt:
-            (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    setState(() => _loadingCounts = true);
+    try {
+      // Use count() aggregation everywhere we just need a number — way
+      // cheaper than fetching the docs. Each call is at most a few reads
+      // regardless of collection size.
+      final startOfDay = DateTime.now();
+      final midnight = DateTime(
+        startOfDay.year,
+        startOfDay.month,
+        startOfDay.day,
       );
-    }).toList();
 
-    if (!mounted) return;
-    setState(() {
-      _staffCount = results[0].size;
-      _activePatientCount = results[1].size;
-      _notesToday = todays;
-      _recent = recent;
-    });
+      final results = await Future.wait<dynamic>([
+        db
+            .collection(AppConstants.usersCollection)
+            .count()
+            .get(), // 0
+        db.collection(AppConstants.wardsCollection).count().get(), // 1
+        db
+            .collection(AppConstants.patientsCollection)
+            .where('isActive', isEqualTo: true)
+            .count()
+            .get(), // 2
+        db.collection(AppConstants.patientsCollection).count().get(), // 3
+        db.collection(AppConstants.notesCollection).count().get(), // 4
+        db
+            .collection(AppConstants.notesCollection)
+            .where('createdAt',
+                isGreaterThanOrEqualTo: Timestamp.fromDate(midnight))
+            .count()
+            .get(), // 5
+        db
+            .collection(AppConstants.notesCollection)
+            .where('isAcknowledged', isEqualTo: true)
+            .count()
+            .get(), // 6
+        db
+            .collection(AppConstants.notesCollection)
+            .where('priority', isEqualTo: 'Urgent')
+            .count()
+            .get(), // 7
+        // Recent activity feed — cheap, capped at 5.
+        db
+            .collection(AppConstants.notesCollection)
+            .orderBy('createdAt', descending: true)
+            .limit(5)
+            .get(), // 8
+        // Cumulative comment counter — read the metrics totals doc.
+        db.collection('metrics').doc('totals').get(), // 9
+      ]);
+
+      final users = results[0] as AggregateQuerySnapshot;
+      final wards = results[1] as AggregateQuerySnapshot;
+      final activePatients = results[2] as AggregateQuerySnapshot;
+      final allPatients = results[3] as AggregateQuerySnapshot;
+      final allNotes = results[4] as AggregateQuerySnapshot;
+      final notesToday = results[5] as AggregateQuerySnapshot;
+      final ackedNotes = results[6] as AggregateQuerySnapshot;
+      final urgentNotes = results[7] as AggregateQuerySnapshot;
+      final recentNotes = results[8] as QuerySnapshot<Map<String, dynamic>>;
+      final totalsDoc = results[9] as DocumentSnapshot<Map<String, dynamic>>;
+
+      final commentCount =
+          (totalsDoc.data()?['commentCount'] as num?)?.toInt() ?? 0;
+
+      final recent = recentNotes.docs.map((d) {
+        final data = d.data();
+        return _RecentActivityItem(
+          authorName: data['authorName'] as String? ?? '',
+          patientName: data['patientName'] as String? ?? '',
+          createdAt:
+              (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        );
+      }).toList();
+
+      if (!mounted) return;
+      setState(() {
+        _staffCount = users.count ?? 0;
+        _wardCount = wards.count ?? 0;
+        _activePatientCount = activePatients.count ?? 0;
+        _totalPatientCount = allPatients.count ?? 0;
+        _totalNoteCount = allNotes.count ?? 0;
+        _notesToday = notesToday.count ?? 0;
+        _ackedNoteCount = ackedNotes.count ?? 0;
+        _urgentNoteCount = urgentNotes.count ?? 0;
+        _commentCount = commentCount;
+        _recent = recent;
+        _loadingCounts = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingCounts = false);
+    }
+  }
+
+  /// Acknowledgement rate as a 0-100 integer percent. Returns null when
+  /// there are no notes yet.
+  int? get _ackRatePct {
+    if (_totalNoteCount == 0) return null;
+    return ((_ackedNoteCount / _totalNoteCount) * 100).round();
   }
 
   @override
@@ -161,9 +232,22 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   }
 
   Widget _statsGrid() {
-    return Consumer<WardProvider>(
-      builder: (context, wp, _) {
-        return GridView.count(
+    final ackPct = _ackRatePct;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            'Analytics',
+            style: GoogleFonts.dmSans(
+              color: AppColors.textPrimary,
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        GridView.count(
           crossAxisCount: 2,
           crossAxisSpacing: 10,
           mainAxisSpacing: 10,
@@ -173,12 +257,12 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           children: [
             _statCard(
               'Total Wards',
-              '${wp.wards.length}',
-              Icons.business_outlined,
+              '$_wardCount',
+              Icons.corporate_fare,
               AppColors.adminColor,
             ),
             _statCard(
-              'Total Staff',
+              'Total Users',
               '$_staffCount',
               Icons.people_outline,
               AppColors.doctorColor,
@@ -190,14 +274,71 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               AppColors.accent,
             ),
             _statCard(
+              'Total Patients',
+              '$_totalPatientCount',
+              Icons.person_outline,
+              AppColors.primary,
+            ),
+            _statCard(
+              'Total Notes',
+              '$_totalNoteCount',
+              Icons.notes_outlined,
+              AppColors.primary,
+            ),
+            _statCard(
               'Notes Today',
               '$_notesToday',
-              Icons.notes_outlined,
+              Icons.today_outlined,
               AppColors.warning,
             ),
+            _statCard(
+              'Urgent Notes',
+              '$_urgentNoteCount',
+              Icons.priority_high,
+              AppColors.danger,
+            ),
+            _statCard(
+              'Acknowledged',
+              '$_ackedNoteCount',
+              Icons.check_circle_outline,
+              AppColors.accent,
+            ),
+            _statCard(
+              'Replies',
+              '$_commentCount',
+              Icons.forum_outlined,
+              AppColors.primary,
+            ),
+            _statCard(
+              'Ack Rate',
+              ackPct == null ? '—' : '$ackPct%',
+              Icons.verified_outlined,
+              AppColors.accent,
+            ),
           ],
-        );
-      },
+        ),
+        if (_loadingCounts)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(
+              children: [
+                const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(strokeWidth: 1.5),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Refreshing analytics…',
+                  style: GoogleFonts.dmSans(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 

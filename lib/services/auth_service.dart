@@ -99,8 +99,10 @@ class AuthService {
       final doc = await _users.doc(user.uid).get();
       if (!doc.exists) {
         final now = DateTime.now();
+        final displayName =
+            user.displayName ?? (user.email ?? 'User').split('@').first;
         await _users.doc(user.uid).set({
-          'name': user.displayName ?? (user.email ?? 'User').split('@').first,
+          'name': displayName,
           'email': user.email ?? '',
           'role': 'doctor',
           'wardId': '',
@@ -108,6 +110,10 @@ class AuthService {
           'avatarUrl': user.photoURL,
           'createdAt': Timestamp.fromDate(now),
         });
+        // First-time Google sign-in is also a new account → bump userCount
+        // so the public dashboard tally stays honest.
+        MetricsService.bump('user',
+            summary: 'New Google account: $displayName');
       }
       final fresh = await _users.doc(user.uid).get();
       return AppUser.fromFirestore(fresh);

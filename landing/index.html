@@ -4,7 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Wardly — Ward, connected</title>
-  <meta name="description" content="Real-time clinical notes for ward teams. Doctors post, nurses acknowledge, admins manage. Built on Flutter + Firebase." />
+  <meta name="description" content="One live feed for the whole ward team. Real-time clinical notes, replies and acknowledgements — built so a hospital ward never loses an update again." />
+  <meta property="og:title" content="Wardly — Ward, connected" />
+  <meta property="og:description" content="One live feed for the whole ward team. No more lost updates." />
+  <meta property="og:type" content="website" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
@@ -18,107 +21,220 @@
         <span class="brand-text">WARDLY</span>
       </div>
       <nav class="nav-links">
-        <a href="#features">Features</a>
+        <a href="#problem">Problem</a>
+        <a href="#solution">Wardly</a>
         <a href="#how">How it works</a>
-        <a href="https://github.com/mulgundsunil1918/wardly" target="_blank" rel="noopener">GitHub</a>
+        <a href="#stats">Live stats</a>
         <a class="btn btn-primary" href="../">Launch app →</a>
       </nav>
     </div>
   </header>
 
+  <!-- ─────────── HERO — The problem ─────────── -->
   <section class="hero">
     <div class="container">
-      <div class="hero-badge">Real-time clinical notes</div>
-      <h1 class="hero-title">Ward,<br/><span class="accent">connected.</span></h1>
+      <div class="hero-badge danger">⚠ The problem</div>
+      <h1 class="hero-title">Ward updates<br/><span class="accent">get lost in the chaos.</span></h1>
       <p class="hero-sub">
-        One shared surface for doctors, nurses, and admins. Post a note in one ward,
-        everyone on shift sees it the instant it lands.
+        Every shift, critical patient information slips through the cracks. Notes get scribbled on paper, plans get verbal-only, and the next team comes in blind.
       </p>
       <div class="hero-ctas">
-        <a class="btn btn-primary btn-large" href="../">Launch Wardly</a>
-        <a class="btn btn-ghost btn-large" href="#features">See features</a>
+        <a class="btn btn-primary btn-large" href="#solution">See the fix ↓</a>
+        <a class="btn btn-ghost btn-large" href="../">Launch Wardly</a>
       </div>
     </div>
     <div class="hero-bg"></div>
   </section>
 
-  <section id="features" class="section">
+  <!-- ─────────── PROBLEM details ─────────── -->
+  <section id="problem" class="section section-alt">
     <div class="container">
       <div class="section-head">
-        <h2>Built for medical ward workflow</h2>
-        <p>Every surface is tuned to the reality of a hospital shift.</p>
+        <h2>What goes wrong on a real ward</h2>
+        <p>Every team has lived through these. Wardly was built around fixing each one.</p>
       </div>
-      <div class="grid grid-3">
-        <div class="card">
-          <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M3 5h18v2H3zm0 6h18v2H3zm0 6h12v2H3z"/></svg></div>
-          <h3>Real-time notes</h3>
-          <p>Post text notes with category + priority (Urgent, Normal, Low). Streamed live to every teammate in the ward.</p>
+      <div class="grid grid-3 pain-grid">
+        <div class="pain-card">
+          <div class="pain-icon">💬</div>
+          <h3>WhatsApp burial</h3>
+          <p>Urgent updates buried under hundreds of unrelated messages in the ward group.</p>
         </div>
-        <div class="card">
-          <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 015 5v2a5 5 0 11-10 0V7a5 5 0 015-5zm-7 17a7 7 0 0114 0v3H5v-3z"/></svg></div>
-          <h3>Role-aware UI</h3>
-          <p>Doctors create and manage. Nurses acknowledge. Admins run the house. Three flows, one app.</p>
+        <div class="pain-card">
+          <div class="pain-icon">📝</div>
+          <h3>Lost paper notes</h3>
+          <p>Plans scribbled on a chart that nobody can find — or read — by handover.</p>
         </div>
-        <div class="card">
-          <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h10v2H4z"/></svg></div>
-          <h3>Multi-ward by design</h3>
-          <p>Every ward has a unique ID. Share it, and anyone can join. Doctors run multiple wards at once — no switching.</p>
+        <div class="pain-card">
+          <div class="pain-icon">❓</div>
+          <h3>No ack trail</h3>
+          <p>"Did you see the new plan?" "Did anyone act on it?" Nobody can prove it.</p>
         </div>
-        <div class="card">
-          <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M12 1l9 4v6c0 5-4 9-9 11-5-2-9-6-9-11V5l9-4z"/></svg></div>
-          <h3>Firebase-backed</h3>
-          <p>Email/password, Google sign-in, and password reset baked in. Firestore security rules gate every action.</p>
+        <div class="pain-card">
+          <div class="pain-icon">⏱</div>
+          <h3>Phone tag</h3>
+          <p>Nurse calls doctor, doctor calls back, patient waits. Minutes you don't have.</p>
         </div>
-        <div class="card">
-          <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg></div>
-          <h3>Notification panel</h3>
-          <p>One tap on the bell surfaces every unacknowledged note, grouped by urgency. Ack in one click.</p>
+        <div class="pain-card">
+          <div class="pain-icon">🔄</div>
+          <h3>Broken handover</h3>
+          <p>Outgoing team carries the context home in their head. Incoming team starts from zero.</p>
         </div>
-        <div class="card">
-          <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
-          <h3>Light &amp; dark</h3>
-          <p>Material 3 theme with a dark mode tuned for fluorescent wards. Toggle from the top bar, remembered across sessions.</p>
+        <div class="pain-card">
+          <div class="pain-icon">📵</div>
+          <h3>No record</h3>
+          <p>When something goes wrong, no clean audit of who knew what and when.</p>
         </div>
       </div>
     </div>
   </section>
 
+  <!-- ─────────── SOLUTION ─────────── -->
+  <section id="solution" class="section">
+    <div class="container">
+      <div class="section-head">
+        <div class="eyebrow">💡 The fix</div>
+        <h2>One live feed for the whole ward team</h2>
+        <p>
+          Wardly puts every patient note, plan and alert in one shared timeline.
+          Anyone on your ward — senior or junior, doctor or nurse — sees the same
+          updates the moment they happen.
+        </p>
+      </div>
+      <div class="grid grid-2 benefits">
+        <div class="benefit">
+          <div class="benefit-icon">⚡</div>
+          <div>
+            <h3>Real-time, every device</h3>
+            <p>Post once — the whole team gets it instantly with a push notification.</p>
+          </div>
+        </div>
+        <div class="benefit">
+          <div class="benefit-icon">✅</div>
+          <div>
+            <h3>Acknowledged, on the record</h3>
+            <p>See exactly who has seen and acted on every note. No more guessing.</p>
+          </div>
+        </div>
+        <div class="benefit">
+          <div class="benefit-icon">🔒</div>
+          <div>
+            <h3>Ward-private by design</h3>
+            <p>Members of your ward see your ward — nothing more, nothing else.</p>
+          </div>
+        </div>
+        <div class="benefit">
+          <div class="benefit-icon">🗂</div>
+          <div>
+            <h3>Permanent patient history</h3>
+            <p>Every note is filed against the patient, ready when handover hits.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────── HOW IT WORKS — with real UI mocks ─────────── -->
   <section id="how" class="section section-alt">
     <div class="container">
       <div class="section-head">
-        <h2>How it works</h2>
-        <p>From zero to shared notes in 60 seconds.</p>
+        <div class="eyebrow">🛠 How it works</div>
+        <h2>Four taps from chaos to coordinated</h2>
+        <p>The whole loop, with the real UI elements you'll use in the app.</p>
       </div>
-      <ol class="steps">
+      <ol class="how-steps">
+
         <li>
-          <span class="step-num">1</span>
-          <div>
-            <h3>Sign up</h3>
-            <p>Email, password, role. Or continue with Google. Your account is private to you.</p>
+          <div class="how-num">1</div>
+          <div class="how-body">
+            <h3>Create or join your ward</h3>
+            <p>One person creates the ward — Wardly hands them a 5-digit code. Share it with the team and they're in.</p>
+            <div class="mock ward-mock">
+              <div class="ward-icon">🏥</div>
+              <div>
+                <div class="ward-name">ICU Ward A</div>
+                <div class="ward-code">Code: <strong>47291</strong> · tap to copy</div>
+              </div>
+              <div class="ward-copy">📋</div>
+            </div>
           </div>
         </li>
+
         <li>
-          <span class="step-num">2</span>
-          <div>
-            <h3>Create or join a ward</h3>
-            <p>Start a ward — you get a short shareable ID. Paste it anywhere to invite teammates; they tap Join Ward and they're in.</p>
+          <div class="how-num">2</div>
+          <div class="how-body">
+            <h3>Add the patients</h3>
+            <p>Add patients on your ward once. Notes get filed against the right person automatically.</p>
+            <div class="mock patient-row">
+              <div class="patient-chip"><span class="bed">Bed 12</span> Mr. R. Kumar</div>
+              <div class="patient-chip"><span class="bed">Bed 18</span> Ms. A. Shah</div>
+              <div class="patient-chip"><span class="bed">Bed 24</span> Mr. S. Iyer</div>
+            </div>
           </div>
         </li>
+
         <li>
-          <span class="step-num">3</span>
-          <div>
-            <h3>Post, see, acknowledge</h3>
-            <p>A note posted in the ward shows up in real time on every teammate's Home. Bells ring until someone acknowledges.</p>
+          <div class="how-num">3</div>
+          <div class="how-body">
+            <h3>Post a note</h3>
+            <p>Write the update, set Normal, Urgent or Low priority, hit post. Done.</p>
+            <div class="mock note-mock">
+              <div class="note-head">
+                <span class="priority-pill urgent">● Urgent</span>
+                <span class="note-meta">Bed 12 · Mr. R. Kumar</span>
+              </div>
+              <div class="note-body">BP dropping — please review. Started fluids, awaiting cardiology callback.</div>
+              <div class="note-foot">Dr. Pew Pew · 2 min ago</div>
+            </div>
           </div>
         </li>
+
+        <li>
+          <div class="how-num">4</div>
+          <div class="how-body">
+            <h3>Team sees it & acknowledges</h3>
+            <p>Push notifications fire across the ward. A teammate taps Acknowledge — the whole team sees who, when, and what they replied.</p>
+            <div class="mock ack-mock">
+              <div class="ack-head">
+                <span class="avatar">SM</span>
+                <span class="ack-name">Sunil Mulgund</span>
+                <span class="role-pill doctor">Doctor</span>
+                <span class="ack-time">now</span>
+              </div>
+              <div class="ack-banner">✓ Acknowledged by Sunil Mulgund</div>
+              <div class="ack-text">On it — calling cardiology now.</div>
+            </div>
+          </div>
+        </li>
+
       </ol>
     </div>
   </section>
 
+  <!-- ─────────── LIVE STATS — pulled from Firestore /metrics/totals ─────────── -->
+  <section id="stats" class="section">
+    <div class="container">
+      <div class="section-head">
+        <div class="eyebrow">📊 Live numbers</div>
+        <h2>Wardly, by the numbers — right now</h2>
+        <p>Pulled live from the production Firestore. These tick up as teams use the app.</p>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-num" data-stat="users">—</div><div class="stat-label">Total users</div></div>
+        <div class="stat-card"><div class="stat-num" data-stat="wards">—</div><div class="stat-label">Wards</div></div>
+        <div class="stat-card"><div class="stat-num" data-stat="patients">—</div><div class="stat-label">Patients</div></div>
+        <div class="stat-card"><div class="stat-num" data-stat="notes">—</div><div class="stat-label">Notes posted</div></div>
+        <div class="stat-card"><div class="stat-num" data-stat="acks">—</div><div class="stat-label">Acknowledgements</div></div>
+        <div class="stat-card"><div class="stat-num" data-stat="comments">—</div><div class="stat-label">Replies in threads</div></div>
+      </div>
+      <p class="stats-note">Last updated <span data-stat="updated">just now</span> · counts are cumulative since the app went live.</p>
+    </div>
+  </section>
+
+  <!-- ─────────── CTA ─────────── -->
   <section class="cta-section">
     <div class="container cta-inner">
-      <h2>Ready to try it?</h2>
-      <p>No install. Open in your browser, sign up, share a ward ID.</p>
+      <h2>Ready to connect your ward?</h2>
+      <p>No install. Open in your browser, sign up, share a 5-digit code with your team.</p>
       <a class="btn btn-primary btn-large" href="../">Launch Wardly →</a>
     </div>
   </section>
@@ -131,11 +247,81 @@
       </div>
       <div class="footer-links">
         <a href="../">App</a>
+        <a href="../status/">Status</a>
         <a href="https://github.com/mulgundsunil1918/wardly" target="_blank" rel="noopener">GitHub</a>
         <a href="https://github.com/mulgundsunil1918/wardly/issues" target="_blank" rel="noopener">Report issue</a>
       </div>
-      <div class="footer-note">Built with Flutter &amp; Firebase.</div>
+      <div class="footer-note">Built with Flutter &amp; Firebase. Ward-private by design.</div>
     </div>
   </footer>
+
+  <!-- ─── Live stats: pull /metrics/totals from Firestore via the JS SDK. ─── -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBS8MKN-vzLCFLDmGfws7uJg5_I4fJKnqM",
+      authDomain: "wardly-24081996.firebaseapp.com",
+      projectId: "wardly-24081996",
+      storageBucket: "wardly-24081996.firebasestorage.app",
+      messagingSenderId: "525482754887",
+      appId: "1:525482754887:web:2886f69b6402f4718a8262",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const fmt = (n) => {
+      if (n == null || isNaN(n)) return "—";
+      if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, "") + "k";
+      return String(n);
+    };
+
+    const animate = (el, target) => {
+      const start = 0;
+      const dur = 700;
+      const t0 = performance.now();
+      const step = (t) => {
+        const p = Math.min(1, (t - t0) / dur);
+        const v = Math.round(start + (target - start) * (1 - Math.pow(1 - p, 3)));
+        el.textContent = fmt(v);
+        if (p < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    };
+
+    async function loadStats() {
+      try {
+        const snap = await getDoc(doc(db, "metrics", "totals"));
+        const data = snap.exists() ? snap.data() : {};
+        const map = {
+          users: data.userCount,
+          wards: data.wardCount,
+          patients: data.patientCount,
+          notes: data.noteCount,
+          acks: data.ackCount,
+          comments: data.commentCount,
+        };
+        for (const [key, val] of Object.entries(map)) {
+          const el = document.querySelector(`[data-stat="${key}"]`);
+          if (!el) continue;
+          if (typeof val === "number") animate(el, val);
+          else el.textContent = "0";
+        }
+        const t = data.lastActivityAt?.toDate
+          ? data.lastActivityAt.toDate()
+          : null;
+        const u = document.querySelector('[data-stat="updated"]');
+        if (u && t) {
+          u.textContent = t.toLocaleString();
+        }
+      } catch (e) {
+        console.warn("Wardly stats load failed:", e);
+      }
+    }
+
+    loadStats();
+  </script>
 </body>
 </html>
