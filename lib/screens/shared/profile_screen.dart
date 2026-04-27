@@ -15,6 +15,7 @@ import '../../models/app_user.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/text_scale_provider.dart';
 import '../../providers/theme_provider.dart';
+import '../../utils/friendly_error.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/app_utils.dart';
 
@@ -554,7 +555,7 @@ class ProfileScreen extends StatelessWidget {
           SnackBar(
             backgroundColor: AppColors.danger,
             content: Text(
-              'Could not delete: $e\nSign out and back in, then try again.',
+              'Could not delete your account — ${friendlyError(e)}\nSign out and back in, then try again.',
             ),
           ),
         );
@@ -729,7 +730,7 @@ class ProfileScreen extends StatelessWidget {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       backgroundColor: AppColors.danger,
-                      content: Text(e.toString()),
+                      content: Text(friendlyError(e)),
                     ),
                   );
                 }

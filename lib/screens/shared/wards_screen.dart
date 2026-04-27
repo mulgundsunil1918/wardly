@@ -12,6 +12,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/metrics_service.dart';
 import '../../utils/app_constants.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/friendly_error.dart';
 
 class WardsScreen extends StatelessWidget {
   const WardsScreen({super.key});
@@ -337,7 +338,7 @@ class WardsScreen extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppColors.danger,
-            content: Text('Failed to delete: $e'),
+            content: Text('Could not delete the ward — ${friendlyError(e)}'),
           ),
         );
       }
@@ -734,7 +735,7 @@ class WardsScreen extends StatelessWidget {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       backgroundColor: AppColors.danger,
-                      content: Text('Failed: $e'),
+                      content: Text(friendlyError(e)),
                     ),
                   );
                 }
@@ -826,7 +827,7 @@ class WardsScreen extends StatelessWidget {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       backgroundColor: AppColors.danger,
-                      content: Text('Failed: $e'),
+                      content: Text(friendlyError(e)),
                     ),
                   );
                 }

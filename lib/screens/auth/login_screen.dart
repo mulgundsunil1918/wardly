@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/push_service.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/friendly_error.dart';
 import 'background_setup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -151,7 +152,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppColors.danger,
-          content: Text(authProvider.error!),
+          content: Text(friendlyError(authProvider.error!)),
         ),
       );
     }
@@ -189,7 +190,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppColors.danger,
-          content: Text(authProvider.error!),
+          content: Text(friendlyError(authProvider.error!)),
         ),
       );
     }

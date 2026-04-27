@@ -9,6 +9,7 @@ import '../providers/auth_provider.dart';
 import '../providers/note_provider.dart';
 import '../services/note_service.dart';
 import '../utils/app_theme.dart';
+import '../utils/friendly_error.dart';
 
 Future<void> showNoteCommentsSheet(BuildContext context, Note note) {
   return showModalBottomSheet(
@@ -71,7 +72,7 @@ class _NoteCommentsSheetState extends State<NoteCommentsSheet> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppColors.danger,
-            content: Text('Failed: $e'),
+            content: Text(friendlyError(e)),
           ),
         );
       }

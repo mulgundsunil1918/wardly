@@ -10,6 +10,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/patient_provider.dart';
 import '../../utils/app_constants.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/friendly_error.dart';
 
 class AddPatientScreen extends StatefulWidget {
   final String? initialWardId;
@@ -91,11 +92,15 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
         const SnackBar(content: Text('Patient added successfully')),
       );
     } else {
-      final err = patientProvider.error ?? 'Unknown error';
+      final err = patientProvider.error;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppColors.danger,
-          content: Text('Failed to add patient: $err'),
+          content: Text(
+            err == null
+                ? "Couldn't add patient — please try again."
+                : 'Could not add patient — ${friendlyError(err)}',
+          ),
         ),
       );
     }
