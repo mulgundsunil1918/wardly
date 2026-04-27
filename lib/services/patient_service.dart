@@ -65,11 +65,14 @@ class PatientService {
         .collection(AppConstants.notesCollection)
         .where('patientId', isEqualTo: patientId)
         .get();
-    final batch = _firestore.batch();
-    for (final doc in notes.docs) {
-      batch.delete(doc.reference);
+    for (final note in notes.docs) {
+      // Firestore doesn't cascade subcollections; delete comments first.
+      final comments = await note.reference.collection('comments').get();
+      for (final c in comments.docs) {
+        await c.reference.delete();
+      }
+      await note.reference.delete();
     }
-    if (notes.docs.isNotEmpty) await batch.commit();
   }
 
   Stream<int> getPatientCount(String wardId) {
