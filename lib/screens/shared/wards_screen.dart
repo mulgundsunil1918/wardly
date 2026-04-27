@@ -144,12 +144,14 @@ class WardsScreen extends StatelessWidget {
                         separatorBuilder: (_, __) =>
                             const Divider(height: 1),
                         itemBuilder: (_, i) {
+                          final doc = users[i];
                           final data =
-                              users[i].data() as Map<String, dynamic>;
+                              doc.data() as Map<String, dynamic>;
                           final name = data['name'] as String? ?? 'User';
                           final email = data['email'] as String? ?? '';
                           final role =
                               data['role'] as String? ?? 'doctor';
+                          final isOwner = doc.id == w.creatorId;
                           final roleColor = role == 'nurse'
                               ? AppColors.nurseColor
                               : role == 'admin'
@@ -168,7 +170,35 @@ class WardsScreen extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            title: Text(name),
+                            title: Row(
+                              children: [
+                                Flexible(child: Text(name)),
+                                if (isOwner) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.accent
+                                          .withOpacity(0.15),
+                                      borderRadius:
+                                          BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      'OWNER',
+                                      style: GoogleFonts.dmSans(
+                                        color: AppColors.accent,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.6,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                             subtitle: Text(email),
                             trailing: Container(
                               padding: const EdgeInsets.symmetric(
