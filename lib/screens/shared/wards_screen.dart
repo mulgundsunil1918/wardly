@@ -304,15 +304,20 @@ class WardsScreen extends StatelessWidget {
       }
       if (patients.docs.isNotEmpty) await batch.commit();
 
-      // 3. Remove this ward from every member's wardIds array.
-      final members = await fs
-          .collection(AppConstants.usersCollection)
-          .where('wardIds', arrayContains: w.id)
-          .get();
-      for (final u in members.docs) {
-        await u.reference.update({
-          'wardIds': FieldValue.arrayRemove([w.id]),
-        });
+      // 3. Remove this ward from the deleter's own wardIds (the only user
+      // doc they're allowed to update). Other members' wardIds will hold
+      // a harmless stale id — their UI will simply not render this ward
+      // since the ward doc is gone.
+      final myUid = FirebaseAuth.instance.currentUser?.uid;
+      if (myUid != null) {
+        try {
+          await fs
+              .collection(AppConstants.usersCollection)
+              .doc(myUid)
+              .update({
+            'wardIds': FieldValue.arrayRemove([w.id]),
+          });
+        } catch (_) {/* not fatal */}
       }
 
       // 4. Finally delete the ward doc.
