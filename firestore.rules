@@ -24,8 +24,9 @@ service cloud.firestore {
 
     match /wards/{wardId} {
       // Direct lookup by ID: anyone signed in (needed for Join Ward to
-      // verify the ID exists). IDs are 8-char base32 — practically
-      // unguessable.
+      // verify the ID exists). IDs are 5-digit numbers — guessable, but the
+      // worst a guesser can do is join a ward; reads/writes inside the ward
+      // are still gated by membership.
       allow get: if signedIn();
       // Query/list: only the creator OR existing member sees the doc in
       // results. Keeps the Wards tab strictly member-scoped.
@@ -33,9 +34,13 @@ service cloud.firestore {
         resource.data.creatorId == request.auth.uid ||
         wardId in myWardIds()
       );
-      allow create: if signedIn();
-      allow update: if signedIn();
-      allow delete: if signedIn() &&
+      // Create: any signed-in user can claim a free ID (the doc must not
+      // exist — Firestore enforces this for `create` rules) and they must
+      // stamp themselves as the creator.
+      allow create: if signedIn() &&
+        request.resource.data.creatorId == request.auth.uid;
+      // Update / delete: only the creator can mutate or remove the ward.
+      allow update, delete: if signedIn() &&
         resource.data.creatorId == request.auth.uid;
     }
 

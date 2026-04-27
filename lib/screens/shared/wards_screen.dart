@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:uuid/uuid.dart';
+import 'dart:math';
 
 import '../../models/ward.dart';
 import '../../providers/auth_provider.dart';
@@ -13,6 +13,8 @@ import '../../services/metrics_service.dart';
 import '../../utils/app_constants.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/friendly_error.dart';
+
+class _IdCollision implements Exception {}
 
 class WardsScreen extends StatelessWidget {
   const WardsScreen({super.key});
@@ -26,8 +28,8 @@ class WardsScreen extends StatelessWidget {
             ? '\nShared by Dr. ${me.name} · ${me.specialty}'
             : '\nShared by ${me.name}');
     final text =
-        'Join my ward on Wardly!$byLine\n\n${w.name}\nWard ID: ${w.id}\n\n'
-        'Open the Wardly app → Wards → tap "Join Ward" → paste this ID.';
+        'Join my ward on Wardly!$byLine\n\n${w.name}\nWard code: ${w.id}\n\n'
+        'Open the Wardly app → Wards → tap "Join Ward" → enter this 5-digit code.';
     await Share.share(text, subject: 'Join ward ${w.name}');
   }
 
@@ -374,7 +376,7 @@ class WardsScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Tap the + button to create one,\nor use Join Ward if you have an ID.',
+                  'Use Create New Ward to start one,\nor Join Ward if you have a 5-digit code.',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.dmSans(
                     color: AppColors.textSecondary,
@@ -637,7 +639,7 @@ class WardsScreen extends StatelessWidget {
               await Clipboard.setData(ClipboardData(text: w.id));
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Ward ID "${w.id}" copied')),
+                  SnackBar(content: Text('Ward code ${w.id} copied')),
                 );
               }
             },
@@ -727,10 +729,12 @@ class WardsScreen extends StatelessWidget {
         title: const Text('Join Ward'),
         content: TextField(
           controller: controller,
-          textCapitalization: TextCapitalization.characters,
+          keyboardType: TextInputType.numberWithOptions(decimal: false),
+          maxLength: 8, // 5-digit codes; older wards may have 8-char codes
           decoration: const InputDecoration(
-            labelText: 'Ward ID',
-            hintText: 'Paste the ward ID here',
+            labelText: 'Ward code',
+            hintText: '5-digit code (e.g. 47291)',
+            counterText: '',
           ),
           autofocus: true,
         ),
@@ -741,7 +745,7 @@ class WardsScreen extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: () async {
-              final id = controller.text.trim().toUpperCase();
+              final id = controller.text.trim();
               if (id.isEmpty) return;
               Navigator.pop(context);
               try {
@@ -833,13 +837,15 @@ class WardsScreen extends StatelessWidget {
               if (name.isEmpty) return;
               Navigator.pop(context);
               try {
-                final id =
-                    const Uuid().v4().substring(0, 8).toUpperCase();
                 final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-                await FirebaseFirestore.instance
-                    .collection(AppConstants.wardsCollection)
-                    .doc(id)
-                    .set({
+                // Allocate a unique 5-digit numeric ward ID. We try a random
+                // 10000–99999 number, and use a transaction so two clients
+                // can never both grab the same ID. Retry a handful of times
+                // on collision (90,000 IDs vs. expected ward count → very
+                // rare, but be safe).
+                final fs = FirebaseFirestore.instance;
+                final rand = Random.secure();
+                final wardData = {
                   'name': name,
                   'floor': floorController.text.trim(),
                   'capacity': 0,
@@ -847,7 +853,33 @@ class WardsScreen extends StatelessWidget {
                   'creatorId': uid,
                   'creatorEmail': auth.currentUser?.email ?? '',
                   'createdAt': Timestamp.fromDate(DateTime.now()),
-                });
+                };
+                String? id;
+                for (var attempt = 0; attempt < 12; attempt++) {
+                  final candidate =
+                      (10000 + rand.nextInt(90000)).toString();
+                  final ref = fs
+                      .collection(AppConstants.wardsCollection)
+                      .doc(candidate);
+                  try {
+                    await fs.runTransaction((tx) async {
+                      final snap = await tx.get(ref);
+                      if (snap.exists) {
+                        throw _IdCollision();
+                      }
+                      tx.set(ref, wardData);
+                    });
+                    id = candidate;
+                    break;
+                  } on _IdCollision {
+                    continue; // try another number
+                  }
+                }
+                if (id == null) {
+                  throw Exception(
+                    "Couldn't allocate a free ward ID — please try again.",
+                  );
+                }
                 MetricsService.bump('ward',
                     summary: 'New ward "$name"');
                 if (uid.isNotEmpty) {
@@ -862,7 +894,9 @@ class WardsScreen extends StatelessWidget {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Ward "$name" created · ID: $id'),
+                      content: Text(
+                        'Ward "$name" created · code $id (share this with your team)',
+                      ),
                       duration: const Duration(seconds: 6),
                     ),
                   );
