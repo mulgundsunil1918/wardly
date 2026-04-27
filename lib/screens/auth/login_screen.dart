@@ -329,21 +329,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'WARDLY',
-                        style: GoogleFonts.dmSans(
-                          color: Colors.white,
-                          fontSize: 26,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 6,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
                         'Ward, connected',
                         style: GoogleFonts.dmSans(
-                          color: Colors.white.withOpacity(0.75),
-                          fontSize: 13,
-                          letterSpacing: 1.2,
+                          color: Colors.white.withOpacity(0.85),
+                          fontSize: 14,
+                          letterSpacing: 1.4,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],

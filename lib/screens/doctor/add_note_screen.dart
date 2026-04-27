@@ -276,12 +276,28 @@ class _AddNoteBottomSheetState extends State<AddNoteBottomSheet> {
   }
 
   Widget _wardChips() {
+    final me = context.watch<AuthProvider>().currentUser;
+    final myWardIds = me?.wardIds ?? const <String>[];
+    if (myWardIds.isEmpty) {
+      return Text(
+        'Join a ward first from the Wards tab.',
+        style: GoogleFonts.dmSans(color: AppColors.textSecondary),
+      );
+    }
+    // Firestore whereIn only allows up to 30 ids; trim if needed.
+    final ids = myWardIds.length > 30 ? myWardIds.sublist(0, 30) : myWardIds;
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection(AppConstants.wardsCollection)
-          .orderBy('createdAt')
+          .where(FieldPath.documentId, whereIn: ids)
           .snapshots(),
       builder: (context, snap) {
+        if (snap.hasError) {
+          return Text(
+            "Couldn't load wards. Pull down to retry.",
+            style: GoogleFonts.dmSans(color: AppColors.danger),
+          );
+        }
         if (!snap.hasData) {
           return SizedBox(
             height: 40,
@@ -296,7 +312,7 @@ class _AddNoteBottomSheetState extends State<AddNoteBottomSheet> {
             .toList();
         if (wards.isEmpty) {
           return Text(
-            'No wards exist. Create one in the Wards tab.',
+            'No wards yet. Create or join one from the Wards tab.',
             style: GoogleFonts.dmSans(color: AppColors.textSecondary),
           );
         }
