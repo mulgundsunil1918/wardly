@@ -23,13 +23,17 @@ service cloud.firestore {
     }
 
     match /wards/{wardId} {
-      // Only the creator OR a member of the ward can read it.
-      allow read: if signedIn() && (
+      // Direct lookup by ID: anyone signed in (needed for Join Ward to
+      // verify the ID exists). IDs are 8-char base32 — practically
+      // unguessable.
+      allow get: if signedIn();
+      // Query/list: only the creator OR existing member sees the doc in
+      // results. Keeps the Wards tab strictly member-scoped.
+      allow list: if signedIn() && (
         resource.data.creatorId == request.auth.uid ||
         wardId in myWardIds()
       );
       allow create: if signedIn();
-      // Updates: any signed-in user (creator-only enforced in app for renames).
       allow update: if signedIn();
       allow delete: if signedIn() &&
         resource.data.creatorId == request.auth.uid;
