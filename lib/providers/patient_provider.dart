@@ -94,17 +94,6 @@ class PatientProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> dischargePatient(String patientId) async {
-    try {
-      await _patientService.dischargePatient(patientId);
-      return true;
-    } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-      return false;
-    }
-  }
-
   Future<bool> deletePatient(String patientId) async {
     try {
       await _patientService.deletePatient(patientId);

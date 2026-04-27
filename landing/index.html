@@ -21,10 +21,10 @@
         <span class="brand-text">WARDLY</span>
       </div>
       <nav class="nav-links">
+        <a href="#stats">Live stats</a>
         <a href="#problem">Problem</a>
         <a href="#solution">Wardly</a>
         <a href="#how">How it works</a>
-        <a href="#stats">Live stats</a>
         <a class="btn btn-primary" href="../">Launch app →</a>
       </nav>
     </div>
@@ -44,6 +44,26 @@
       </div>
     </div>
     <div class="hero-bg"></div>
+  </section>
+
+  <!-- ─────────── LIVE STATS — pulled from Firestore /metrics/totals ─────────── -->
+  <section id="stats" class="section">
+    <div class="container">
+      <div class="section-head">
+        <div class="eyebrow">📊 Live numbers</div>
+        <h2>Wardly, by the numbers — right now</h2>
+        <p>Pulled live from the production Firestore. These tick up as teams use the app.</p>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-num" data-stat="users">—</div><div class="stat-label">Total users</div></div>
+        <div class="stat-card"><div class="stat-num" data-stat="wards">—</div><div class="stat-label">Wards</div></div>
+        <div class="stat-card"><div class="stat-num" data-stat="patients">—</div><div class="stat-label">Patients</div></div>
+        <div class="stat-card"><div class="stat-num" data-stat="notes">—</div><div class="stat-label">Notes posted</div></div>
+        <div class="stat-card"><div class="stat-num" data-stat="acks">—</div><div class="stat-label">Acknowledgements</div></div>
+        <div class="stat-card"><div class="stat-num" data-stat="comments">—</div><div class="stat-label">Replies in threads</div></div>
+      </div>
+      <p class="stats-note">Last updated <span data-stat="updated">just now</span> · counts are cumulative since the app went live.</p>
+    </div>
   </section>
 
   <!-- ─────────── PROBLEM details ─────────── -->
@@ -210,26 +230,6 @@
     </div>
   </section>
 
-  <!-- ─────────── LIVE STATS — pulled from Firestore /metrics/totals ─────────── -->
-  <section id="stats" class="section">
-    <div class="container">
-      <div class="section-head">
-        <div class="eyebrow">📊 Live numbers</div>
-        <h2>Wardly, by the numbers — right now</h2>
-        <p>Pulled live from the production Firestore. These tick up as teams use the app.</p>
-      </div>
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-num" data-stat="users">—</div><div class="stat-label">Total users</div></div>
-        <div class="stat-card"><div class="stat-num" data-stat="wards">—</div><div class="stat-label">Wards</div></div>
-        <div class="stat-card"><div class="stat-num" data-stat="patients">—</div><div class="stat-label">Patients</div></div>
-        <div class="stat-card"><div class="stat-num" data-stat="notes">—</div><div class="stat-label">Notes posted</div></div>
-        <div class="stat-card"><div class="stat-num" data-stat="acks">—</div><div class="stat-label">Acknowledgements</div></div>
-        <div class="stat-card"><div class="stat-num" data-stat="comments">—</div><div class="stat-label">Replies in threads</div></div>
-      </div>
-      <p class="stats-note">Last updated <span data-stat="updated">just now</span> · counts are cumulative since the app went live.</p>
-    </div>
-  </section>
-
   <!-- ─────────── CTA ─────────── -->
   <section class="cta-section">
     <div class="container cta-inner">
@@ -291,7 +291,39 @@
       requestAnimationFrame(step);
     };
 
+    // Reuse a cached result for 5 minutes per browser. A page reload or a
+    // second tab within that window costs zero Firestore reads. The full
+    // cumulative tally barely changes minute-to-minute anyway.
+    const CACHE_KEY = "wardly_stats_v1";
+    const CACHE_TTL_MS = 5 * 60 * 1000;
+
+    function paint(map, lastActivityIso) {
+      for (const [key, val] of Object.entries(map)) {
+        const el = document.querySelector(`[data-stat="${key}"]`);
+        if (!el) continue;
+        if (typeof val === "number") animate(el, val);
+        else el.textContent = "0";
+      }
+      const u = document.querySelector('[data-stat="updated"]');
+      if (u && lastActivityIso) {
+        u.textContent = new Date(lastActivityIso).toLocaleString();
+      }
+    }
+
     async function loadStats() {
+      // 1. Try cache.
+      try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (raw) {
+          const cached = JSON.parse(raw);
+          if (cached?.savedAt && Date.now() - cached.savedAt < CACHE_TTL_MS) {
+            paint(cached.map, cached.lastActivityIso);
+            return; // No Firestore read at all this visit.
+          }
+        }
+      } catch (_) {}
+
+      // 2. Fall through to a one-shot Firestore read.
       try {
         const snap = await getDoc(doc(db, "metrics", "totals"));
         const data = snap.exists() ? snap.data() : {};
@@ -303,19 +335,17 @@
           acks: data.ackCount,
           comments: data.commentCount,
         };
-        for (const [key, val] of Object.entries(map)) {
-          const el = document.querySelector(`[data-stat="${key}"]`);
-          if (!el) continue;
-          if (typeof val === "number") animate(el, val);
-          else el.textContent = "0";
-        }
         const t = data.lastActivityAt?.toDate
           ? data.lastActivityAt.toDate()
           : null;
-        const u = document.querySelector('[data-stat="updated"]');
-        if (u && t) {
-          u.textContent = t.toLocaleString();
-        }
+        const lastActivityIso = t ? t.toISOString() : null;
+        paint(map, lastActivityIso);
+        try {
+          localStorage.setItem(
+            CACHE_KEY,
+            JSON.stringify({ savedAt: Date.now(), map, lastActivityIso }),
+          );
+        } catch (_) {}
       } catch (e) {
         console.warn("Wardly stats load failed:", e);
       }

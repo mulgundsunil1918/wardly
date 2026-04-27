@@ -56,11 +56,6 @@ class PatientService {
     await _patients.doc(patient.id).update(patient.toMap());
   }
 
-  Future<void> dischargePatient(String patientId) async {
-    await _patients.doc(patientId).update({'isActive': false});
-    await _deleteNotesFor(patientId);
-  }
-
   Future<void> deletePatient(String patientId) async {
     await _deleteNotesFor(patientId);
     await _patients.doc(patientId).delete();

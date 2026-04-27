@@ -1,5 +1,23 @@
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
-import { getFirestore, doc, onSnapshot, collection, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js';
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  collection,
+  query,
+  orderBy,
+  limit,
+  getDocs,
+} from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js';
+
+// Cost note (Blaze pay-as-you-go):
+// This page used to open three live `onSnapshot` listeners (metrics doc,
+// recent_activity feed, and a fresh Firestore probe every 30s). With the
+// status tab left open in a browser, that quietly burned thousands of
+// Firestore reads per day per viewer. We now do every read as a single
+// `getDoc` / `getDocs` and only re-run on user click or every 5 minutes.
+const REFRESH_MS = 5 * 60 * 1000; // 5 minutes
+const FEED_LIMIT = 20;
 
 const firebaseConfig = {
   apiKey: 'AIzaSyBS8MKN-vzLCFLDmGfws7uJg5_I4fJKnqM',
@@ -50,16 +68,12 @@ async function checkAuth() {
 }
 
 async function checkFirestore() {
+  // One-shot read of the public metrics doc as a probe. Used to be a
+  // live `onSnapshot` listener — that billed reads on every metrics tick
+  // even though the probe only needs a single round-trip.
   const start = performance.now();
   try {
-    // Probe the public metrics doc
-    await new Promise((resolve, reject) => {
-      const unsub = onSnapshot(doc(db, 'metrics', 'totals'), () => {
-        unsub();
-        resolve();
-      }, reject);
-      setTimeout(() => reject(new Error('timeout')), 8000);
-    });
+    await getDoc(doc(db, 'metrics', 'totals'));
     const ms = Math.round(performance.now() - start);
     setStatus('svc-firestore', 'green',
       `Connected · ${ms}ms · Public metrics readable`);
@@ -104,71 +118,74 @@ function tally() {
   }
 }
 
-async function runAll() {
-  await Promise.all([checkAuth(), checkFirestore()]);
-  updateHeader();
-  setTimeout(tally, 200);
-}
-
-document.getElementById('recheck').addEventListener('click', runAll);
-runAll();
-setInterval(runAll, 30000);
-
-// ────────── Live counters ──────────
+// ────────── Live counters (one-shot) ──────────
 function setCounter(id, value) {
   const el = document.getElementById(id);
   if (el) el.textContent = value ?? '—';
 }
 
-onSnapshot(doc(db, 'metrics', 'totals'), (snap) => {
-  if (!snap.exists()) {
-    ['ct-users','ct-wards','ct-patients','ct-notes','ct-acks','ct-comments']
-      .forEach(id => setCounter(id, '0'));
-    setCounter('last-activity', 'no activity yet');
-    return;
-  }
-  const d = snap.data();
-  setCounter('ct-users', d.userCount ?? 0);
-  setCounter('ct-wards', d.wardCount ?? 0);
-  setCounter('ct-patients', d.patientCount ?? 0);
-  setCounter('ct-notes', d.noteCount ?? 0);
-  setCounter('ct-acks', d.ackCount ?? 0);
-  setCounter('ct-comments', d.commentCount ?? 0);
+async function loadCounters() {
+  try {
+    const snap = await getDoc(doc(db, 'metrics', 'totals'));
+    if (!snap.exists()) {
+      ['ct-users','ct-wards','ct-patients','ct-notes','ct-acks','ct-comments']
+        .forEach(id => setCounter(id, '0'));
+      setCounter('last-activity', 'no activity yet');
+      return;
+    }
+    const d = snap.data();
+    setCounter('ct-users', d.userCount ?? 0);
+    setCounter('ct-wards', d.wardCount ?? 0);
+    setCounter('ct-patients', d.patientCount ?? 0);
+    setCounter('ct-notes', d.noteCount ?? 0);
+    setCounter('ct-acks', d.ackCount ?? 0);
+    setCounter('ct-comments', d.commentCount ?? 0);
 
-  const ts = d.lastActivityAt?.toDate?.();
-  if (ts) {
-    setCounter('last-activity', timeAgo(ts));
-    document.getElementById('live-pulse').classList.add('pulsing');
+    const ts = d.lastActivityAt?.toDate?.();
+    if (ts) {
+      setCounter('last-activity', timeAgo(ts));
+      document.getElementById('live-pulse')?.classList.add('pulsing');
+    }
+  } catch (e) {
+    console.warn('loadCounters failed:', e);
   }
-});
+}
 
-// ────────── Live activity feed ──────────
-const feed = document.getElementById('activity-feed');
-const q = query(
-  collection(db, 'recent_activity'),
-  orderBy('at', 'desc'),
-  limit(25)
-);
-onSnapshot(q, (snap) => {
-  if (snap.empty) {
-    feed.innerHTML = '<div class="feed-empty">No activity yet — once your team starts using Wardly, events appear here in real time.</div>';
-    return;
+// ────────── Activity feed (one-shot) ──────────
+async function loadFeed() {
+  const feed = document.getElementById('activity-feed');
+  if (!feed) return;
+  try {
+    const q = query(
+      collection(db, 'recent_activity'),
+      orderBy('at', 'desc'),
+      limit(FEED_LIMIT),
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) {
+      feed.innerHTML = '<div class="feed-empty">No activity yet — once your team starts using Wardly, events appear here.</div>';
+      return;
+    }
+    const items = [];
+    snap.forEach((d) => {
+      const data = d.data();
+      const at = data.at?.toDate?.() || new Date();
+      items.push(`
+        <div class="feed-item">
+          <div class="feed-icon ${typeColor(data.type)}">${typeEmoji(data.type)}</div>
+          <div class="feed-body">
+            <div class="feed-summary">${escape(data.summary || labelFor(data.type))}</div>
+            <div class="feed-meta">${labelFor(data.type)} · ${timeAgo(at)}</div>
+          </div>
+        </div>`);
+    });
+    feed.innerHTML = items.join('');
+  } catch (e) {
+    console.warn('loadFeed failed:', e);
+    feed.innerHTML =
+      '<div class="feed-empty">Could not load activity right now.</div>';
   }
-  const items = [];
-  snap.forEach((d) => {
-    const data = d.data();
-    const at = data.at?.toDate?.() || new Date();
-    items.push(`
-      <div class="feed-item">
-        <div class="feed-icon ${typeColor(data.type)}">${typeEmoji(data.type)}</div>
-        <div class="feed-body">
-          <div class="feed-summary">${escape(data.summary || labelFor(data.type))}</div>
-          <div class="feed-meta">${labelFor(data.type)} · ${timeAgo(at)}</div>
-        </div>
-      </div>`);
-  });
-  feed.innerHTML = items.join('');
-});
+}
 
 function typeEmoji(t) {
   return ({note:'📝', ack:'✅', comment:'💬', patient:'🛏️', ward:'🏥', user:'👤'})[t] || '•';
@@ -190,3 +207,29 @@ function escape(s) {
   return String(s ?? '').replace(/[&<>"']/g, c =>
     ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 }
+
+// ────────── Orchestration ──────────
+async function runAll() {
+  await Promise.all([checkAuth(), checkFirestore(), loadCounters(), loadFeed()]);
+  updateHeader();
+  setTimeout(tally, 200);
+}
+
+document.getElementById('recheck')?.addEventListener('click', runAll);
+runAll();
+
+// Re-run only every 5 minutes (was 30s). Pause completely when the tab
+// is hidden — no point billing reads while the user can't see them.
+let timer = null;
+function startAutoRefresh() {
+  stopAutoRefresh();
+  timer = setInterval(runAll, REFRESH_MS);
+}
+function stopAutoRefresh() {
+  if (timer) { clearInterval(timer); timer = null; }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) stopAutoRefresh();
+  else { startAutoRefresh(); runAll(); }
+});
+startAutoRefresh();

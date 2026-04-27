@@ -535,11 +535,6 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
               ),
               onSelected: (v) => _handleMenu(p, v),
               itemBuilder: (_) => [
-                if (p.isActive)
-                  const PopupMenuItem(
-                    value: 'discharge',
-                    child: Text('Discharge'),
-                  ),
                 const PopupMenuItem(
                   value: 'delete',
                   child: Text(
@@ -608,69 +603,37 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
 
   Future<void> _handleMenu(Patient p, String action) async {
     final provider = context.read<PatientProvider>();
-    if (action == 'discharge') {
-      final confirm = await showDialog<bool>(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: Text('Discharge ${p.name}?'),
-          content: const Text(
-            'Discharging this patient will permanently delete every note tagged to them — fully erased from our database. There is no backup and no way to recover this data once you confirm.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.danger,
-              ),
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Discharge'),
-            ),
-          ],
+    if (action != 'delete') return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('Delete ${p.name}?'),
+        content: const Text(
+          'This will permanently delete the patient and every note tagged to them — fully erased from our database. There is no backup and no way to recover this data once you tap Delete.',
         ),
-      );
-      if (confirm != true) return;
-      final ok = await provider.dischargePatient(p.id);
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.danger,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      final ok = await provider.deletePatient(p.id);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(ok ? '${p.name} discharged' : 'Failed to discharge'),
+          content: Text(ok ? '${p.name} deleted' : 'Failed to delete'),
         ),
       );
-    } else if (action == 'delete') {
-      final confirm = await showDialog<bool>(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: Text('Delete ${p.name}?'),
-          content: const Text(
-            'This will permanently delete the patient and every note tagged to them — fully erased from our database. There is no backup and no way to recover this data once you tap Delete.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.danger,
-              ),
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Delete'),
-            ),
-          ],
-        ),
-      );
-      if (confirm == true) {
-        final ok = await provider.deletePatient(p.id);
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(ok ? '${p.name} deleted' : 'Failed to delete'),
-          ),
-        );
-      }
     }
   }
 
