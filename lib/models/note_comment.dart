@@ -7,6 +7,7 @@ class NoteComment {
   final String authorName;
   final String authorRole;
   final DateTime createdAt;
+  final bool isAcknowledgement;
 
   const NoteComment({
     required this.id,
@@ -15,6 +16,7 @@ class NoteComment {
     required this.authorName,
     required this.authorRole,
     required this.createdAt,
+    this.isAcknowledgement = false,
   });
 
   factory NoteComment.fromFirestore(DocumentSnapshot doc) {
@@ -27,6 +29,7 @@ class NoteComment {
       authorRole: data['authorRole'] as String? ?? '',
       createdAt:
           (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      isAcknowledgement: data['isAcknowledgement'] as bool? ?? false,
     );
   }
 
@@ -36,5 +39,6 @@ class NoteComment {
         'authorName': authorName,
         'authorRole': authorRole,
         'createdAt': Timestamp.fromDate(createdAt),
+        'isAcknowledgement': isAcknowledgement,
       };
 }

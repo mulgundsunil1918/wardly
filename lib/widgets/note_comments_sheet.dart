@@ -48,7 +48,24 @@ class _NoteCommentsSheetState extends State<NoteCommentsSheet> {
 
     setState(() => _sending = true);
     try {
-      if (text.isNotEmpty) {
+      // If the user is acknowledging, we always drop a comment in the
+      // thread so the team can see who ack'd from inside the conversation.
+      // If they typed a reply, that reply itself is flagged as the ack.
+      // If they didn't, we post a tiny "Acknowledged" system bubble.
+      if (acknowledge) {
+        await _noteService.addComment(
+          widget.note.id,
+          NoteComment(
+            id: '',
+            text: text.isEmpty ? 'Acknowledged' : text,
+            authorId: user.uid,
+            authorName: user.name,
+            authorRole: user.roleLabel,
+            createdAt: DateTime.now(),
+            isAcknowledgement: true,
+          ),
+        );
+      } else if (text.isNotEmpty) {
         await _noteService.addComment(
           widget.note.id,
           NoteComment(
@@ -393,11 +410,17 @@ class _NoteCommentsSheetState extends State<NoteCommentsSheet> {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: mine
-                    ? AppColors.primary.withOpacity(0.1)
-                    : AppColors.surface,
+                color: c.isAcknowledgement
+                    ? AppColors.accent.withOpacity(0.08)
+                    : (mine
+                        ? AppColors.primary.withOpacity(0.1)
+                        : AppColors.surface),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.divider),
+                border: Border.all(
+                  color: c.isAcknowledgement
+                      ? AppColors.accent.withOpacity(0.4)
+                      : AppColors.divider,
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -441,6 +464,27 @@ class _NoteCommentsSheetState extends State<NoteCommentsSheet> {
                       ),
                     ],
                   ),
+                  if (c.isAcknowledgement) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.check_circle,
+                          size: 14,
+                          color: AppColors.accent,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Acknowledged by ${c.authorName}',
+                          style: GoogleFonts.dmSans(
+                            color: AppColors.accent,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 4),
                   Text(
                     c.text,
