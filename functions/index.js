@@ -19,6 +19,7 @@ const {
   onDocumentCreated,
   onDocumentDeleted,
 } = require('firebase-functions/v2/firestore');
+const { onRequest } = require('firebase-functions/v2/https');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
@@ -155,5 +156,56 @@ exports.onWardDeleted = onDocumentDeleted(
     console.log(
       `Wardly cleanup: scrubbed ${wardId} from ${members.size} user docs`,
     );
+  },
+);
+
+/**
+ * Wardly — one-shot metrics backfill.
+ *
+ * GET https://us-central1-wardly-24081996.cloudfunctions.net/backfillMetrics?token=SECRET
+ *
+ * Recomputes the real count for every collection we track and writes
+ * it into /metrics/totals. Safe to re-run. Gated by a token query
+ * parameter so random hits can't trigger writes.
+ */
+exports.backfillMetrics = onRequest(
+  { ...COMMON_OPTS, timeoutSeconds: 120 },
+  async (req, res) => {
+    const expected = 'wardly-backfill-2026';
+    if (req.query.token !== expected) {
+      res.status(401).send('Unauthorized');
+      return;
+    }
+    try {
+      const db = getFirestore();
+      const [users, wards, patients, notes, acks] = await Promise.all([
+        db.collection('users').count().get(),
+        db.collection('wards').count().get(),
+        db.collection('patients').count().get(),
+        db.collection('notes').count().get(),
+        db
+          .collection('notes')
+          .where('isAcknowledged', '==', true)
+          .count()
+          .get(),
+      ]);
+      const comments = await db.collectionGroup('comments').count().get();
+
+      const totals = {
+        userCount: users.data().count,
+        wardCount: wards.data().count,
+        patientCount: patients.data().count,
+        noteCount: notes.data().count,
+        ackCount: acks.data().count,
+        commentCount: comments.data().count,
+        lastBackfillAt: FieldValue.serverTimestamp(),
+      };
+
+      await db.collection('metrics').doc('totals').set(totals, { merge: true });
+      res.status(200).json({ ok: true, totals });
+    } catch (e) {
+      console.error('backfillMetrics failed', e);
+      res.status(500).json({ ok: false, error: String(e) });
+    }
   },
 );

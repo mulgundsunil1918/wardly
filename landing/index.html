@@ -21,10 +21,10 @@
         <span class="brand-text">WARDLY</span>
       </div>
       <nav class="nav-links">
-        <a href="#stats">Live stats</a>
         <a href="#problem">Problem</a>
         <a href="#solution">Wardly</a>
         <a href="#how">How it works</a>
+        <a href="#stats">Live stats</a>
         <a class="btn btn-primary" href="../">Launch app →</a>
       </nav>
     </div>
@@ -44,26 +44,6 @@
       </div>
     </div>
     <div class="hero-bg"></div>
-  </section>
-
-  <!-- ─────────── LIVE STATS — pulled from Firestore /metrics/totals ─────────── -->
-  <section id="stats" class="section">
-    <div class="container">
-      <div class="section-head">
-        <div class="eyebrow">📊 Live numbers</div>
-        <h2>Wardly, by the numbers — right now</h2>
-        <p>Pulled live from the production Firestore. These tick up as teams use the app.</p>
-      </div>
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-num" data-stat="users">—</div><div class="stat-label">Total users</div></div>
-        <div class="stat-card"><div class="stat-num" data-stat="wards">—</div><div class="stat-label">Wards</div></div>
-        <div class="stat-card"><div class="stat-num" data-stat="patients">—</div><div class="stat-label">Patients</div></div>
-        <div class="stat-card"><div class="stat-num" data-stat="notes">—</div><div class="stat-label">Notes posted</div></div>
-        <div class="stat-card"><div class="stat-num" data-stat="acks">—</div><div class="stat-label">Acknowledgements</div></div>
-        <div class="stat-card"><div class="stat-num" data-stat="comments">—</div><div class="stat-label">Replies in threads</div></div>
-      </div>
-      <p class="stats-note">Last updated <span data-stat="updated">just now</span> · counts are cumulative since the app went live.</p>
-    </div>
   </section>
 
   <!-- ─────────── PROBLEM details ─────────── -->
@@ -230,6 +210,26 @@
     </div>
   </section>
 
+  <!-- ─────────── LIVE STATS — pulled from Firestore /metrics/totals ─────────── -->
+  <section id="stats" class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <div class="eyebrow">📊 Live numbers</div>
+        <h2>Wardly, by the numbers — right now</h2>
+        <p>Pulled live from the production Firestore. These tick up as teams use the app.</p>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-num" data-stat="users">—</div><div class="stat-label">Total users</div></div>
+        <div class="stat-card"><div class="stat-num" data-stat="wards">—</div><div class="stat-label">Wards</div></div>
+        <div class="stat-card"><div class="stat-num" data-stat="patients">—</div><div class="stat-label">Patients</div></div>
+        <div class="stat-card"><div class="stat-num" data-stat="notes">—</div><div class="stat-label">Notes posted</div></div>
+        <div class="stat-card"><div class="stat-num" data-stat="acks">—</div><div class="stat-label">Acknowledgements</div></div>
+        <div class="stat-card"><div class="stat-num" data-stat="comments">—</div><div class="stat-label">Replies in threads</div></div>
+      </div>
+      <p class="stats-note">Last updated <span data-stat="updated">just now</span> · counts are cumulative since the app went live.</p>
+    </div>
+  </section>
+
   <!-- ─────────── CTA ─────────── -->
   <section class="cta-section">
     <div class="container cta-inner">
@@ -297,10 +297,17 @@
     const CACHE_KEY = "wardly_stats_v1";
     const CACHE_TTL_MS = 5 * 60 * 1000;
 
+    // Always render every expected stat — if a counter is missing (e.g.
+    // the field was never bumped on the metrics doc) we still want the
+    // card to read '0' instead of leaving the placeholder em-dash up.
+    const STAT_KEYS = ["users", "wards", "patients", "notes", "acks", "comments"];
+
     function paint(map, lastActivityIso) {
-      for (const [key, val] of Object.entries(map)) {
+      const m = map || {};
+      for (const key of STAT_KEYS) {
         const el = document.querySelector(`[data-stat="${key}"]`);
         if (!el) continue;
+        const val = m[key];
         if (typeof val === "number") animate(el, val);
         else el.textContent = "0";
       }
