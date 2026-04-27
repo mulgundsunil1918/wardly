@@ -78,16 +78,16 @@ class _MainScaffoldState extends State<MainScaffold>
       case UserRole.doctor:
         return const [
           DoctorHomeScreen(),
+          WardsScreen(),
           PatientsListScreen(),
           _DoctorNotesList(),
-          WardsScreen(),
           ProfileScreen(),
         ];
       case UserRole.nurse:
         return const [
           NurseHomeScreen(),
-          NursePatientsScreen(),
           WardsScreen(),
+          NursePatientsScreen(),
           ProfileScreen(),
         ];
       case UserRole.admin:
@@ -110,6 +110,11 @@ class _MainScaffoldState extends State<MainScaffold>
             label: 'Home',
           ),
           const BottomNavigationBarItem(
+            icon: Icon(Icons.corporate_fare_outlined),
+            activeIcon: Icon(Icons.corporate_fare),
+            label: 'Wards',
+          ),
+          const BottomNavigationBarItem(
             icon: Icon(Icons.people_outline),
             activeIcon: Icon(Icons.people),
             label: 'Patients',
@@ -125,11 +130,6 @@ class _MainScaffoldState extends State<MainScaffold>
             label: 'Notes',
           ),
           const BottomNavigationBarItem(
-            icon: Icon(Icons.corporate_fare_outlined),
-            activeIcon: Icon(Icons.corporate_fare),
-            label: 'Wards',
-          ),
-          const BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
             activeIcon: Icon(Icons.person),
             label: 'Profile',
@@ -143,14 +143,14 @@ class _MainScaffoldState extends State<MainScaffold>
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.people_outline),
-            activeIcon: Icon(Icons.people),
-            label: 'Patients',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.corporate_fare_outlined),
             activeIcon: Icon(Icons.corporate_fare),
             label: 'Wards',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.people_outline),
+            activeIcon: Icon(Icons.people),
+            label: 'Patients',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
