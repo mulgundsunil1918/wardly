@@ -13,6 +13,7 @@ import '../../services/push_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/web_notice.dart';
 import 'background_setup_screen.dart';
+import 'onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -34,7 +35,10 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
     final authProvider = context.read<AuthProvider>();
     final prefs = await SharedPreferences.getInstance();
-    final onboardingDone = prefs.getBool('onboarding_complete') ?? false;
+    // We use a versioned key so a Samsung Smart Switch / Google Auto Backup
+    // restore that brings back the *old* flag won't suppress the new
+    // tutorial on a fresh install.
+    final onboardingDone = prefs.getBool(kOnboardingDoneKey) ?? false;
 
     if (FirebaseAuth.instance.currentUser == null) {
       if (!mounted) return;

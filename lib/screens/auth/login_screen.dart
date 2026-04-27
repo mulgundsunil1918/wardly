@@ -9,6 +9,7 @@ import '../../services/push_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/friendly_error.dart';
 import 'background_setup_screen.dart';
+import 'onboarding_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -61,7 +62,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _markOnboardingDone() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('onboarding_complete', true);
+    await prefs.setBool(kOnboardingDoneKey, true);
+    await prefs.remove('onboarding_complete'); // legacy
   }
 
   @override
