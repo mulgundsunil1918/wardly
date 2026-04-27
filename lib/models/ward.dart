@@ -7,6 +7,7 @@ class Ward {
   final int capacity;
   final String headDoctorName;
   final String creatorId;
+  final String creatorEmail;
   final DateTime createdAt;
 
   const Ward({
@@ -16,6 +17,7 @@ class Ward {
     required this.capacity,
     required this.headDoctorName,
     this.creatorId = '',
+    this.creatorEmail = '',
     required this.createdAt,
   });
 
@@ -28,6 +30,7 @@ class Ward {
       capacity: (data['capacity'] as num?)?.toInt() ?? 0,
       headDoctorName: data['headDoctorName'] as String? ?? '',
       creatorId: data['creatorId'] as String? ?? '',
+      creatorEmail: data['creatorEmail'] as String? ?? '',
       createdAt:
           (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
@@ -40,6 +43,7 @@ class Ward {
       'capacity': capacity,
       'headDoctorName': headDoctorName,
       'creatorId': creatorId,
+      'creatorEmail': creatorEmail,
       'createdAt': Timestamp.fromDate(createdAt),
     };
   }

@@ -482,19 +482,19 @@ class WardsScreen extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
                   color: const Color(0xFFE6F1FB),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
                   Icons.add_box_outlined,
                   color: AppColors.primary,
-                  size: 22,
+                  size: 26,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -506,27 +506,28 @@ class WardsScreen extends StatelessWidget {
                             w.name,
                             style: GoogleFonts.dmSans(
                               color: AppColors.textPrimary,
-                              fontSize: 16,
+                              fontSize: 19,
                               fontWeight: FontWeight.bold,
+                              height: 1.2,
                             ),
                           ),
                         ),
                         if (isCreator) ...[
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
+                              horizontal: 8,
+                              vertical: 3,
                             ),
                             decoration: BoxDecoration(
                               color: AppColors.accent.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(7),
                             ),
                             child: Text(
                               'OWNED BY YOU',
                               style: GoogleFonts.dmSans(
                                 color: AppColors.accent,
-                                fontSize: 9,
+                                fontSize: 10,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 0.6,
                               ),
@@ -536,22 +537,39 @@ class WardsScreen extends StatelessWidget {
                       ],
                     ),
                     if (w.floor.isNotEmpty)
-                      Text(
-                        w.floor,
-                        style: GoogleFonts.dmSans(
-                          color: AppColors.textSecondary,
-                          fontSize: 12,
-                        ),
-                      ),
-                    if (!isCreator && w.headDoctorName.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 2),
                         child: Text(
-                          'Owner · ${w.headDoctorName}',
+                          w.floor,
                           style: GoogleFonts.dmSans(
                             color: AppColors.textSecondary,
-                            fontSize: 12,
+                            fontSize: 13,
                           ),
+                        ),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        isCreator
+                            ? 'Owner · You'
+                            : 'Owner · ${w.headDoctorName.isNotEmpty ? w.headDoctorName : 'Unknown'}',
+                        style: GoogleFonts.dmSans(
+                          color: AppColors.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    if (w.creatorEmail.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 1),
+                        child: Text(
+                          w.creatorEmail,
+                          style: GoogleFonts.dmSans(
+                            color: AppColors.textSecondary,
+                            fontSize: 13,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                   ],
@@ -776,6 +794,7 @@ class WardsScreen extends StatelessWidget {
                   'capacity': 0,
                   'headDoctorName': auth.currentUser?.name ?? '',
                   'creatorId': uid,
+                  'creatorEmail': auth.currentUser?.email ?? '',
                   'createdAt': Timestamp.fromDate(DateTime.now()),
                 });
                 MetricsService.bump('ward',
