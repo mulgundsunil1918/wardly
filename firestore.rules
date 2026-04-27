@@ -6,26 +6,51 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function myWardIds() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.wardIds;
+    }
+
+    function isMember(wardId) {
+      return signedIn() && wardId in myWardIds();
+    }
+
     match /users/{userId} {
+      // Members of the same ward can look each other up.
       allow read: if signedIn();
       allow create: if signedIn() && request.auth.uid == userId;
       allow update: if signedIn() && request.auth.uid == userId;
-      allow delete: if false;
+      allow delete: if signedIn() && request.auth.uid == userId;
     }
 
     match /wards/{wardId} {
-      allow read: if signedIn();
+      // Only the creator OR a member of the ward can read it.
+      allow read: if signedIn() && (
+        resource.data.creatorId == request.auth.uid ||
+        wardId in myWardIds()
+      );
       allow create: if signedIn();
-      // Update allowed for anyone signed in (joining updates user doc, not ward).
+      // Updates: any signed-in user (creator-only enforced in app for renames).
       allow update: if signedIn();
-      // Only the creator can delete.
       allow delete: if signedIn() &&
         resource.data.creatorId == request.auth.uid;
     }
 
     match /patients/{patientId} {
-      allow read: if signedIn();
-      allow write: if signedIn();
+      allow read: if isMember(resource.data.wardId);
+      allow create: if isMember(request.resource.data.wardId);
+      allow update: if isMember(resource.data.wardId);
+      allow delete: if isMember(resource.data.wardId);
+    }
+
+    match /notes/{noteId} {
+      allow read: if isMember(resource.data.wardId);
+      allow create: if isMember(request.resource.data.wardId);
+      allow update: if isMember(resource.data.wardId);
+      allow delete: if isMember(resource.data.wardId);
+
+      match /comments/{commentId} {
+        allow read, write: if signedIn();
+      }
     }
 
     // Public-readable metrics for the admin dashboard.
@@ -37,17 +62,6 @@ service cloud.firestore {
       allow read: if true;
       allow create: if signedIn();
       allow update, delete: if false;
-    }
-
-    match /notes/{noteId} {
-      allow read: if signedIn();
-      allow create: if signedIn();
-      allow update: if signedIn();
-      allow delete: if signedIn();
-
-      match /comments/{commentId} {
-        allow read, write: if signedIn();
-      }
     }
   }
 }

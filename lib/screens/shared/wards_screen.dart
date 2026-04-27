@@ -202,6 +202,27 @@ class WardsScreen extends StatelessWidget {
     );
   }
 
+  void _showOnlyCreatorCanDelete(BuildContext context, Ward w) {
+    final owner = w.headDoctorName.isNotEmpty
+        ? w.headDoctorName
+        : 'the ward creator';
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Only the owner can delete this ward'),
+        content: Text(
+          'This ward was created by $owner. Only $owner can delete it. Ask them to do it from their account if it really needs to go.',
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Got it'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _deleteWard(BuildContext context, Ward w) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -448,13 +469,41 @@ class WardsScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      w.name,
-                      style: GoogleFonts.dmSans(
-                        color: AppColors.textPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            w.name,
+                            style: GoogleFonts.dmSans(
+                              color: AppColors.textPrimary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        if (isCreator) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.accent.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'OWNED BY YOU',
+                              style: GoogleFonts.dmSans(
+                                color: AppColors.accent,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.6,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     if (w.floor.isNotEmpty)
                       Text(
@@ -462,6 +511,17 @@ class WardsScreen extends StatelessWidget {
                         style: GoogleFonts.dmSans(
                           color: AppColors.textSecondary,
                           fontSize: 12,
+                        ),
+                      ),
+                    if (!isCreator && w.headDoctorName.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          'Owner · ${w.headDoctorName}',
+                          style: GoogleFonts.dmSans(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                   ],
@@ -547,8 +607,9 @@ class WardsScreen extends StatelessWidget {
                     label: 'Delete',
                     icon: Icons.delete_outline,
                     color: AppColors.danger,
-                    onTap:
-                        isCreator ? () => _deleteWard(context, w) : null,
+                    onTap: isCreator
+                        ? () => _deleteWard(context, w)
+                        : () => _showOnlyCreatorCanDelete(context, w),
                   ),
                 ),
               ],
