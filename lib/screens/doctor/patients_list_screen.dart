@@ -334,6 +334,29 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
   Future<void> _handleMenu(Patient p, String action) async {
     final provider = context.read<PatientProvider>();
     if (action == 'discharge') {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text('Discharge ${p.name}?'),
+          content: const Text(
+            'Discharging this patient will permanently delete every note tagged to them — fully erased from our database. There is no backup and no way to recover this data once you confirm.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.danger,
+              ),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Discharge'),
+            ),
+          ],
+        ),
+      );
+      if (confirm != true) return;
       final ok = await provider.dischargePatient(p.id);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -347,7 +370,7 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
         builder: (_) => AlertDialog(
           title: Text('Delete ${p.name}?'),
           content: const Text(
-            'This permanently removes the patient. Notes linked will remain but be orphaned.',
+            'This will permanently delete the patient and every note tagged to them — fully erased from our database. There is no backup and no way to recover this data once you tap Delete.',
           ),
           actions: [
             TextButton(

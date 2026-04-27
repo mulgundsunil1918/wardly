@@ -452,7 +452,7 @@ class ProfileScreen extends StatelessWidget {
       builder: (_) => AlertDialog(
         title: const Text('Delete your account?'),
         content: const Text(
-          'This permanently deletes your account and removes you from all wards. Notes and patients you created will remain in the wards but their author will be marked as Deleted user. This cannot be undone.',
+          'This will permanently delete your account and remove you from every ward — fully erased from our database. There is no backup and no way to recover your account once you tap Delete forever.',
         ),
         actions: [
           TextButton(

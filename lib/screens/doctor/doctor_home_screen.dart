@@ -539,7 +539,9 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Delete note?'),
-        content: const Text('This cannot be undone.'),
+        content: const Text(
+          'This will permanently delete the note and every reply on it — fully erased from our database. There is no backup and no way to recover it once you tap Delete.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),

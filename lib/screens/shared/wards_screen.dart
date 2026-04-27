@@ -208,7 +208,7 @@ class WardsScreen extends StatelessWidget {
       builder: (_) => AlertDialog(
         title: Text('Delete ward "${w.name}"?'),
         content: const Text(
-          'This will permanently delete the ward along with every patient and note inside it. Members will lose access. This cannot be undone.',
+          'This will permanently delete the ward and every patient, note and reply inside it — fully erased from our database. Members will lose access immediately. There is no backup and no way to recover this data once you tap Delete.',
         ),
         actions: [
           TextButton(
