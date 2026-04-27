@@ -5,9 +5,12 @@
  * Action:  push a notification to every user whose `wardIds` array
  *          contains the note's wardId — except the author.
  */
-const { onDocumentCreated } = require('firebase-functions/v2/firestore');
+const {
+  onDocumentCreated,
+  onDocumentDeleted,
+} = require('firebase-functions/v2/firestore');
 const { initializeApp } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
 
 initializeApp();
@@ -94,6 +97,45 @@ exports.onNoteCreated = onDocumentCreated(
 
     console.log(
       `Wardly FCM: sent ${response.successCount}/${tokens.length} for ward ${wardId}`,
+    );
+  },
+);
+
+/**
+ * Wardly — clean up teammate wardIds when a ward is deleted.
+ *
+ * Trigger: a doc in /wards/{wardId} is deleted.
+ * Action:  find every user whose `wardIds` array contains the dead
+ *          ward id and remove it. The deleter handles their own doc
+ *          client-side; this function takes care of every other member,
+ *          which the security rules don't allow them to do directly.
+ */
+exports.onWardDeleted = onDocumentDeleted(
+  { document: 'wards/{wardId}', region: 'us-central1' },
+  async (event) => {
+    const wardId = event.params.wardId;
+    if (!wardId) return;
+
+    const db = getFirestore();
+    const members = await db
+      .collection('users')
+      .where('wardIds', 'array-contains', wardId)
+      .get();
+
+    if (members.empty) {
+      console.log(`Wardly cleanup: no stale wardIds for ${wardId}`);
+      return;
+    }
+
+    const batch = db.batch();
+    members.forEach((doc) => {
+      batch.update(doc.ref, {
+        wardIds: FieldValue.arrayRemove(wardId),
+      });
+    });
+    await batch.commit();
+    console.log(
+      `Wardly cleanup: scrubbed ${wardId} from ${members.size} user docs`,
     );
   },
 );
