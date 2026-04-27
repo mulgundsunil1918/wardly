@@ -16,6 +16,21 @@ class WardService {
   CollectionReference<Map<String, dynamic>> get _users =>
       _firestore.collection(AppConstants.usersCollection);
 
+  /// Streams the wards a user is a member of. Pass the user's wardIds list.
+  /// An empty list yields an empty stream — no Firestore query, no rule
+  /// denial. Caller is responsible for chunking past 30 ids if ever needed.
+  Stream<List<Ward>> wardsForUser(List<String> wardIds) {
+    if (wardIds.isEmpty) return Stream.value(const <Ward>[]);
+    final ids = wardIds.length > 30 ? wardIds.sublist(0, 30) : wardIds;
+    return _wards
+        .where(FieldPath.documentId, whereIn: ids)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map(Ward.fromFirestore).toList());
+  }
+
+  /// Legacy admin-only helper — fetches every ward in the system. With the
+  /// current Firestore rules this only returns wards the caller is a
+  /// member of, so for non-admin paths use [wardsForUser] instead.
   Stream<List<Ward>> getAllWards() {
     return _wards.orderBy('name').snapshots().map(
           (snapshot) => snapshot.docs.map(Ward.fromFirestore).toList(),

@@ -21,9 +21,17 @@ class PatientsListScreen extends StatefulWidget {
 }
 
 class _PatientsListScreenState extends State<PatientsListScreen> {
-  bool _searching = false;
   final _searchController = TextEditingController();
   String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      final q = _searchController.text.trim().toLowerCase();
+      if (q != _query) setState(() => _query = q);
+    });
+  }
 
   @override
   void dispose() {
@@ -47,10 +55,11 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
         ),
       );
     }
+    final ids = myWardIds.length > 30 ? myWardIds.sublist(0, 30) : myWardIds;
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection(AppConstants.wardsCollection)
-          .where(FieldPath.documentId, whereIn: myWardIds)
+          .where(FieldPath.documentId, whereIn: ids)
           .snapshots(),
       builder: (context, snap) {
         if (!snap.hasData) {
@@ -72,76 +81,143 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
             ),
           );
         }
+        final wardById = {for (final w in wards) w.id: w};
+        final isSearching = _query.isNotEmpty;
 
-        const initialIndex = 0;
-
-        return DefaultTabController(
-          length: wards.length,
-          initialIndex: initialIndex,
-          child: Scaffold(
-            backgroundColor: AppColors.surface,
-            appBar: AppBar(
-              title: _searching
-                  ? TextField(
-                      controller: _searchController,
-                      autofocus: true,
-                      decoration: const InputDecoration(
-                        hintText: 'Search patients',
-                        border: InputBorder.none,
-                        filled: false,
-                      ),
-                      onChanged: (v) =>
-                          setState(() => _query = v.toLowerCase()),
-                    )
-                  : const Text('Patients'),
-              actions: [
-                IconButton(
-                  icon: Icon(_searching ? Icons.close : Icons.search),
-                  onPressed: () => setState(() {
-                    if (_searching) {
-                      _searchController.clear();
-                      _query = '';
-                    }
-                    _searching = !_searching;
-                  }),
+        Widget body;
+        if (isSearching) {
+          body = _searchResults(wards, wardById);
+        } else {
+          body = DefaultTabController(
+            length: wards.length,
+            child: Column(
+              children: [
+                Container(
+                  color: AppColors.appBarBg,
+                  child: TabBar(
+                    isScrollable: true,
+                    tabAlignment: TabAlignment.start,
+                    labelColor: AppColors.primary,
+                    unselectedLabelColor: AppColors.textSecondary,
+                    indicatorColor: AppColors.primary,
+                    labelStyle:
+                        GoogleFonts.dmSans(fontWeight: FontWeight.w600),
+                    tabs: wards.map((w) => Tab(text: w.name)).toList(),
+                  ),
+                ),
+                Expanded(
+                  child: TabBarView(
+                    children: wards.map((w) => _wardPatients(w)).toList(),
+                  ),
                 ),
               ],
-              bottom: TabBar(
-                isScrollable: true,
-                tabAlignment: TabAlignment.start,
-                labelColor: AppColors.primary,
-                unselectedLabelColor: AppColors.textSecondary,
-                indicatorColor: AppColors.primary,
-                labelStyle: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
-                tabs: wards.map((w) => Tab(text: w.name)).toList(),
-              ),
             ),
-            body: TabBarView(
-              children: wards.map((w) => _wardPatients(w)).toList(),
-            ),
-            floatingActionButton: Builder(
-              builder: (ctx) => FloatingActionButton.extended(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                icon: const Icon(Icons.add),
-                label: const Text('Add Patient'),
-                onPressed: () {
-                  final tabIndex = DefaultTabController.of(ctx).index;
-                  final activeWardId = wards[tabIndex].id;
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          AddPatientScreen(initialWardId: activeWardId),
-                    ),
-                  );
-                },
-              ),
-            ),
+          );
+        }
+
+        return Scaffold(
+          backgroundColor: AppColors.surface,
+          appBar: AppBar(title: const Text('Patients')),
+          body: Column(
+            children: [
+              _searchBar(),
+              Expanded(child: body),
+            ],
           ),
+          floatingActionButton: isSearching
+              ? null
+              : Builder(
+                  builder: (ctx) => FloatingActionButton.extended(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add Patient'),
+                    onPressed: () {
+                      // Without DefaultTabController in scope here, fall back
+                      // to the first ward; AddPatientScreen lets the user
+                      // change the ward anyway.
+                      final activeWardId = wards.first.id;
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => AddPatientScreen(
+                              initialWardId: activeWardId),
+                        ),
+                      );
+                    },
+                  ),
+                ),
         );
       },
     );
   }
+
+  // ───────────────── Always-visible search bar ─────────────────
+
+  Widget _searchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.divider),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            const SizedBox(width: 14),
+            Icon(
+              Icons.search,
+              color: _query.isEmpty
+                  ? AppColors.textSecondary
+                  : AppColors.primary,
+              size: 22,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TextField(
+                controller: _searchController,
+                textInputAction: TextInputAction.search,
+                style: GoogleFonts.dmSans(
+                  color: AppColors.textPrimary,
+                  fontSize: 15,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Search patients across all your wards…',
+                  hintStyle: GoogleFonts.dmSans(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                  ),
+                  border: InputBorder.none,
+                  isDense: true,
+                  filled: false,
+                  contentPadding:
+                      const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ),
+            if (_query.isNotEmpty)
+              IconButton(
+                tooltip: 'Clear',
+                icon: const Icon(Icons.close, size: 20),
+                color: AppColors.textSecondary,
+                onPressed: () {
+                  _searchController.clear();
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ───────────────── Per-ward (no search) tab body ─────────────────
 
   Widget _wardPatients(Ward ward) {
     return StreamBuilder<QuerySnapshot>(
@@ -167,14 +243,7 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
         if (!snap.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
-        var patients = snap.data!.docs.map(Patient.fromFirestore).toList();
-        if (_query.isNotEmpty) {
-          patients = patients
-              .where((p) =>
-                  p.name.toLowerCase().contains(_query) ||
-                  p.bedNumber.toLowerCase().contains(_query))
-              .toList();
-        }
+        final patients = snap.data!.docs.map(Patient.fromFirestore).toList();
         if (patients.isEmpty) {
           return Center(
             child: Column(
@@ -195,16 +264,136 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
           );
         }
         return ListView.separated(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 90),
           itemCount: patients.length,
           separatorBuilder: (_, __) => const SizedBox(height: 10),
-          itemBuilder: (_, i) => _patientCard(patients[i]),
+          itemBuilder: (_, i) =>
+              _patientCard(patients[i], wardName: null),
         );
       },
     );
   }
 
-  Widget _patientCard(Patient p) {
+  // ───────────────── Cross-ward search results ─────────────────
+
+  Widget _searchResults(List<Ward> wards, Map<String, Ward> wardById) {
+    final wardIds = wards.map((w) => w.id).toList();
+    final ids = wardIds.length > 30 ? wardIds.sublist(0, 30) : wardIds;
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection(AppConstants.patientsCollection)
+          .where('wardId', whereIn: ids)
+          .snapshots(),
+      builder: (context, snap) {
+        if (snap.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                "Couldn't search patients: ${snap.error}",
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.danger),
+              ),
+            ),
+          );
+        }
+        if (!snap.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        // Filter on client because Firestore can't do substring match.
+        final all = snap.data!.docs.map(Patient.fromFirestore).toList();
+        final q = _query;
+        final results = all.where((p) {
+          return p.name.toLowerCase().contains(q) ||
+              p.bedNumber.toLowerCase().contains(q) ||
+              p.diagnosis.toLowerCase().contains(q);
+        }).toList()
+          ..sort((a, b) {
+            // Active patients first, then by recent admission.
+            if (a.isActive != b.isActive) return a.isActive ? -1 : 1;
+            return b.admittedAt.compareTo(a.admittedAt);
+          });
+
+        if (results.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.person_search,
+                    size: 48,
+                    color: AppColors.textSecondary.withOpacity(0.5),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'No patient matches "$_query"',
+                    style: GoogleFonts.dmSans(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Searched across ${wards.length} ward${wards.length == 1 ? '' : 's'}',
+                    style: GoogleFonts.dmSans(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 4, 18, 4),
+              child: Row(
+                children: [
+                  Text(
+                    '${results.length} match${results.length == 1 ? '' : 'es'}',
+                    style: GoogleFonts.dmSans(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '· across ${wards.length} ward${wards.length == 1 ? '' : 's'}',
+                    style: GoogleFonts.dmSans(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16, 6, 16, 90),
+                itemCount: results.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                itemBuilder: (_, i) {
+                  final p = results[i];
+                  final wardName = wardById[p.wardId]?.name;
+                  return _patientCard(p, wardName: wardName);
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ───────────────── Patient card (with optional highlight) ─────────────────
+
+  Widget _patientCard(Patient p, {required String? wardName}) {
+    final highlight = _query.isNotEmpty;
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: () {
@@ -219,7 +408,12 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
         decoration: BoxDecoration(
           color: AppColors.card,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.divider),
+          border: Border.all(
+            color: highlight
+                ? AppColors.primary.withOpacity(0.4)
+                : AppColors.divider,
+            width: highlight ? 1.4 : 1,
+          ),
         ),
         child: Row(
           children: [
@@ -242,11 +436,9 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: Text(
+                        child: _highlightText(
                           p.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.dmSans(
+                          baseStyle: GoogleFonts.dmSans(
                             color: AppColors.textPrimary,
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -264,9 +456,9 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: AppColors.divider),
                           ),
-                          child: Text(
+                          child: _highlightText(
                             'Bed ${p.bedNumber}',
-                            style: GoogleFonts.dmSans(
+                            baseStyle: GoogleFonts.dmSans(
                               color: AppColors.textSecondary,
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -277,14 +469,14 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
                   ),
                   if (p.diagnosis.isNotEmpty) ...[
                     const SizedBox(height: 2),
-                    Text(
+                    _highlightText(
                       p.diagnosis,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.dmSans(
+                      baseStyle: GoogleFonts.dmSans(
                         color: AppColors.textSecondary,
                         fontSize: 13,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                   const SizedBox(height: 8),
@@ -299,6 +491,38 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
                       ),
                       const SizedBox(width: 8),
                       _statusChip(p.isActive),
+                      if (wardName != null) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.corporate_fare,
+                                size: 11,
+                                color: AppColors.primary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                wardName,
+                                style: GoogleFonts.dmSans(
+                                  color: AppColors.primary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ],
@@ -328,6 +552,57 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Wraps [text] in a RichText that highlights every case-insensitive
+  /// occurrence of the active search query, using the app's primary
+  /// accent. If the search box is empty, falls back to a plain Text.
+  Widget _highlightText(
+    String text, {
+    required TextStyle baseStyle,
+    int? maxLines,
+    TextOverflow? overflow,
+  }) {
+    if (_query.isEmpty) {
+      return Text(
+        text,
+        style: baseStyle,
+        maxLines: maxLines,
+        overflow: overflow,
+      );
+    }
+    final lower = text.toLowerCase();
+    final q = _query;
+    final spans = <TextSpan>[];
+    int i = 0;
+    while (i < text.length) {
+      final hit = lower.indexOf(q, i);
+      if (hit < 0) {
+        spans.add(TextSpan(text: text.substring(i), style: baseStyle));
+        break;
+      }
+      if (hit > i) {
+        spans.add(
+          TextSpan(text: text.substring(i, hit), style: baseStyle),
+        );
+      }
+      spans.add(
+        TextSpan(
+          text: text.substring(hit, hit + q.length),
+          style: baseStyle.copyWith(
+            color: AppColors.primary,
+            fontWeight: FontWeight.w800,
+            backgroundColor: AppColors.primary.withOpacity(0.12),
+          ),
+        ),
+      );
+      i = hit + q.length;
+    }
+    return Text.rich(
+      TextSpan(children: spans),
+      maxLines: maxLines,
+      overflow: overflow,
     );
   }
 
