@@ -13,6 +13,7 @@ import 'tutorial_screen.dart';
 
 import '../../models/app_user.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/text_scale_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/app_utils.dart';
@@ -348,7 +349,7 @@ class ProfileScreen extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
           child: Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.format_size,
                 color: AppColors.textSecondary,
               ),
@@ -365,7 +366,7 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     Text(
                       '${(ts.scale * 100).round()}% of default',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 12,
                       ),
