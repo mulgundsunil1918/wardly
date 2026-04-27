@@ -56,12 +56,6 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
       backgroundColor: AppColors.surface,
       appBar: AppBar(
         title: Text(patient?.name ?? 'Patient'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: () {},
-          ),
-        ],
       ),
       body: patient == null
           ? const Center(child: CircularProgressIndicator())
