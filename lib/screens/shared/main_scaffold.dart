@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../models/app_user.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/note_provider.dart';
+import '../../providers/patient_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/note_card.dart';
 import '../admin/admin_home_screen.dart';
