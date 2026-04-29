@@ -486,7 +486,7 @@ class ProfileScreen extends StatelessWidget {
   // ───────────────────────── Feedback & support ─────────────────────────
 
   static const String _supportEmail = 'mulgundsunil@gmail.com';
-  static const String _androidPackage = 'com.example.wardly';
+  static const String _androidPackage = 'com.wardly.app';
 
   Widget _feedbackCard(BuildContext context) {
     return _cardWrapper(

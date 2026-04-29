@@ -1,4 +1,4 @@
-package com.example.wardly
+package com.wardly.app
 
 import io.flutter.embedding.android.FlutterActivity
 
