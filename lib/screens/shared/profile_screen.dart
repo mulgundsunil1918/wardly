@@ -8,10 +8,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
+import 'package:in_app_review/in_app_review.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../utils/share_helper.dart';
 import '../../widgets/support_sheet.dart';
 import '../auth/background_setup_screen.dart';
+import 'help_screen.dart';
 import 'tutorial_screen.dart';
 
 import '../../models/app_user.dart';
@@ -334,6 +336,18 @@ class ProfileScreen extends StatelessWidget {
             ),
           ),
         ),
+        const Divider(height: 1, indent: 60),
+        ListTile(
+          leading: const Icon(Icons.quiz_outlined),
+          title: const Text('Help & FAQs'),
+          subtitle: const Text(
+            'Quick answers to the most common questions',
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const HelpScreen()),
+          ),
+        ),
       ],
     );
   }
@@ -627,12 +641,26 @@ Account: $email
     }
   }
 
-  /// Opens the Play Store listing — `market://` first (jumps straight
-  /// into the Play Store app on Android), HTTPS fallback for any other
-  /// platform / when Play Store isn't installed.
+  /// Tries Google Play's in-app review dialog first (no app switch — the
+  /// rating prompt overlays the app). Falls back to opening the Play
+  /// Store listing if in-app review isn't available (web, Android device
+  /// without Play Services, or quota exhausted by Google).
   Future<void> _openPlayStoreRating(BuildContext context) async {
-    final marketUri =
-        Uri.parse('market://details?id=$_androidPackage');
+    final review = InAppReview.instance;
+
+    if (!kIsWeb) {
+      try {
+        if (await review.isAvailable()) {
+          await review.requestReview();
+          return; // Done — Play handled the dialog inside the app.
+        }
+      } catch (_) {
+        // fall through to the store listing
+      }
+    }
+
+    // Fallback: open the Play Store listing for the package.
+    final marketUri = Uri.parse('market://details?id=$_androidPackage');
     final webUri = Uri.parse(
       'https://play.google.com/store/apps/details?id=$_androidPackage',
     );

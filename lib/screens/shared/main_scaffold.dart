@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:showcaseview/showcaseview.dart';
 
 import '../../models/app_user.dart';
 import '../../providers/auth_provider.dart';
@@ -33,6 +35,18 @@ class _MainScaffoldState extends State<MainScaffold>
     with WidgetsBindingObserver {
   int _index = 0;
 
+  // Coachmark keys — used by the first-run interactive walkthrough that
+  // highlights each bottom-nav destination in turn after the slide
+  // tutorial finishes. Stored in fields so the same key instance is
+  // reused across rebuilds (Showcase is sensitive to that).
+  final GlobalKey _wardsKey = GlobalKey();
+  final GlobalKey _patientsKey = GlobalKey();
+  final GlobalKey _notesKey = GlobalKey();
+  final GlobalKey _profileKey = GlobalKey();
+
+  static const String _interactiveTutorialKey =
+      'interactive_tutorial_done_v1';
+
   @override
   void initState() {
     super.initState();
@@ -48,8 +62,31 @@ class _MainScaffoldState extends State<MainScaffold>
           ),
         );
       }
+      if (!mounted) return;
+      // After the slide tutorial, run the interactive coachmark walk —
+      // exactly once per install (keyed in SharedPreferences).
+      await _maybeStartInteractiveTutorial();
       if (mounted) SupportPrompt.maybeShowDaily(context);
     });
+  }
+
+  Future<void> _maybeStartInteractiveTutorial() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_interactiveTutorialKey) ?? false) return;
+    if (!mounted) return;
+    final keys = <GlobalKey>[
+      _wardsKey,
+      _patientsKey,
+      if (widget.role == UserRole.doctor) _notesKey,
+      _profileKey,
+    ];
+    // Defer one frame to make sure the bottom nav has laid out and the
+    // ShowCase Overlay is mounted, otherwise startShowCase silently no-ops.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ShowCaseWidget.of(context).startShowCase(keys);
+    });
+    await prefs.setBool(_interactiveTutorialKey, true);
   }
 
   @override
@@ -100,6 +137,37 @@ class _MainScaffoldState extends State<MainScaffold>
     }
   }
 
+  // Coachmark wrapper. We want the entire icon (including any badge
+  // positioned around it) to be the "target" so the spotlight has the
+  // right shape. Description copy is intentionally short — coachmarks
+  // shouldn't read like documentation.
+  Widget _showcase({
+    required GlobalKey key,
+    required String title,
+    required String description,
+    required Widget child,
+  }) {
+    return Showcase(
+      key: key,
+      title: title,
+      description: description,
+      titleTextStyle: GoogleFonts.dmSans(
+        color: AppColors.textPrimary,
+        fontSize: 15,
+        fontWeight: FontWeight.w800,
+      ),
+      descTextStyle: GoogleFonts.dmSans(
+        color: AppColors.textSecondary,
+        fontSize: 13,
+        height: 1.45,
+      ),
+      tooltipBackgroundColor: AppColors.card,
+      targetShapeBorder: const CircleBorder(),
+      targetPadding: const EdgeInsets.all(6),
+      child: child,
+    );
+  }
+
   List<BottomNavigationBarItem> get _itemsForRole {
     switch (widget.role) {
       case UserRole.doctor:
@@ -109,19 +177,41 @@ class _MainScaffoldState extends State<MainScaffold>
             activeIcon: Icon(Icons.home),
             label: 'Home',
           ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.corporate_fare_outlined),
-            activeIcon: Icon(Icons.corporate_fare),
+          BottomNavigationBarItem(
+            icon: _showcase(
+              key: _wardsKey,
+              title: 'Wards',
+              description:
+                  'Create or join a ward here. Each ward has a 5-digit '
+                  'code you share with your team.',
+              child: const Icon(Icons.corporate_fare_outlined),
+            ),
+            activeIcon: const Icon(Icons.corporate_fare),
             label: 'Wards',
           ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.people_outline),
-            activeIcon: Icon(Icons.people),
+          BottomNavigationBarItem(
+            icon: _showcase(
+              key: _patientsKey,
+              title: 'Patients',
+              description:
+                  'Every patient on your wards. Pull-search across wards '
+                  'and add new ones from here.',
+              child: const Icon(Icons.people_outline),
+            ),
+            activeIcon: const Icon(Icons.people),
             label: 'Patients',
           ),
           BottomNavigationBarItem(
-            icon: Consumer<NoteProvider>(
-              builder: (context, np, _) => _notesIcon(np.unacknowledgedCount),
+            icon: _showcase(
+              key: _notesKey,
+              title: 'Notes',
+              description:
+                  'The live ward feed. Post a note here and the whole '
+                  'team gets a push instantly.',
+              child: Consumer<NoteProvider>(
+                builder: (context, np, _) =>
+                    _notesIcon(np.unacknowledgedCount),
+              ),
             ),
             activeIcon: Consumer<NoteProvider>(
               builder: (context, np, _) =>
@@ -129,54 +219,97 @@ class _MainScaffoldState extends State<MainScaffold>
             ),
             label: 'Notes',
           ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
+          BottomNavigationBarItem(
+            icon: _showcase(
+              key: _profileKey,
+              title: 'Profile',
+              description:
+                  'Settings, dark mode, text size, FAQs and a way to '
+                  'send me feedback.',
+              child: const Icon(Icons.person_outline),
+            ),
+            activeIcon: const Icon(Icons.person),
             label: 'Profile',
           ),
         ];
       case UserRole.nurse:
-        return const [
-          BottomNavigationBarItem(
+        return [
+          const BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
             activeIcon: Icon(Icons.home),
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.corporate_fare_outlined),
-            activeIcon: Icon(Icons.corporate_fare),
+            icon: _showcase(
+              key: _wardsKey,
+              title: 'Wards',
+              description:
+                  'Create or join a ward here. Each ward has a 5-digit '
+                  'code you share with your team.',
+              child: const Icon(Icons.corporate_fare_outlined),
+            ),
+            activeIcon: const Icon(Icons.corporate_fare),
             label: 'Wards',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.people_outline),
-            activeIcon: Icon(Icons.people),
+            icon: _showcase(
+              key: _patientsKey,
+              title: 'Patients',
+              description:
+                  'Every patient on your wards. Pull-search across wards '
+                  'and tap any one to see their notes.',
+              child: const Icon(Icons.people_outline),
+            ),
+            activeIcon: const Icon(Icons.people),
             label: 'Patients',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
+            icon: _showcase(
+              key: _profileKey,
+              title: 'Profile',
+              description:
+                  'Settings, dark mode, text size, FAQs and a way to '
+                  'send me feedback.',
+              child: const Icon(Icons.person_outline),
+            ),
+            activeIcon: const Icon(Icons.person),
             label: 'Profile',
           ),
         ];
       case UserRole.admin:
-        return const [
-          BottomNavigationBarItem(
+        return [
+          const BottomNavigationBarItem(
             icon: Icon(Icons.dashboard_outlined),
             activeIcon: Icon(Icons.dashboard),
             label: 'Dashboard',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.corporate_fare),
+            icon: _showcase(
+              key: _wardsKey,
+              title: 'Wards',
+              description: 'Inspect every ward in the system.',
+              child: const Icon(Icons.corporate_fare),
+            ),
             label: 'Wards',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.group_outlined),
-            activeIcon: Icon(Icons.group),
+            icon: _showcase(
+              key: _patientsKey,
+              title: 'Staff',
+              description: 'Every signed-up Wardly user.',
+              child: const Icon(Icons.group_outlined),
+            ),
+            activeIcon: const Icon(Icons.group),
             label: 'Staff',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
+            icon: _showcase(
+              key: _profileKey,
+              title: 'Profile',
+              description: 'Settings, FAQs, send feedback.',
+              child: const Icon(Icons.person_outline),
+            ),
+            activeIcon: const Icon(Icons.person),
             label: 'Profile',
           ),
         ];
@@ -219,6 +352,19 @@ class _MainScaffoldState extends State<MainScaffold>
 
   @override
   Widget build(BuildContext context) {
+    // Wrap everything in ShowCaseWidget so any Showcase descendant can
+    // be triggered by ShowCaseWidget.of(context).startShowCase(...).
+    // Coachmarks are themed for the app palette and dismiss themselves
+    // on tap or when the user taps outside.
+    return ShowCaseWidget(
+      onFinish: () {/* one-shot; nothing to do */},
+      enableAutoScroll: false,
+      blurValue: 1.5,
+      builder: (context) => _scaffold(context),
+    );
+  }
+
+  Widget _scaffold(BuildContext context) {
     return Scaffold(
       body: IndexedStack(
         index: _index,

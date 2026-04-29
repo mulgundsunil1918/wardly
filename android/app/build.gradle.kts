@@ -38,7 +38,9 @@ android {
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
-        targetSdk = 34
+        // Play Console requires targetSdk >= 35 for new submissions. compileSdk
+        // is already 36, so we're well within the supported range.
+        targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
