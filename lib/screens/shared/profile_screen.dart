@@ -10,6 +10,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../utils/rate_prompt.dart';
 import '../../utils/share_helper.dart';
 import '../../widgets/support_sheet.dart';
 import '../auth/background_setup_screen.dart';
@@ -445,6 +446,32 @@ class ProfileScreen extends StatelessWidget {
               value: enabled,
               onChanged: (v) async {
                 await SupportPrompt.setEnabled(v);
+                if (context.mounted) {
+                  (context as Element).markNeedsBuild();
+                }
+              },
+            );
+          },
+        ),
+        const Divider(height: 1, indent: 60),
+        FutureBuilder<bool>(
+          future: RatePrompt.isEnabled(),
+          builder: (context, snap) {
+            final enabled = snap.data ?? true;
+            return SwitchListTile(
+              secondary: const Icon(
+                Icons.star_outline,
+                color: Color(0xFFE57F00),
+              ),
+              title: const Text('Weekly rating reminder'),
+              subtitle: Text(
+                enabled
+                    ? 'Once a week, asks if you\'d like to rate Wardly'
+                    : 'Off — you can still tap "Rate on Play Store" any time',
+              ),
+              value: enabled,
+              onChanged: (v) async {
+                await RatePrompt.setEnabled(v);
                 if (context.mounted) {
                   (context as Element).markNeedsBuild();
                 }

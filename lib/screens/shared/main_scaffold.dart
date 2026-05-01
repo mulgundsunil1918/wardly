@@ -9,6 +9,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/note_provider.dart';
 import '../../providers/patient_provider.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/rate_prompt.dart';
 import '../../widgets/note_card.dart';
 import '../admin/admin_home_screen.dart';
 import '../admin/admin_staff_screen.dart';
@@ -67,6 +68,9 @@ class _MainScaffoldState extends State<MainScaffold>
       // exactly once per install (keyed in SharedPreferences).
       await _maybeStartInteractiveTutorial();
       if (mounted) SupportPrompt.maybeShowDaily(context);
+      // Quietly try a weekly Play in-app review nudge. Google rate-
+      // limits the actual dialog server-side; we just ask.
+      RatePrompt.maybeShowWeekly();
     });
   }
 
