@@ -629,33 +629,185 @@ def screen_profile(width, height):
 
 
 SCREENS = [
-    ("ward-feed", screen_ward_feed),
-    ("wards", screen_wards),
-    ("patients", screen_patients),
-    ("thread", screen_thread),
-    ("profile", screen_profile),
+    # (name, render_fn, headline, subtitle, background_color)
+    ("ward-feed", screen_ward_feed,
+     "Real-time ward feed",
+     "Every note. Live. To the whole team.",
+     PRIMARY),
+    ("wards", screen_wards,
+     "5-digit ward codes",
+     "Share a code, your team is in.",
+     (44, 122, 92)),  # deep green
+    ("patients", screen_patients,
+     "Search across every ward",
+     "Find any patient in one tap.",
+     (138, 60, 100)),  # plum
+    ("thread", screen_thread,
+     "Acknowledged, on the record",
+     "See who handled what, when.",
+     (200, 90, 50)),  # warm orange
+    ("profile", screen_profile,
+     "Built for ward teams",
+     "Your data. Your rules. Ward-private.",
+     (60, 70, 110)),  # slate
 ]
+
+
+def render_phone_in_frame(inner_img, frame_w, frame_h, corner_r=72,
+                          bezel=18, frame_color=(20, 25, 40)):
+    """
+    Wraps an inner-UI image in a phone-style device frame: dark rounded
+    bezel, screen inside with rounded corners, small notch on top.
+    Returns an RGBA image of size (frame_w, frame_h).
+    """
+    img = Image.new("RGBA", (frame_w, frame_h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+
+    # Outer phone body
+    d.rounded_rectangle((0, 0, frame_w, frame_h),
+                        radius=corner_r, fill=frame_color)
+
+    # Inner screen area
+    sx = bezel
+    sy = bezel
+    sw = frame_w - bezel * 2
+    sh = frame_h - bezel * 2
+    inner_resized = inner_img.resize((sw, sh), Image.LANCZOS)
+
+    # Mask the inner content to rounded corners.
+    mask = Image.new("L", (sw, sh), 0)
+    mk = ImageDraw.Draw(mask)
+    mk.rounded_rectangle((0, 0, sw, sh),
+                         radius=corner_r - bezel, fill=255)
+    img.paste(inner_resized, (sx, sy), mask)
+
+    # Notch (a small pill at the top center of the screen)
+    notch_w = int(frame_w * 0.28)
+    notch_h = int(frame_h * 0.025)
+    nx = (frame_w - notch_w) // 2
+    ny = bezel + 8
+    d.rounded_rectangle((nx, ny, nx + notch_w, ny + notch_h),
+                        radius=notch_h // 2,
+                        fill=(0, 0, 0))
+    return img
+
+
+def marketing_wrap(inner_img, canvas_w, canvas_h,
+                   headline, subtitle, bg_color):
+    """
+    Lays out a Play-Store-style marketing screenshot:
+    - Colored background
+    - Headline + subtitle at the top
+    - Phone frame containing the inner UI below
+
+    The phone is sized so ~88% of its height fits in the canvas, leaving
+    space for the title block above.
+    """
+    # Canvas with a soft vertical gradient (top brighter than bottom)
+    canvas = Image.new("RGB", (canvas_w, canvas_h), bg_color)
+    cd = ImageDraw.Draw(canvas)
+    for y in range(canvas_h):
+        t = y / canvas_h
+        r = int(bg_color[0] * (1 - 0.18 * t))
+        g = int(bg_color[1] * (1 - 0.18 * t))
+        b = int(bg_color[2] * (1 - 0.18 * t))
+        cd.line([(0, y), (canvas_w, y)], fill=(r, g, b))
+
+    # Title block sizing
+    title_pad_top = int(canvas_h * 0.07)
+    title_size = int(canvas_h * 0.045)
+    sub_size = int(canvas_h * 0.022)
+
+    cd = ImageDraw.Draw(canvas)
+
+    # Auto-shrink headline to fit within 92% of canvas width — keeps the
+    # longest headlines (e.g. "Acknowledged, on the record") from
+    # spilling past the edges at 1080px.
+    max_title_w = int(canvas_w * 0.92)
+    cur_size = title_size
+    while cur_size > 18:
+        title_font = font(cur_size, "black")
+        tw, _ = text_size(cd, headline, title_font)
+        if tw <= max_title_w:
+            break
+        cur_size -= 4
+    title_font = font(cur_size, "black")
+    sub_font = font(sub_size, "regular")
+
+    # Manual centred draw
+    def centred(text, fnt, y, color):
+        tw, th = text_size(cd, text, fnt)
+        cd.text(((canvas_w - tw) / 2, y), text, font=fnt, fill=color)
+        return th
+
+    th = centred(headline, title_font, title_pad_top, (255, 255, 255))
+    sub_y = title_pad_top + th + int(canvas_h * 0.012)
+    centred(subtitle, sub_font, sub_y, (255, 255, 255, 200))
+
+    # Phone frame area — leave ~75% of canvas for the device, vertically
+    # centred under the title.
+    phone_top = sub_y + int(canvas_h * 0.07)
+    phone_bottom_pad = int(canvas_h * 0.04)
+    phone_h = canvas_h - phone_top - phone_bottom_pad
+    # Keep the phone aspect ratio (~9:18) — width follows from height.
+    phone_w = int(phone_h * (9 / 18))
+    if phone_w > canvas_w * 0.85:
+        phone_w = int(canvas_w * 0.85)
+        phone_h = int(phone_w * (18 / 9))
+
+    phone_x = (canvas_w - phone_w) // 2
+    phone_y = phone_top
+
+    # Soft drop shadow under the phone
+    shadow_blur = 40
+    shadow_img = Image.new("RGBA",
+                           (phone_w + shadow_blur * 4,
+                            phone_h + shadow_blur * 4),
+                           (0, 0, 0, 0))
+    sd = ImageDraw.Draw(shadow_img)
+    sd.rounded_rectangle(
+        (shadow_blur * 2, shadow_blur * 2 + 30,
+         shadow_blur * 2 + phone_w, shadow_blur * 2 + phone_h + 30),
+        radius=72, fill=(0, 0, 0, 120),
+    )
+    shadow_img = shadow_img.filter(ImageFilter.GaussianBlur(shadow_blur))
+    canvas.paste(shadow_img,
+                 (phone_x - shadow_blur * 2,
+                  phone_y - shadow_blur * 2),
+                 shadow_img)
+
+    framed = render_phone_in_frame(inner_img, phone_w, phone_h)
+    canvas.paste(framed, (phone_x, phone_y), framed)
+    return canvas
 
 
 def make_phone_screens():
     W, H = 1080, 1920
-    for i, (name, fn) in enumerate(SCREENS, start=1):
-        img = fn(W, H)
-        img.save(OUT_DIR / f"phone-{i}-{name}.png", "PNG")
+    # The inner UI screen renders at the same shape so the resize inside
+    # the frame is minimal — keeps text crisp.
+    inner_w, inner_h = 1080, 1920
+    for i, (name, fn, head, sub, bg) in enumerate(SCREENS, start=1):
+        inner = fn(inner_w, inner_h).convert("RGB")
+        out = marketing_wrap(inner, W, H, head, sub, bg)
+        out.save(OUT_DIR / f"phone-{i}-{name}.png", "PNG")
 
 
 def make_tablet_7_screens():
     W, H = 1200, 1920
-    for i, (name, fn) in enumerate(SCREENS[:3], start=1):
-        img = fn(W, H)
-        img.save(OUT_DIR / f"tablet-7-{i}-{name}.png", "PNG")
+    inner_w, inner_h = 1080, 1920
+    for i, (name, fn, head, sub, bg) in enumerate(SCREENS[:3], start=1):
+        inner = fn(inner_w, inner_h).convert("RGB")
+        out = marketing_wrap(inner, W, H, head, sub, bg)
+        out.save(OUT_DIR / f"tablet-7-{i}-{name}.png", "PNG")
 
 
 def make_tablet_10_screens():
     W, H = 1800, 2880
-    for i, (name, fn) in enumerate(SCREENS[:3], start=1):
-        img = fn(W, H)
-        img.save(OUT_DIR / f"tablet-10-{i}-{name}.png", "PNG")
+    inner_w, inner_h = 1080, 1920
+    for i, (name, fn, head, sub, bg) in enumerate(SCREENS[:3], start=1):
+        inner = fn(inner_w, inner_h).convert("RGB")
+        out = marketing_wrap(inner, W, H, head, sub, bg)
+        out.save(OUT_DIR / f"tablet-10-{i}-{name}.png", "PNG")
 
 
 # ── Run ──────────────────────────────────────────────────────────────────
