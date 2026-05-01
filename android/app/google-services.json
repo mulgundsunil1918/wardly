@@ -58,6 +58,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "525482754887-gdo5ndskfftu2nglg4cklcshrtf7eii7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.wardly.app",
+            "certificate_hash": "a0d35ffb2f9a1762c2207f84b95f174f3fb93fe7"
+          }
+        },
+        {
           "client_id": "525482754887-9oi8ni4b8c37ppnck3k34l8h5i3v59n8.apps.googleusercontent.com",
           "client_type": 3
         }

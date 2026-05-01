@@ -268,16 +268,100 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
     if (result == null || result.isEmpty || !mounted) return;
-    final ok = await context.read<AuthProvider>().sendPasswordReset(result);
+    final email = result.trim();
+
+    // Pre-check what sign-in methods Firebase has for this email so we
+    // don't pretend a reset link is on the way when it physically can't
+    // arrive (no account at all) or won't help (Google-only account).
+    List<String> methods = const [];
+    try {
+      methods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
+    } catch (_) {
+      // Network blip or Email Enumeration Protection enabled on the
+      // project — fall through and try the reset anyway.
+    }
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: ok ? null : AppColors.danger,
-        content: Text(
-          ok
-              ? 'Password reset link sent to $result'
-              : context.read<AuthProvider>().error ?? 'Failed',
+
+    // Case A: nobody has registered with this email.
+    if (methods.isEmpty) {
+      // We can't tell apart "no account" vs "enumeration protection"
+      // perfectly, but the message below covers both: if there IS an
+      // account, the email arrives; if there isn't, the user knows.
+      await _showResetInfoDialog(
+        context,
+        title: 'No account found for that email?',
+        body:
+            "We couldn't find an existing Wardly account for $email.\n\n"
+            "• Double-check the spelling of the email address.\n"
+            "• If you signed up with Google, go back and tap 'Continue "
+            "with Google' — there's no password to reset.\n"
+            "• If you've never signed up before, switch to 'Sign Up' "
+            "and create one.",
+      );
+      return;
+    }
+
+    // Case B: account exists but uses Google sign-in only — no password.
+    if (methods.contains('google.com') && !methods.contains('password')) {
+      await _showResetInfoDialog(
+        context,
+        title: 'Use Google to sign in',
+        body:
+            "$email is linked to a Google account, so there's no Wardly "
+            "password to reset.\n\n"
+            "Go back to the Sign In screen and tap 'Continue with Google'.",
+      );
+      return;
+    }
+
+    // Case C: account has a password — actually send the reset email.
+    final ok = await context.read<AuthProvider>().sendPasswordReset(email);
+    if (!mounted) return;
+    if (ok) {
+      await _showResetInfoDialog(
+        context,
+        title: 'Check your inbox',
+        body:
+            "We sent a password-reset link to $email.\n\n"
+            "It usually arrives within a minute. If you don't see it:\n\n"
+            "1. Check your Spam / Junk folder.\n"
+            "2. The link is valid for 1 hour. Tap 'Send link' again to "
+            "get a fresh one if it's expired.\n"
+            "3. Open it on the same device or any browser — the page "
+            "lets you set a new password.",
+      );
+    } else {
+      final err = context.read<AuthProvider>().error;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.danger,
+          duration: const Duration(seconds: 6),
+          content: Text(
+            err == null
+                ? "Couldn't send the reset email. Try again in a moment."
+                : "Reset failed — ${friendlyError(err)}",
+          ),
         ),
+      );
+    }
+  }
+
+  Future<void> _showResetInfoDialog(
+    BuildContext context, {
+    required String title,
+    required String body,
+  }) {
+    return showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(title),
+        content: Text(body),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Got it'),
+          ),
+        ],
       ),
     );
   }
