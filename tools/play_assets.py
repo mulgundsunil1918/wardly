@@ -321,7 +321,7 @@ def make_feature_graphic():
            spacing=6)
     # Author
     d.text((pill_x + 18, pill_y + 168),
-           "Dr. Pew Pew · 2 min ago",
+           "Dr. John · 2 min ago",
            font=font(13, "regular"), fill=TEXT_SECONDARY)
     # Ack stripe
     rounded(d, (pill_x + 18, pill_y + 196,
@@ -409,51 +409,54 @@ def draw_appbar_title(d, sb, ab_h, w, title, badge=None):
 def screen_ward_feed(width, height):
     def content(d, x, y, w, h, img):
         d.text((40, y + 30), "Live ward feed",
-               font=font(40, "bold"), fill=TEXT_PRIMARY)
-        d.text((40, y + 86), "ICU Ward A · 8 members online",
-               font=font(26, "regular"), fill=TEXT_SECONDARY)
+               font=font(54, "bold"), fill=TEXT_PRIMARY)
+        d.text((40, y + 110), "ICU Ward A · 8 members online",
+               font=font(34, "regular"), fill=TEXT_SECONDARY)
 
+        # Two prominent cards — marketing screenshots read better with
+        # fewer, bigger items than a packed list at downscale.
         cards = [
             ("Urgent", DANGER, "Bed 12 · Mr. R. Kumar",
              "BP dropping — please review.\nStarted fluids, awaiting callback.",
-             "Dr. Pew Pew · 2 min ago", True, "Sunil Mulgund"),
+             "Dr. John · 2 min ago", True, "Sunil Mulgund"),
             ("Normal", PRIMARY, "Bed 18 · Ms. A. Shah",
-             "Repeat CBC at 6 am, hold metoprolol if HR <55.",
-             "Dr. Pew Pew · 12 min ago", False, None),
-            ("Low", TEXT_SECONDARY, "Bed 24 · Mr. S. Iyer",
-             "Reassuring labs. Continue current regimen.",
-             "Dr. Smith · 32 min ago", True, "Pew Pew"),
+             "Repeat CBC at 6 am.\nHold metoprolol if HR < 55.",
+             "Dr. John · 12 min ago", False, None),
         ]
-        cy = y + 160
+        cy = y + 200
         for prio, prio_clr, who, body, foot, acked, by in cards:
-            cx, cw, ch = 30, w - 60, 380
-            rounded(d, (cx, cy, cx + cw, cy + ch), r=24,
+            cx, cw, ch = 30, w - 60, 540
+            rounded(d, (cx, cy, cx + cw, cy + ch), r=28,
                     fill=CARD, outline=DIVIDER, width=2)
-            rounded(d, (cx + 26, cy + 26, cx + 180, cy + 76),
-                    r=12, fill=tint(prio_clr, 30))
-            d.ellipse((cx + 38, cy + 40, cx + 62, cy + 64),
+            # Priority pill (bigger)
+            rounded(d, (cx + 32, cy + 32, cx + 230, cy + 96),
+                    r=16, fill=tint(prio_clr, 30))
+            d.ellipse((cx + 50, cy + 50, cx + 80, cy + 80),
                       fill=prio_clr)
-            d.text((cx + 72, cy + 36), prio,
-                   font=font(26, "bold"), fill=prio_clr)
-            d.text((cx + 200, cy + 38), who,
-                   font=font(24, "regular"), fill=TEXT_SECONDARY)
-            d.text((cx + 26, cy + 100), body,
-                   font=font(28, "regular"), fill=TEXT_PRIMARY,
-                   spacing=8)
-            d.text((cx + 26, cy + 240), foot,
-                   font=font(22, "regular"), fill=TEXT_SECONDARY)
+            d.text((cx + 92, cy + 46), prio,
+                   font=font(34, "bold"), fill=prio_clr)
+            d.text((cx + 250, cy + 50), who,
+                   font=font(30, "regular"), fill=TEXT_SECONDARY)
+            # Body
+            d.text((cx + 32, cy + 130), body,
+                   font=font(38, "regular"), fill=TEXT_PRIMARY,
+                   spacing=10)
+            # Footer
+            d.text((cx + 32, cy + 340), foot,
+                   font=font(28, "regular"), fill=TEXT_SECONDARY)
+            # Ack stripe (only on the urgent card)
             if acked:
-                rounded(d, (cx + 26, cy + 290,
-                            cx + cw - 26, cy + 348),
-                        r=10, fill=tint(ACCENT, 30))
-                d.ellipse((cx + 40, cy + 302, cx + 76, cy + 338),
-                          outline=ACCENT, width=4)
-                d.line([(cx + 50, cy + 320), (cx + 58, cy + 328),
-                        (cx + 70, cy + 310)], fill=ACCENT, width=4)
-                d.text((cx + 90, cy + 304),
+                rounded(d, (cx + 32, cy + 410,
+                            cx + cw - 32, cy + 490),
+                        r=14, fill=tint(ACCENT, 30))
+                d.ellipse((cx + 52, cy + 426, cx + 102, cy + 476),
+                          outline=ACCENT, width=5)
+                d.line([(cx + 64, cy + 452), (cx + 76, cy + 462),
+                        (cx + 92, cy + 438)], fill=ACCENT, width=5)
+                d.text((cx + 122, cy + 426),
                        f"Acknowledged by {by}",
-                       font=font(24, "bold"), fill=ACCENT)
-            cy += ch + 30
+                       font=font(30, "bold"), fill=ACCENT)
+            cy += ch + 36
 
     img, sb, ab_h, bn_h = app_frame(width, height, content)
     d = ImageDraw.Draw(img)
@@ -473,7 +476,7 @@ def screen_wards(width, height):
 
         wards = [
             ("ICU Ward A", "47291", "3rd floor", True, "You"),
-            ("Cardiology", "82046", "5th floor", False, "Dr. Pew Pew"),
+            ("Cardiology", "82046", "5th floor", False, "Dr. John"),
             ("Postop Recovery", "13957", "2nd floor", False, "Dr. Smith"),
         ]
         cy = y + 160
@@ -615,7 +618,7 @@ def screen_thread(width, height):
                font=font(28, "regular"), fill=TEXT_PRIMARY,
                spacing=8)
         d.text((cx + 28, cy + 270),
-               "Note by Dr. Pew Pew · a moment ago",
+               "Note by Dr. John · a moment ago",
                font=font(22, "regular"), fill=TEXT_SECONDARY)
 
         cy += ch + 30
@@ -960,14 +963,20 @@ def slide_problem(w, h):
     return img
 
 
-def slide_feature(inner_img, w, h, headline, subtitle):
-    """Slides 3-7: brand header + headline + phone frame."""
+def slide_feature(screen_fn, w, h, headline, subtitle):
+    """Slides 3-7: brand header + headline + phone frame.
+
+    Inner UI renders at a fixed 1080x1920 (where the layouts were
+    designed to fit) and gets downscaled to the phone screen size.
+    The phone is sized as large as the canvas allows so the downscale
+    is minimised — text stays readable on the marketing image.
+    """
     img = slide_canvas(w, h)
     d = ImageDraw.Draw(img)
     div_y = draw_brand_header(d, w, h)
 
     # Headline
-    title_y = div_y + int(h * 0.035)
+    title_y = div_y + int(h * 0.03)
     title_font = fit_font(d, headline, int(h * 0.045),
                           int(w * 0.9), "black")
     tw, th = text_size(d, headline, title_font)
@@ -975,31 +984,34 @@ def slide_feature(inner_img, w, h, headline, subtitle):
            font=title_font, fill=(255, 255, 255))
 
     # Subtitle
-    sub_y = title_y + th + int(h * 0.012)
+    sub_y = title_y + th + int(h * 0.01)
     sub_font = font(int(h * 0.022), "regular")
     sw_, sh_ = text_size(d, subtitle, sub_font)
     d.text(((w - sw_) // 2, sub_y),
            subtitle, font=sub_font, fill=(180, 200, 220))
 
-    # Phone-frame area
-    phone_top = sub_y + sh_ + int(h * 0.045)
-    phone_bottom_pad = int(h * 0.04)
+    # Phone frame — sized LARGE so the inner UI doesn't downscale much.
+    phone_top = sub_y + sh_ + int(h * 0.025)
+    phone_bottom_pad = int(h * 0.025)
     phone_h = h - phone_top - phone_bottom_pad
     phone_w = int(phone_h * (9 / 18))
-    if phone_w > w * 0.78:
-        phone_w = int(w * 0.78)
+    if phone_w > w * 0.92:
+        phone_w = int(w * 0.92)
         phone_h = int(phone_w * (18 / 9))
     phone_x = (w - phone_w) // 2
 
+    # Inner UI at the resolution it was designed for.
+    inner_img = screen_fn(1080, 1920).convert("RGB")
+
     # Drop shadow
-    blur = 50
+    blur = 40
     shadow = Image.new("RGBA",
                        (phone_w + blur * 4, phone_h + blur * 4),
                        (0, 0, 0, 0))
     sd = ImageDraw.Draw(shadow)
     sd.rounded_rectangle(
-        (blur * 2, blur * 2 + 30,
-         blur * 2 + phone_w, blur * 2 + phone_h + 30),
+        (blur * 2, blur * 2 + 24,
+         blur * 2 + phone_w, blur * 2 + phone_h + 24),
         radius=72, fill=(0, 0, 0, 140),
     )
     shadow = shadow.filter(ImageFilter.GaussianBlur(blur))
@@ -1013,14 +1025,12 @@ def slide_feature(inner_img, w, h, headline, subtitle):
 
 # ── Producers ────────────────────────────────────────────────────────────
 def make_set(out_w, out_h, prefix):
-    inner_w, inner_h = 1080, 1920
     slide_intro(out_w, out_h).save(
         OUT_DIR / f"{prefix}-1-intro.png", "PNG")
     slide_problem(out_w, out_h).save(
         OUT_DIR / f"{prefix}-2-problem.png", "PNG")
     for i, (name, fn, head, sub) in enumerate(FEATURE_SCREENS, start=3):
-        inner = fn(inner_w, inner_h).convert("RGB")
-        slide_feature(inner, out_w, out_h, head, sub).save(
+        slide_feature(fn, out_w, out_h, head, sub).save(
             OUT_DIR / f"{prefix}-{i}-{name}.png", "PNG")
 
 
