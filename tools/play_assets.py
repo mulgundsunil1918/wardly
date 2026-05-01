@@ -24,6 +24,9 @@ PRIMARY = (10, 92, 138)
 PRIMARY_HI = (14, 122, 184)
 ACCENT = (0, 200, 150)
 DANGER = (216, 59, 59)
+# Warm amber used on the problem slide instead of bright red — softer
+# against the navy background.
+PAIN_ACCENT = (235, 150, 50)
 SURFACE = (245, 247, 251)
 CARD = (255, 255, 255)
 DIVIDER = (227, 232, 240)
@@ -66,12 +69,60 @@ FONT_BLACK = find_font("black") or FONT_BOLD
 FONT_SEMI = find_font("semibold") or FONT_BOLD
 
 
+def find_emoji_font() -> str:
+    """Locate a colour-emoji font. Pillow 9+ can render colour glyphs
+    when you pass embedded_color=True alongside this font."""
+    win = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts" / "seguiemj.ttf"
+    mac = Path("/System/Library/Fonts/Apple Color Emoji.ttc")
+    nix = Path("/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf")
+    for p in (win, mac, nix):
+        if p.exists():
+            return str(p)
+    return ""
+
+
+FONT_EMOJI = find_emoji_font()
+
+
 def font(size: int, weight: str = "regular") -> ImageFont.FreeTypeFont:
     path = {"regular": FONT_REG, "bold": FONT_BOLD,
             "black": FONT_BLACK, "semibold": FONT_SEMI}[weight]
     if not path:
         return ImageFont.load_default()
     return ImageFont.truetype(path, size)
+
+
+def emoji_font(size: int):
+    """Loads the colour-emoji font. Pillow's color-emoji path requires
+    a specific size (109 on Segoe UI Emoji); we render at that and
+    composite the result resized down to fit, otherwise the glyph just
+    refuses to draw."""
+    if not FONT_EMOJI:
+        return None
+    return ImageFont.truetype(FONT_EMOJI, 109)
+
+
+def draw_emoji(target_img, char: str, cx: int, cy: int, target_size: int):
+    """Draws a single colour-emoji glyph centred at (cx, cy), scaled to
+    `target_size` pixels. Renders at the font's native 109px first
+    because Pillow's COLR/CBDT path otherwise produces nothing."""
+    f = emoji_font(target_size)
+    if f is None:
+        return False
+    # Render onto a transparent stamp at native size, then resize down.
+    stamp = Image.new("RGBA", (220, 220), (0, 0, 0, 0))
+    sd = ImageDraw.Draw(stamp)
+    try:
+        sd.text((110, 110), char, font=f,
+                anchor="mm", embedded_color=True)
+    except TypeError:
+        # Older Pillow without embedded_color — fall back gracefully.
+        sd.text((110, 110), char, font=f, anchor="mm")
+    stamp = stamp.resize((target_size, target_size), Image.LANCZOS)
+    target_img.paste(stamp,
+                     (cx - target_size // 2, cy - target_size // 2),
+                     stamp)
+    return True
 
 
 # ── Drawing helpers ──────────────────────────────────────────────────────
@@ -95,9 +146,13 @@ def text_size(draw, text, fnt):
 
 
 def text_centered(draw, xy, w, h, text, fnt, fill):
-    tw, th = text_size(draw, text, fnt)
-    draw.text((xy[0] + (w - tw) / 2, xy[1] + (h - th) / 2 - 1),
-              text, font=fnt, fill=fill)
+    """Visually centres text in the (xy, w, h) box. Uses Pillow's
+    `anchor='mm'` so glyph ascender/descender padding doesn't pull the
+    character below the geometric centre — the bug that was making the
+    W in our small header logos sit too low."""
+    cx = xy[0] + w / 2
+    cy = xy[1] + h / 2
+    draw.text((cx, cy), text, font=fnt, fill=fill, anchor="mm")
 
 
 def fit_font(draw, text, base_size, max_width, weight="black", min_size=18):
@@ -293,9 +348,13 @@ def app_frame(width, height, content_drawer):
 
     sb = max(60, height // 32)
     d.rectangle((0, 0, width, sb), fill=PRIMARY)
-    d.text((width // 2 - 36, sb // 2 - 12), "9:41",
-           font=font(int(sb * 0.4), "semibold"),
-           fill=(255, 255, 255))
+    # Android-style: time sits at the LEFT of the status bar so the
+    # punch-hole camera (added later in render_phone_in_frame) doesn't
+    # collide with it at the centre.
+    d.text((40, sb // 2), "9:41",
+           font=font(int(sb * 0.5), "bold"),
+           fill=(255, 255, 255), anchor="lm")
+    # Signal bars on the right
     for i, w in enumerate([6, 8, 10, 12]):
         d.rectangle((width - 160 + i * 14, sb // 2 + 4 - w,
                      width - 160 + i * 14 + 8, sb // 2 + 4),
@@ -322,10 +381,10 @@ def draw_bottom_nav(d, w, h, bn_h, active_idx, items):
         cx = int(seg * (i + 0.5))
         is_active = (i == active_idx)
         clr = PRIMARY if is_active else TEXT_TERTIARY
-        r = 9
-        d.ellipse((cx - r, bn_y + bn_h // 2 - r - 18,
-                   cx + r, bn_y + bn_h // 2 + r - 18), fill=clr)
-        fnt = font(20 if w > 1200 else 18,
+        r = 11
+        d.ellipse((cx - r, bn_y + bn_h // 2 - r - 22,
+                   cx + r, bn_y + bn_h // 2 + r - 22), fill=clr)
+        fnt = font(28 if w > 1200 else 26,
                    "bold" if is_active else "regular")
         tw, _ = text_size(d, label, fnt)
         d.text((cx - tw / 2, bn_y + bn_h // 2 + 6),
@@ -333,66 +392,67 @@ def draw_bottom_nav(d, w, h, bn_h, active_idx, items):
 
 
 def draw_appbar_title(d, sb, ab_h, w, title, badge=None):
-    d.text((40, sb + ab_h // 2 - 18),
-           title, font=font(32, "bold"),
+    d.text((40, sb + ab_h // 2 - 24),
+           title, font=font(46, "bold"),
            fill=(255, 255, 255))
     if badge:
-        bw, bh = text_size(d, badge, font(16, "bold"))
-        bx = w - 50 - bw - 24
+        bw, bh = text_size(d, badge, font(22, "bold"))
+        bx = w - 50 - bw - 32
         by = sb + ab_h // 2 - bh // 2 - 4
-        rounded(d, (bx, by, bx + bw + 24, by + bh + 12),
-                r=10, fill=DANGER)
-        d.text((bx + 12, by + 5), badge,
-               font=font(16, "bold"), fill=(255, 255, 255))
+        rounded(d, (bx, by, bx + bw + 32, by + bh + 16),
+                r=12, fill=DANGER)
+        d.text((bx + 16, by + 7), badge,
+               font=font(22, "bold"), fill=(255, 255, 255))
 
 
 # ── App-screen mocks (content for slides 3-7) ────────────────────────────
 def screen_ward_feed(width, height):
     def content(d, x, y, w, h, img):
-        d.text((40, y + 24), "Live ward feed",
-               font=font(28, "bold"), fill=TEXT_PRIMARY)
-        d.text((40, y + 64), "ICU Ward A · 8 members online",
-               font=font(20, "regular"), fill=TEXT_SECONDARY)
+        d.text((40, y + 30), "Live ward feed",
+               font=font(40, "bold"), fill=TEXT_PRIMARY)
+        d.text((40, y + 86), "ICU Ward A · 8 members online",
+               font=font(26, "regular"), fill=TEXT_SECONDARY)
 
         cards = [
             ("Urgent", DANGER, "Bed 12 · Mr. R. Kumar",
-             "BP dropping — please review. Started fluids, awaiting cardiology callback.",
+             "BP dropping — please review.\nStarted fluids, awaiting callback.",
              "Dr. Pew Pew · 2 min ago", True, "Sunil Mulgund"),
             ("Normal", PRIMARY, "Bed 18 · Ms. A. Shah",
-             "Plan for tomorrow: repeat CBC at 6 am, hold metoprolol if HR <55.",
+             "Repeat CBC at 6 am, hold metoprolol if HR <55.",
              "Dr. Pew Pew · 12 min ago", False, None),
             ("Low", TEXT_SECONDARY, "Bed 24 · Mr. S. Iyer",
-             "Reassuring labs back. Continue current regimen.",
+             "Reassuring labs. Continue current regimen.",
              "Dr. Smith · 32 min ago", True, "Pew Pew"),
         ]
-        cy = y + 130
+        cy = y + 160
         for prio, prio_clr, who, body, foot, acked, by in cards:
-            cx, cw, ch = 30, w - 60, 320
-            rounded(d, (cx, cy, cx + cw, cy + ch), r=22,
+            cx, cw, ch = 30, w - 60, 380
+            rounded(d, (cx, cy, cx + cw, cy + ch), r=24,
                     fill=CARD, outline=DIVIDER, width=2)
-            rounded(d, (cx + 22, cy + 22, cx + 150, cy + 60),
-                    r=10, fill=tint(prio_clr, 30))
-            d.ellipse((cx + 32, cy + 32, cx + 50, cy + 50),
+            rounded(d, (cx + 26, cy + 26, cx + 180, cy + 76),
+                    r=12, fill=tint(prio_clr, 30))
+            d.ellipse((cx + 38, cy + 40, cx + 62, cy + 64),
                       fill=prio_clr)
-            d.text((cx + 60, cy + 28), prio,
-                   font=font(18, "bold"), fill=prio_clr)
-            d.text((cx + 170, cy + 30), who,
-                   font=font(18, "regular"), fill=TEXT_SECONDARY)
-            d.text((cx + 22, cy + 78), body,
-                   font=font(22, "regular"), fill=TEXT_PRIMARY)
-            d.text((cx + 22, cy + 200), foot,
-                   font=font(16, "regular"), fill=TEXT_SECONDARY)
+            d.text((cx + 72, cy + 36), prio,
+                   font=font(26, "bold"), fill=prio_clr)
+            d.text((cx + 200, cy + 38), who,
+                   font=font(24, "regular"), fill=TEXT_SECONDARY)
+            d.text((cx + 26, cy + 100), body,
+                   font=font(28, "regular"), fill=TEXT_PRIMARY,
+                   spacing=8)
+            d.text((cx + 26, cy + 240), foot,
+                   font=font(22, "regular"), fill=TEXT_SECONDARY)
             if acked:
-                rounded(d, (cx + 22, cy + 240,
-                            cx + cw - 22, cy + 280),
-                        r=8, fill=tint(ACCENT, 30))
-                d.ellipse((cx + 32, cy + 250, cx + 56, cy + 274),
-                          outline=ACCENT, width=3)
-                d.line([(cx + 38, cy + 263), (cx + 44, cy + 269),
-                        (cx + 52, cy + 257)], fill=ACCENT, width=3)
-                d.text((cx + 64, cy + 250),
+                rounded(d, (cx + 26, cy + 290,
+                            cx + cw - 26, cy + 348),
+                        r=10, fill=tint(ACCENT, 30))
+                d.ellipse((cx + 40, cy + 302, cx + 76, cy + 338),
+                          outline=ACCENT, width=4)
+                d.line([(cx + 50, cy + 320), (cx + 58, cy + 328),
+                        (cx + 70, cy + 310)], fill=ACCENT, width=4)
+                d.text((cx + 90, cy + 304),
                        f"Acknowledged by {by}",
-                       font=font(16, "bold"), fill=ACCENT)
+                       font=font(24, "bold"), fill=ACCENT)
             cy += ch + 30
 
     img, sb, ab_h, bn_h = app_frame(width, height, content)
@@ -405,57 +465,57 @@ def screen_ward_feed(width, height):
 
 def screen_wards(width, height):
     def content(d, x, y, w, h, img):
-        d.text((40, y + 24), "My wards",
-               font=font(28, "bold"), fill=TEXT_PRIMARY)
-        d.text((40, y + 64),
+        d.text((40, y + 30), "My wards",
+               font=font(40, "bold"), fill=TEXT_PRIMARY)
+        d.text((40, y + 90),
                "Tap a 5-digit code to copy and share.",
-               font=font(20, "regular"), fill=TEXT_SECONDARY)
+               font=font(26, "regular"), fill=TEXT_SECONDARY)
 
         wards = [
             ("ICU Ward A", "47291", "3rd floor", True, "You"),
             ("Cardiology", "82046", "5th floor", False, "Dr. Pew Pew"),
             ("Postop Recovery", "13957", "2nd floor", False, "Dr. Smith"),
         ]
-        cy = y + 130
+        cy = y + 160
         for name, code, floor, is_owner, owner_name in wards:
-            cx, cw, ch = 30, w - 60, 280
-            rounded(d, (cx, cy, cx + cw, cy + ch), r=22,
+            cx, cw, ch = 30, w - 60, 340
+            rounded(d, (cx, cy, cx + cw, cy + ch), r=24,
                     fill=CARD, outline=DIVIDER, width=2)
-            rounded(d, (cx + 24, cy + 24, cx + 90, cy + 90),
-                    r=14, fill=PRIMARY)
-            text_centered(d, (cx + 24, cy + 24), 66, 66,
-                          "W", font(36, "black"), (255, 255, 255))
-            d.text((cx + 110, cy + 28), name,
-                   font=font(26, "bold"), fill=TEXT_PRIMARY)
-            d.text((cx + 110, cy + 64), floor,
-                   font=font(18, "regular"), fill=TEXT_SECONDARY)
+            rounded(d, (cx + 28, cy + 28, cx + 110, cy + 110),
+                    r=18, fill=PRIMARY)
+            text_centered(d, (cx + 28, cy + 28), 82, 82,
+                          "W", font(46, "black"), (255, 255, 255))
+            d.text((cx + 130, cy + 32), name,
+                   font=font(34, "bold"), fill=TEXT_PRIMARY)
+            d.text((cx + 130, cy + 80), floor,
+                   font=font(24, "regular"), fill=TEXT_SECONDARY)
             if is_owner:
-                rounded(d, (cx + cw - 220, cy + 28,
-                            cx + cw - 24, cy + 68), r=10,
+                rounded(d, (cx + cw - 280, cy + 32,
+                            cx + cw - 28, cy + 80), r=12,
                         fill=tint(ACCENT, 60))
-                d.text((cx + cw - 210, cy + 36), "OWNED BY YOU",
-                       font=font(14, "bold"), fill=ACCENT)
-            d.text((cx + 24, cy + 110),
+                d.text((cx + cw - 268, cy + 40), "OWNED BY YOU",
+                       font=font(18, "bold"), fill=ACCENT)
+            d.text((cx + 28, cy + 130),
                    f"Owned by {owner_name}",
-                   font=font(20, "regular"), fill=TEXT_PRIMARY)
-            rounded(d, (cx + 24, cy + 150, cx + cw - 24, cy + 220),
-                    r=14, fill=SURFACE, outline=DIVIDER, width=2)
-            d.text((cx + 40, cy + 168), f"Code: {code}",
-                   font=font(28, "bold"), fill=TEXT_PRIMARY)
-            d.text((cx + cw - 130, cy + 178), "tap to copy",
-                   font=font(16, "regular"), fill=TEXT_SECONDARY)
+                   font=font(26, "regular"), fill=TEXT_PRIMARY)
+            rounded(d, (cx + 28, cy + 180, cx + cw - 28, cy + 270),
+                    r=16, fill=SURFACE, outline=DIVIDER, width=2)
+            d.text((cx + 50, cy + 200), f"Code: {code}",
+                   font=font(38, "bold"), fill=TEXT_PRIMARY)
+            d.text((cx + cw - 180, cy + 214), "tap to copy",
+                   font=font(22, "regular"), fill=TEXT_SECONDARY)
             cy += ch + 30
 
-        by = h + y - 110
+        by = h + y - 130
         bw = (w - 90) // 2
-        rounded(d, (30, by, 30 + bw, by + 80), r=14,
-                outline=PRIMARY, width=3)
-        text_centered(d, (30, by), bw, 80, "Join Ward",
-                      font(24, "bold"), PRIMARY)
-        rounded(d, (60 + bw, by, w - 30, by + 80), r=14,
+        rounded(d, (30, by, 30 + bw, by + 100), r=18,
+                outline=PRIMARY, width=4)
+        text_centered(d, (30, by), bw, 100, "Join Ward",
+                      font(32, "bold"), PRIMARY)
+        rounded(d, (60 + bw, by, w - 30, by + 100), r=18,
                 fill=PRIMARY)
-        text_centered(d, (60 + bw, by), bw, 80, "Create New Ward",
-                      font(24, "bold"), (255, 255, 255))
+        text_centered(d, (60 + bw, by), bw, 100, "Create New Ward",
+                      font(28, "bold"), (255, 255, 255))
 
     img, sb, ab_h, bn_h = app_frame(width, height, content)
     d = ImageDraw.Draw(img)
@@ -467,18 +527,18 @@ def screen_wards(width, height):
 
 def screen_patients(width, height):
     def content(d, x, y, w, h, img):
-        rounded(d, (30, y + 24, w - 30, y + 100), r=18,
+        rounded(d, (30, y + 30, w - 30, y + 130), r=22,
                 fill=CARD, outline=DIVIDER, width=2)
-        d.ellipse((50, y + 50, 78, y + 78),
-                  outline=PRIMARY, width=4)
-        d.line([(72, y + 72), (96, y + 96)], fill=PRIMARY, width=4)
-        d.text((110, y + 50), "kumar",
-               font=font(24, "regular"), fill=TEXT_PRIMARY)
-        d.text((w - 90, y + 50), "✕",
-               font=font(24, "bold"), fill=TEXT_SECONDARY)
+        d.ellipse((58, y + 60, 100, y + 102),
+                  outline=PRIMARY, width=5)
+        d.line([(94, y + 96), (124, y + 126)], fill=PRIMARY, width=5)
+        d.text((140, y + 64), "kumar",
+               font=font(34, "regular"), fill=TEXT_PRIMARY)
+        d.text((w - 100, y + 64), "✕",
+               font=font(34, "bold"), fill=TEXT_SECONDARY)
 
-        d.text((40, y + 130), "2 matches · across 3 wards",
-               font=font(18, "bold"), fill=TEXT_SECONDARY)
+        d.text((40, y + 160), "2 matches · across 3 wards",
+               font=font(24, "bold"), fill=TEXT_SECONDARY)
 
         patients = [
             ("RK", "Mr. Ramesh Kumar", "kumar",
@@ -486,46 +546,46 @@ def screen_patients(width, height):
             ("PK", "Ms. Priya Kumari", "kumar",
              "Bed 7 · Cardiology", "Post-stent · stable"),
         ]
-        cy = y + 180
+        cy = y + 220
         for initials, full_name, hi, sub, dx in patients:
-            cx, cw, ch = 30, w - 60, 220
-            rounded(d, (cx, cy, cx + cw, cy + ch), r=22,
-                    fill=CARD, outline=PRIMARY, width=3)
-            rounded(d, (cx + 24, cy + 30, cx + 124, cy + 130),
-                    r=50, fill=tint(PRIMARY, 50))
-            text_centered(d, (cx + 24, cy + 30), 100, 100,
-                          initials, font(36, "bold"), PRIMARY)
+            cx, cw, ch = 30, w - 60, 280
+            rounded(d, (cx, cy, cx + cw, cy + ch), r=24,
+                    fill=CARD, outline=PRIMARY, width=4)
+            rounded(d, (cx + 28, cy + 38, cx + 158, cy + 168),
+                    r=65, fill=tint(PRIMARY, 50))
+            text_centered(d, (cx + 28, cy + 38), 130, 130,
+                          initials, font(48, "bold"), PRIMARY)
             lo = full_name.lower()
             i = lo.find(hi)
             if i >= 0:
                 prefix = full_name[:i]
                 match = full_name[i:i + len(hi)]
                 suffix = full_name[i + len(hi):]
-                fnt = font(26, "bold")
-                tx = cx + 144
-                ty = cy + 36
+                fnt = font(34, "bold")
+                tx = cx + 180
+                ty = cy + 46
                 d.text((tx, ty), prefix, font=fnt, fill=TEXT_PRIMARY)
                 pw, _ = text_size(d, prefix, fnt)
                 mw, _ = text_size(d, match, fnt)
-                rounded(d, (tx + pw - 4, ty - 4,
-                            tx + pw + mw + 6, ty + 38),
-                        r=6, fill=tint(PRIMARY, 70))
+                rounded(d, (tx + pw - 6, ty - 6,
+                            tx + pw + mw + 8, ty + 50),
+                        r=8, fill=tint(PRIMARY, 70))
                 d.text((tx + pw, ty), match, font=fnt,
                        fill=PRIMARY)
                 d.text((tx + pw + mw, ty), suffix, font=fnt,
                        fill=TEXT_PRIMARY)
             else:
-                d.text((cx + 144, cy + 36), full_name,
-                       font=font(26, "bold"), fill=TEXT_PRIMARY)
-            d.text((cx + 144, cy + 80), sub,
-                   font=font(20, "regular"), fill=TEXT_SECONDARY)
-            d.text((cx + 144, cy + 130), dx,
-                   font=font(20, "regular"), fill=TEXT_PRIMARY)
-            rounded(d, (cx + 144, cy + 170, cx + 250, cy + 200),
-                    r=8, fill=tint(ACCENT, 60))
-            d.text((cx + 156, cy + 174), "Active",
-                   font=font(15, "bold"), fill=ACCENT)
-            cy += ch + 24
+                d.text((cx + 180, cy + 46), full_name,
+                       font=font(34, "bold"), fill=TEXT_PRIMARY)
+            d.text((cx + 180, cy + 110), sub,
+                   font=font(26, "regular"), fill=TEXT_SECONDARY)
+            d.text((cx + 180, cy + 160), dx,
+                   font=font(26, "regular"), fill=TEXT_PRIMARY)
+            rounded(d, (cx + 180, cy + 210, cx + 320, cy + 250),
+                    r=10, fill=tint(ACCENT, 60))
+            d.text((cx + 196, cy + 216), "Active",
+                   font=font(22, "bold"), fill=ACCENT)
+            cy += ch + 28
 
     img, sb, ab_h, bn_h = app_frame(width, height, content)
     d = ImageDraw.Draw(img)
@@ -537,68 +597,69 @@ def screen_patients(width, height):
 
 def screen_thread(width, height):
     def content(d, x, y, w, h, img):
-        cy = y + 30
-        cx, cw, ch = 30, w - 60, 240
-        rounded(d, (cx, cy, cx + cw, cy + ch), r=22,
+        cy = y + 40
+        cx, cw, ch = 30, w - 60, 320
+        rounded(d, (cx, cy, cx + cw, cy + ch), r=24,
                 fill=CARD, outline=DIVIDER, width=2)
-        rounded(d, (cx + 22, cy + 22, cx + 150, cy + 60),
-                r=10, fill=tint(DANGER, 30))
-        d.ellipse((cx + 32, cy + 32, cx + 50, cy + 50),
+        rounded(d, (cx + 28, cy + 28, cx + 180, cy + 80),
+                r=12, fill=tint(DANGER, 30))
+        d.ellipse((cx + 40, cy + 42, cx + 64, cy + 66),
                   fill=DANGER)
-        d.text((cx + 60, cy + 28), "Urgent",
-               font=font(18, "bold"), fill=DANGER)
-        d.text((cx + 22, cy + 78),
+        d.text((cx + 76, cy + 38), "Urgent",
+               font=font(26, "bold"), fill=DANGER)
+        d.text((cx + 28, cy + 110),
                "Do death summary",
-               font=font(28, "bold"), fill=TEXT_PRIMARY)
-        d.text((cx + 22, cy + 130),
-               "Family been informed. Need MLC paperwork before EOD.",
-               font=font(20, "regular"), fill=TEXT_PRIMARY)
-        d.text((cx + 22, cy + 190),
+               font=font(40, "bold"), fill=TEXT_PRIMARY)
+        d.text((cx + 28, cy + 180),
+               "Family been informed.\nNeed MLC paperwork before EOD.",
+               font=font(28, "regular"), fill=TEXT_PRIMARY,
+               spacing=8)
+        d.text((cx + 28, cy + 270),
                "Note by Dr. Pew Pew · a moment ago",
-               font=font(16, "regular"), fill=TEXT_SECONDARY)
+               font=font(22, "regular"), fill=TEXT_SECONDARY)
 
         cy += ch + 30
-        cx, cw, ch = 30, w - 60, 200
-        rounded(d, (cx, cy, cx + cw, cy + ch), r=22,
-                fill=(245, 254, 251), outline=ACCENT, width=3)
-        rounded(d, (cx + 22, cy + 22, cx + 70, cy + 70),
-                r=24, fill=tint(ACCENT, 50))
-        d.text((cx + 30, cy + 32), "SM",
-               font=font(20, "bold"), fill=ACCENT)
-        d.text((cx + 80, cy + 22), "Sunil Mulgund",
-               font=font(22, "bold"), fill=TEXT_PRIMARY)
-        rounded(d, (cx + 270, cy + 24, cx + 360, cy + 54),
-                r=8, fill=tint(PRIMARY, 60))
-        d.text((cx + 282, cy + 28), "Doctor",
-               font=font(15, "bold"), fill=PRIMARY)
-        d.ellipse((cx + 80, cy + 70, cx + 102, cy + 92),
-                  outline=ACCENT, width=3)
-        d.line([(cx + 86, cy + 81), (cx + 91, cy + 86),
-                (cx + 98, cy + 75)], fill=ACCENT, width=3)
-        d.text((cx + 110, cy + 70),
-               "Acknowledged by Sunil Mulgund",
-               font=font(16, "bold"), fill=ACCENT)
-        d.text((cx + 80, cy + 110),
-               "On it — calling on-call admin now.",
-               font=font(22, "regular"), fill=TEXT_PRIMARY)
-        d.text((cx + 80, cy + 150), "now",
-               font=font(15, "regular"), fill=TEXT_SECONDARY)
-
-        cy = h + y - 110
-        rounded(d, (30, cy, w - 200, cy + 80), r=18,
-                fill=SURFACE, outline=DIVIDER, width=2)
-        d.text((54, cy + 26), "Write a reply…",
-               font=font(20, "regular"), fill=TEXT_SECONDARY)
-        rounded(d, (w - 180, cy, w - 105, cy + 80),
-                r=18, fill=tint(ACCENT, 60))
-        d.ellipse((w - 162, cy + 14, w - 122, cy + 54),
+        cx, cw, ch = 30, w - 60, 280
+        rounded(d, (cx, cy, cx + cw, cy + ch), r=24,
+                fill=(245, 254, 251), outline=ACCENT, width=4)
+        rounded(d, (cx + 28, cy + 28, cx + 96, cy + 96),
+                r=34, fill=tint(ACCENT, 50))
+        text_centered(d, (cx + 28, cy + 28), 68, 68,
+                      "SM", font(28, "bold"), ACCENT)
+        d.text((cx + 116, cy + 30), "Sunil Mulgund",
+               font=font(30, "bold"), fill=TEXT_PRIMARY)
+        rounded(d, (cx + 360, cy + 34, cx + 470, cy + 76),
+                r=10, fill=tint(PRIMARY, 60))
+        d.text((cx + 376, cy + 40), "Doctor",
+               font=font(22, "bold"), fill=PRIMARY)
+        d.ellipse((cx + 116, cy + 86, cx + 146, cy + 116),
                   outline=ACCENT, width=4)
-        d.line([(w - 153, cy + 36), (w - 144, cy + 45),
-                (w - 130, cy + 25)], fill=ACCENT, width=4)
-        rounded(d, (w - 90, cy, w - 30, cy + 80),
-                r=18, fill=PRIMARY)
-        d.polygon([(w - 70, cy + 24), (w - 50, cy + 40),
-                   (w - 70, cy + 56)], fill=(255, 255, 255))
+        d.line([(cx + 124, cy + 102), (cx + 130, cy + 108),
+                (cx + 140, cy + 94)], fill=ACCENT, width=4)
+        d.text((cx + 156, cy + 86),
+               "Acknowledged by Sunil Mulgund",
+               font=font(24, "bold"), fill=ACCENT)
+        d.text((cx + 116, cy + 140),
+               "On it — calling on-call admin now.",
+               font=font(28, "regular"), fill=TEXT_PRIMARY)
+        d.text((cx + 116, cy + 200), "now",
+               font=font(22, "regular"), fill=TEXT_SECONDARY)
+
+        cy = h + y - 130
+        rounded(d, (30, cy, w - 240, cy + 100), r=22,
+                fill=SURFACE, outline=DIVIDER, width=2)
+        d.text((64, cy + 32), "Write a reply…",
+               font=font(28, "regular"), fill=TEXT_SECONDARY)
+        rounded(d, (w - 220, cy, w - 130, cy + 100),
+                r=22, fill=tint(ACCENT, 60))
+        d.ellipse((w - 200, cy + 18, w - 150, cy + 68),
+                  outline=ACCENT, width=5)
+        d.line([(w - 188, cy + 44), (w - 178, cy + 54),
+                (w - 162, cy + 30)], fill=ACCENT, width=5)
+        rounded(d, (w - 110, cy, w - 30, cy + 100),
+                r=22, fill=PRIMARY)
+        d.polygon([(w - 86, cy + 30), (w - 60, cy + 50),
+                   (w - 86, cy + 70)], fill=(255, 255, 255))
 
     img, sb, ab_h, bn_h = app_frame(width, height, content)
     d = ImageDraw.Draw(img)
@@ -611,50 +672,58 @@ def screen_thread(width, height):
 def screen_profile(width, height):
     def content(d, x, y, w, h, img):
         cy = y + 30
-        rounded(d, (30, cy, w - 30, cy + 280), r=22,
+        rounded(d, (30, cy, w - 30, cy + 320), r=22,
                 fill=CARD, outline=DIVIDER, width=2)
-        d.ellipse((w // 2 - 70, cy + 30, w // 2 + 70, cy + 170),
+        # Avatar circle with a doctor emoji rendered at colour. Falls
+        # back to "👨" -> initials if the emoji font is unavailable.
+        ax = w // 2
+        ay = cy + 100
+        d.ellipse((ax - 80, ay - 80, ax + 80, ay + 80),
                   fill=tint(PRIMARY, 50))
-        text_centered(d, (w // 2 - 70, cy + 30), 140, 140,
-                      "SM", font(60, "black"), PRIMARY)
-        text_centered(d, (0, cy + 180), w, 40,
-                      "Sunil Mulgund", font(28, "bold"),
+        # Use a single-codepoint emoji — ZWJ sequences like "man +
+        # medical" decomposed into fragments inside Pillow's color
+        # rendering path. 👦 is one glyph and renders cleanly.
+        ok = draw_emoji(img, "👦", ax, ay, 140)
+        if not ok:
+            text_centered(d, (ax - 70, ay - 70), 140, 140,
+                          "SM", font(60, "black"), PRIMARY)
+        text_centered(d, (0, cy + 210), w, 50,
+                      "Sunil Mulgund", font(36, "bold"),
                       TEXT_PRIMARY)
-        text_centered(d, (0, cy + 226), w, 30,
-                      "Cardiologist", font(20, "bold"),
+        text_centered(d, (0, cy + 264), w, 40,
+                      "Neonatologist", font(26, "bold"),
                       PRIMARY)
+        cy += 40  # extra space below the bigger header
 
         cy += 320
-        # Each row pairs a small coloured tile (with a single letter) with
-        # a label — emoji glyphs were rendering as tofu boxes on Windows.
         rows = [
             ("E", "Edit profile", "Update name and specialty", PRIMARY),
             ("N", "Notification setup", "Re-run the reliability wizard", PRIMARY),
             ("?", "Help & FAQs", "Quick answers to the basics", PRIMARY),
-            ("★", "Rate on Play Store", "Help other ward teams find Wardly", (229, 127, 0)),
+            ("★", "Rate on Play Store", "Help other ward teams find Wardly", PAIN_ACCENT),
             ("!", "Report a bug", "Auto-fills version + platform", DANGER),
         ]
-        rounded(d, (30, cy, w - 30, cy + len(rows) * 110),
-                r=22, fill=CARD, outline=DIVIDER, width=2)
+        row_h = 140
+        rounded(d, (30, cy, w - 30, cy + len(rows) * row_h),
+                r=24, fill=CARD, outline=DIVIDER, width=2)
         for i, (ico, t, sub, ico_color) in enumerate(rows):
-            ry = cy + i * 110
-            # Coloured tile with letter
-            tile_size = 56
-            tile_x, tile_y = 50, ry + 27
+            ry = cy + i * row_h
+            tile_size = 76
+            tile_x, tile_y = 56, ry + (row_h - tile_size) // 2
             rounded(d, (tile_x, tile_y,
                         tile_x + tile_size, tile_y + tile_size),
-                    r=14, fill=tint(ico_color, 60))
+                    r=18, fill=tint(ico_color, 60))
             text_centered(d, (tile_x, tile_y), tile_size, tile_size,
-                          ico, font(28, "black"), ico_color)
-            d.text((130, ry + 22), t,
-                   font=font(22, "bold"), fill=TEXT_PRIMARY)
-            d.text((130, ry + 56), sub,
-                   font=font(18, "regular"), fill=TEXT_SECONDARY)
-            d.text((w - 70, ry + 38), "›",
-                   font=font(36, "bold"), fill=TEXT_TERTIARY)
+                          ico, font(40, "black"), ico_color)
+            d.text((160, ry + 28), t,
+                   font=font(30, "bold"), fill=TEXT_PRIMARY)
+            d.text((160, ry + 74), sub,
+                   font=font(24, "regular"), fill=TEXT_SECONDARY)
+            d.text((w - 80, ry + 50), "›",
+                   font=font(48, "bold"), fill=TEXT_TERTIARY)
             if i < len(rows) - 1:
-                d.line([(110, ry + 109),
-                        (w - 30, ry + 109)],
+                d.line([(160, ry + row_h - 1),
+                        (w - 30, ry + row_h - 1)],
                        fill=DIVIDER, width=2)
 
     img, sb, ab_h, bn_h = app_frame(width, height, content)
@@ -808,17 +877,25 @@ def slide_problem(w, h):
     d = ImageDraw.Draw(img)
     div_y = draw_brand_header(d, w, h)
 
-    # Eyebrow — dark red text on a light pink pill so it's actually
-    # legible against the navy background.
+    # Eyebrow pill — sized from the actual rendered glyph bbox so the
+    # text never overflows the pill, then drawn with anchor='mm' for
+    # clean vertical centring.
     eb_y = div_y + int(h * 0.04)
     eb = "THE PROBLEM"
-    eb_font = font(int(h * 0.018), "black")
-    ew, eh = text_size(d, eb, eb_font)
-    rounded(d, ((w - ew) // 2 - 18, eb_y,
-                (w + ew) // 2 + 18, eb_y + eh + 14),
-            r=10, fill=(255, 230, 230))
-    d.text(((w - ew) // 2, eb_y + 6), eb,
-           font=eb_font, fill=DANGER)
+    eb_font = font(int(h * 0.02), "black")
+    bbox = eb_font.getbbox(eb)
+    ew = bbox[2] - bbox[0]
+    eh = bbox[3] - bbox[1]
+    pad_x = int(eh * 1.3)
+    pad_y = int(eh * 0.7)
+    pill_w = ew + pad_x * 2
+    pill_h = eh + pad_y * 2
+    pill_x = (w - pill_w) // 2
+    rounded(d, (pill_x, eb_y, pill_x + pill_w, eb_y + pill_h),
+            r=pill_h // 2,
+            fill=tint(PAIN_ACCENT, 80))
+    d.text((pill_x + pill_w / 2, eb_y + pill_h / 2),
+           eb, font=eb_font, fill=PAIN_ACCENT, anchor="mm")
 
     # Headline (auto-shrink)
     title = "Updates lost in chaos."
@@ -852,25 +929,26 @@ def slide_problem(w, h):
     for i, (num, t, s) in enumerate(pains):
         cy = start_y + i * (card_h + gap)
         rounded(d, (card_x, cy, card_x + card_w, cy + card_h),
-                r=int(card_h * 0.18),
+                r=int(card_h * 0.2),
                 fill=(255, 255, 255))
-        d.rectangle((card_x, cy, card_x + 6, cy + card_h),
-                    fill=DANGER)
-        ico_size = int(card_h * 0.55)
-        ix = card_x + int(card_h * 0.18)
+        # Left accent stripe in warm amber (was bright red)
+        rounded(d, (card_x, cy, card_x + 12, cy + card_h),
+                r=6, fill=PAIN_ACCENT)
+        ico_size = int(card_h * 0.6)
+        ix = card_x + int(card_h * 0.22)
         iy = cy + (card_h - ico_size) // 2
         rounded(d, (ix, iy, ix + ico_size, iy + ico_size),
                 r=int(ico_size * 0.22),
-                fill=DANGER)
+                fill=PAIN_ACCENT)
         text_centered(d, (ix, iy), ico_size, ico_size,
-                      num, font(int(ico_size * 0.4), "black"),
+                      num, font(int(ico_size * 0.42), "black"),
                       (255, 255, 255))
-        tx = ix + ico_size + int(card_h * 0.2)
+        tx = ix + ico_size + int(card_h * 0.22)
         d.text((tx, cy + int(card_h * 0.18)), t,
-               font=font(int(card_h * 0.27), "bold"),
+               font=font(int(card_h * 0.3), "bold"),
                fill=TEXT_PRIMARY)
         d.text((tx, cy + int(card_h * 0.55)), s,
-               font=font(int(card_h * 0.21), "regular"),
+               font=font(int(card_h * 0.22), "regular"),
                fill=TEXT_SECONDARY)
 
     # Closing arrow
