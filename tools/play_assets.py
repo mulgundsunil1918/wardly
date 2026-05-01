@@ -1,16 +1,16 @@
 """
-Generates Play Store visual assets for Wardly:
-  - icon-512.png            (512x512, app icon)
-  - feature-graphic-1024x500.png
-  - phone-1..5.png          (1080x1920, phone screenshots)
-  - tablet-7-1..3.png       (1200x1920, 7-inch tablet)
-  - tablet-10-1..3.png      (1800x2880, 10-inch tablet)
+Generates Play Store visual assets for Wardly.
 
-All output drops into ../play-assets/ relative to this script.
-
-Mocks recreate the actual Wardly UI (5-digit ward codes, priority pills,
-acknowledged-comment bubbles, ward chips) using brand colours so the
-Play Store listing matches what users see in the app.
+Layout philosophy (after design feedback):
+  - Solid brand colours, no gradient mess.
+  - One brand language across every slide: deep-navy canvas, a brand
+    header bar at the top (W-in-blue-square logo + WARDLY wordmark
+    + thin divider), then the slide-specific content below.
+  - 7 slides total, same count for phone / 7-inch / 10-inch tablet:
+      1. Brand intro (hero text, no phone)
+      2. Problem statement (pain cards, no phone)
+      3-7. Feature slides — headline + phone-frame containing the
+           actual app UI.
 """
 
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
@@ -18,10 +18,11 @@ from pathlib import Path
 import platform
 import os
 
-# ── Brand palette ─────────────────────────────────────────────────────────
-PRIMARY = (10, 92, 138)        # dark blue
-PRIMARY_2 = (14, 122, 184)
-ACCENT = (0, 200, 150)         # green
+# ── Palette ──────────────────────────────────────────────────────────────
+# Brand primary blue used by the app icon and the wardly tutorial.
+PRIMARY = (10, 92, 138)
+PRIMARY_HI = (14, 122, 184)
+ACCENT = (0, 200, 150)
 DANGER = (216, 59, 59)
 SURFACE = (245, 247, 251)
 CARD = (255, 255, 255)
@@ -29,14 +30,17 @@ DIVIDER = (227, 232, 240)
 TEXT_PRIMARY = (28, 35, 51)
 TEXT_SECONDARY = (108, 122, 142)
 TEXT_TERTIARY = (165, 175, 188)
-WARM_AMBER = (229, 127, 0)
+
+# Deep navy canvas for marketing slides — keeps the brand feeling
+# premium and lets the in-frame phone screen "pop" against it.
+SLIDE_BG = (10, 22, 40)
+SLIDE_BG_2 = (16, 30, 52)
 
 OUT_DIR = Path(__file__).resolve().parent.parent / "play-assets"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-# ── Font loader ───────────────────────────────────────────────────────────
+# ── Fonts ─────────────────────────────────────────────────────────────────
 def find_font(weight: str = "regular") -> str:
-    """Best-effort hunt for a clean sans font on Windows / Mac / Linux."""
     candidates = []
     if platform.system() == "Windows":
         win = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"
@@ -61,6 +65,7 @@ FONT_BOLD = find_font("bold") or FONT_REG
 FONT_BLACK = find_font("black") or FONT_BOLD
 FONT_SEMI = find_font("semibold") or FONT_BOLD
 
+
 def font(size: int, weight: str = "regular") -> ImageFont.FreeTypeFont:
     path = {"regular": FONT_REG, "bold": FONT_BOLD,
             "black": FONT_BLACK, "semibold": FONT_SEMI}[weight]
@@ -71,14 +76,16 @@ def font(size: int, weight: str = "regular") -> ImageFont.FreeTypeFont:
 
 # ── Drawing helpers ──────────────────────────────────────────────────────
 def tint(rgb, alpha):
-    """Returns the RGB you'd see drawing rgb at `alpha` (0-255) over white.
-    We're rendering on RGB images, so alpha gets thrown away by Pillow —
-    we have to mix manually instead of passing (*color, alpha).
-    """
+    """Mix rgb with white at the given alpha (0-255)."""
     return tuple(int(c + (255 - c) * (1 - alpha / 255)) for c in rgb)
 
 
-def rounded(draw: ImageDraw.ImageDraw, xy, r, fill=None, outline=None, width=1):
+def darken(rgb, factor):
+    """Darken rgb by `factor` (0..1; 0.2 = 20% darker)."""
+    return tuple(int(c * (1 - factor)) for c in rgb)
+
+
+def rounded(draw, xy, r, fill=None, outline=None, width=1):
     draw.rounded_rectangle(xy, radius=r, fill=fill, outline=outline, width=width)
 
 
@@ -93,150 +100,202 @@ def text_centered(draw, xy, w, h, text, fnt, fill):
               text, font=fnt, fill=fill)
 
 
-def shadow(size, radius=12, opacity=60):
-    """Returns a soft drop-shadow PIL Image of the given size."""
-    sw, sh = size
-    img = Image.new("RGBA", (sw + radius * 4, sh + radius * 4),
-                    (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    d.rounded_rectangle(
-        (radius * 2, radius * 2,
-         radius * 2 + sw, radius * 2 + sh),
-        radius=18, fill=(0, 0, 0, opacity),
-    )
-    return img.filter(ImageFilter.GaussianBlur(radius))
+def fit_font(draw, text, base_size, max_width, weight="black", min_size=18):
+    """Return a font sized so `text` fits within `max_width`."""
+    s = base_size
+    while s > min_size:
+        f = font(s, weight)
+        if text_size(draw, text, f)[0] <= max_width:
+            return f
+        s -= 4
+    return font(min_size, weight)
 
 
-# ── Icon: 512x512 ─────────────────────────────────────────────────────────
+# ── App icon: 512×512, solid blue, big W, WARDLY below ──────────────────
 def make_icon():
     SIZE = 512
-    img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    img = Image.new("RGB", (SIZE, SIZE), PRIMARY)
     d = ImageDraw.Draw(img)
 
-    # Rounded background with vertical gradient.
-    grad = Image.new("RGBA", (SIZE, SIZE))
-    gd = ImageDraw.Draw(grad)
-    for y in range(SIZE):
-        t = y / SIZE
-        r = int(PRIMARY[0] * (1 - t) + PRIMARY_2[0] * t)
-        g = int(PRIMARY[1] * (1 - t) + PRIMARY_2[1] * t)
-        b = int(PRIMARY[2] * (1 - t) + PRIMARY_2[2] * t)
-        gd.line([(0, y), (SIZE, y)], fill=(r, g, b, 255))
-    mask = Image.new("L", (SIZE, SIZE), 0)
-    mk = ImageDraw.Draw(mask)
-    mk.rounded_rectangle((0, 0, SIZE, SIZE), radius=110, fill=255)
-    img.paste(grad, (0, 0), mask)
-
-    # Letter W
-    w_font = font(360, "black")
-    d = ImageDraw.Draw(img)
+    # Big W in the upper ~65% of the icon. Centred horizontally, with
+    # the bottom of the glyph leaving room for the wordmark below.
+    w_top = 70                # padding above the W
+    w_max_h = 280              # how tall the W is allowed to be
+    w_font = font(w_max_h, "black")
     tw, th = text_size(d, "W", w_font)
-    d.text(((SIZE - tw) / 2, (SIZE - th) / 2 - 30),
-           "W", font=w_font, fill=(255, 255, 255, 255))
+    # Pillow's textbbox returns the visual height; centre using that.
+    d.text(((SIZE - tw) / 2, w_top - int(th * 0.15)),
+           "W", font=w_font, fill=(255, 255, 255))
 
-    # Subtle accent dot at the bottom
-    dot = 22
-    cx = SIZE // 2
-    d.ellipse((cx - dot, SIZE - 110 - dot,
-               cx + dot, SIZE - 110 + dot),
-              fill=ACCENT)
+    # WARDLY wordmark — letter-spaced, in the lower band.
+    wm_size = 48
+    wm_font = font(wm_size, "black")
+    wm = "WARDLY"
+    spacing = 14
+    letters = list(wm)
+    widths = [text_size(d, c, wm_font)[0] for c in letters]
+    total_w = sum(widths) + spacing * (len(letters) - 1)
+    x = (SIZE - total_w) // 2
+    wm_y = SIZE - 95
+    for c, lw in zip(letters, widths):
+        d.text((x, wm_y), c, font=wm_font, fill=(255, 255, 255))
+        x += lw + spacing
 
     img.save(OUT_DIR / "icon-512.png", "PNG")
 
 
-# ── Feature graphic: 1024x500 ─────────────────────────────────────────────
+# ── Brand header (top of every marketing slide) ──────────────────────────
+def draw_brand_header(d, w, h):
+    """Draws the WARDLY header bar at the top of a slide."""
+    pad = int(w * 0.05)
+    logo_size = int(h * 0.06)
+    logo_y = int(h * 0.04)
+
+    # Rounded white-on-blue logo square
+    rounded(d, (pad, logo_y,
+                pad + logo_size, logo_y + logo_size),
+            r=int(logo_size * 0.22), fill=PRIMARY_HI)
+    text_centered(d, (pad, logo_y), logo_size, logo_size,
+                  "W", font(int(logo_size * 0.7), "black"),
+                  (255, 255, 255))
+
+    # WARDLY wordmark
+    wm_size = int(logo_size * 0.55)
+    wm_y = logo_y + (logo_size - wm_size) // 2 - 4
+    d.text((pad + logo_size + int(logo_size * 0.4), wm_y),
+           "WARDLY",
+           font=font(wm_size, "black"),
+           fill=(255, 255, 255))
+
+    # Thin divider line below the header
+    div_y = logo_y + logo_size + int(h * 0.02)
+    d.line([(pad, div_y), (w - pad, div_y)],
+           fill=(40, 60, 90), width=2)
+    return div_y
+
+
+# ── Slide canvas (deep navy) ─────────────────────────────────────────────
+def slide_canvas(w, h):
+    img = Image.new("RGB", (w, h), SLIDE_BG)
+    # Subtle vignette glow in one corner for depth.
+    glow = Image.new("RGB", (w, h), SLIDE_BG)
+    gd = ImageDraw.Draw(glow)
+    cx, cy = int(w * 0.15), int(h * 0.95)
+    radius = int(min(w, h) * 0.7)
+    gd.ellipse((cx - radius, cy - radius, cx + radius, cy + radius),
+               fill=PRIMARY)
+    glow = glow.filter(ImageFilter.GaussianBlur(120))
+    img = Image.blend(img, glow, 0.18)
+    return img
+
+
+# ── Feature graphic: 1024×500, clean composition ─────────────────────────
 def make_feature_graphic():
     W, H = 1024, 500
     img = Image.new("RGB", (W, H), PRIMARY)
     d = ImageDraw.Draw(img)
 
-    # Soft accent glow on the right
+    # Subtle radial light from the right
     glow = Image.new("RGB", (W, H), PRIMARY)
     gd = ImageDraw.Draw(glow)
-    for r in range(220, 0, -8):
-        gd.ellipse((W - 250 - r, H // 2 - r,
-                    W - 250 + r, H // 2 + r),
-                   fill=(int(PRIMARY[0] + 12),
-                         int(PRIMARY[1] + 12),
-                         int(PRIMARY[2] + 14)))
-    blurred = glow.filter(ImageFilter.GaussianBlur(60))
-    img.paste(blurred, (0, 0))
+    gd.ellipse((W - 480, -120, W + 240, H + 120),
+               fill=PRIMARY_HI)
+    glow = glow.filter(ImageFilter.GaussianBlur(120))
+    img = Image.blend(img, glow, 0.45)
     d = ImageDraw.Draw(img)
 
-    # Logo block on the left
-    logo_size = 120
-    logo_x, logo_y = 80, (H - logo_size) // 2 - 70
-    rounded(d, (logo_x, logo_y, logo_x + logo_size, logo_y + logo_size),
-            r=24, fill=(255, 255, 255))
-    text_centered(d, (logo_x, logo_y), logo_size, logo_size,
-                  "W", font(86, "black"), PRIMARY)
+    pad = 56
 
-    # Brand name
-    d.text((logo_x + logo_size + 28, logo_y + 12),
+    # ── Left half: brand block ─────────────────────────────────────
+    # Logo square
+    logo_size = 100
+    logo_y = 96
+    rounded(d, (pad, logo_y,
+                pad + logo_size, logo_y + logo_size),
+            r=22, fill=(255, 255, 255))
+    text_centered(d, (pad, logo_y), logo_size, logo_size,
+                  "W", font(76, "black"), PRIMARY)
+
+    # WARDLY wordmark next to logo
+    wm_x = pad + logo_size + 28
+    d.text((wm_x, logo_y + 4),
            "WARDLY", font=font(58, "black"),
            fill=(255, 255, 255))
-    d.text((logo_x + logo_size + 30, logo_y + 80),
+    d.text((wm_x, logo_y + 70),
            "Ward, connected.",
-           font=font(26, "regular"),
-           fill=(220, 232, 246))
+           font=font(24, "regular"),
+           fill=(200, 220, 240))
 
-    # Tagline below
-    d.text((80, H - 170),
-           "One live feed for the whole ward team.",
-           font=font(36, "bold"),
-           fill=(255, 255, 255))
-    d.text((80, H - 120),
+    # Tagline below — sized to fit within left half (max ~520 px wide)
+    line1 = "One live feed for the"
+    line2 = "whole ward team."
+    title_font = fit_font(d, line2, 50, 520, "black")
+    d.text((pad, 280), line1, font=title_font, fill=(255, 255, 255))
+    d.text((pad, 280 + title_font.size + 6), line2,
+           font=title_font, fill=(255, 255, 255))
+
+    sub_font = font(20, "regular")
+    d.text((pad, 280 + (title_font.size + 6) * 2 + 14),
            "Real-time clinical notes. Acknowledged on the record.",
-           font=font(22, "regular"),
-           fill=(200, 215, 232))
+           font=sub_font, fill=(200, 220, 240))
 
-    # A small mock note card on the right
-    cx, cy, cw, ch = W - 360, H // 2 - 110, 290, 220
-    rounded(d, (cx, cy, cx + cw, cy + ch), r=18,
-            fill=CARD)
+    # ── Right half: ack pill (no clipped note card) ────────────────
+    # Keeping this ELEMENT TIGHT so it never bleeds outside the canvas.
+    pill_x = W - 380
+    pill_y = 130
+    pill_w = 320
+    rounded(d, (pill_x, pill_y, pill_x + pill_w, pill_y + 240),
+            r=20, fill=(255, 255, 255))
     # Priority pill
-    rounded(d, (cx + 16, cy + 16, cx + 100, cy + 44), r=8,
-            fill=(255, 235, 235))
-    d.ellipse((cx + 24, cy + 24, cx + 36, cy + 36),
+    rounded(d, (pill_x + 18, pill_y + 18,
+                pill_x + 132, pill_y + 56),
+            r=10, fill=tint(DANGER, 60))
+    d.ellipse((pill_x + 28, pill_y + 28,
+               pill_x + 46, pill_y + 46),
               fill=DANGER)
-    d.text((cx + 42, cy + 22), "Urgent", font=font(13, "bold"),
-           fill=DANGER)
-    # Author
-    d.text((cx + 110, cy + 24), "Bed 12 · R. Kumar",
-           font=font(13, "regular"), fill=TEXT_SECONDARY)
-    # Note body
-    d.text((cx + 16, cy + 60),
-           "BP dropping — please review.\nStarted fluids, awaiting\ncardiology callback.",
+    d.text((pill_x + 56, pill_y + 26), "Urgent",
+           font=font(18, "bold"), fill=DANGER)
+    # Body
+    d.text((pill_x + 18, pill_y + 76),
+           "BP dropping — please review.",
+           font=font(17, "bold"), fill=TEXT_PRIMARY)
+    d.text((pill_x + 18, pill_y + 104),
+           "Started fluids, awaiting\ncardiology callback.",
            font=font(15, "regular"),
-           fill=TEXT_PRIMARY, spacing=6)
-    # Footer + ack stripe
-    d.text((cx + 16, cy + 158), "Dr. Pew Pew · 2 min ago",
-           font=font(11, "regular"), fill=TEXT_SECONDARY)
-    rounded(d, (cx + 16, cy + 184, cx + cw - 16, cy + 200), r=4,
-            fill=tint(ACCENT, 60))
-    d.text((cx + 22, cy + 184), "✓ Acknowledged by Sunil",
-           font=font(11, "bold"), fill=ACCENT)
+           fill=TEXT_SECONDARY,
+           spacing=6)
+    # Author
+    d.text((pill_x + 18, pill_y + 168),
+           "Dr. Pew Pew · 2 min ago",
+           font=font(13, "regular"), fill=TEXT_SECONDARY)
+    # Ack stripe
+    rounded(d, (pill_x + 18, pill_y + 196,
+                pill_x + pill_w - 18, pill_y + 224),
+            r=8, fill=tint(ACCENT, 60))
+    d.ellipse((pill_x + 26, pill_y + 200,
+               pill_x + 42, pill_y + 216),
+              outline=ACCENT, width=2)
+    d.line([(pill_x + 30, pill_y + 209),
+            (pill_x + 33, pill_y + 212),
+            (pill_x + 38, pill_y + 205)],
+           fill=ACCENT, width=2)
+    d.text((pill_x + 50, pill_y + 199),
+           "Acknowledged by Sunil",
+           font=font(13, "bold"), fill=ACCENT)
 
     img.save(OUT_DIR / "feature-graphic-1024x500.png", "PNG")
 
 
-# ── Phone-frame helper for screenshots ───────────────────────────────────
-def phone_frame(width, height, content_drawer):
-    """
-    Draws a phone-style screenshot at width x height, calling
-    content_drawer(d, x, y, w, h) for the inner UI area.
-    Returns a PIL Image.
-    """
+# ── Phone-frame helper used INSIDE the in-app screen mocks ───────────────
+def app_frame(width, height, content_drawer):
     img = Image.new("RGB", (width, height), SURFACE)
     d = ImageDraw.Draw(img)
 
-    # Status bar
     sb = max(60, height // 32)
     d.rectangle((0, 0, width, sb), fill=PRIMARY)
     d.text((width // 2 - 36, sb // 2 - 12), "9:41",
            font=font(int(sb * 0.4), "semibold"),
            fill=(255, 255, 255))
-    # Battery + signal as little bars on the right
     for i, w in enumerate([6, 8, 10, 12]):
         d.rectangle((width - 160 + i * 14, sb // 2 + 4 - w,
                      width - 160 + i * 14 + 8, sb // 2 + 4),
@@ -244,11 +303,9 @@ def phone_frame(width, height, content_drawer):
     rounded(d, (width - 90, sb // 2 - 8, width - 30, sb // 2 + 8),
             r=4, fill=(255, 255, 255))
 
-    # App bar
     ab_h = max(110, height // 18)
     d.rectangle((0, sb, width, sb + ab_h), fill=PRIMARY)
 
-    # Bottom nav
     bn_h = max(140, height // 14)
     bn_y = height - bn_h
     d.rectangle((0, bn_y, width, height), fill=CARD)
@@ -265,11 +322,9 @@ def draw_bottom_nav(d, w, h, bn_h, active_idx, items):
         cx = int(seg * (i + 0.5))
         is_active = (i == active_idx)
         clr = PRIMARY if is_active else TEXT_TERTIARY
-        # tiny dot icon
         r = 9
         d.ellipse((cx - r, bn_y + bn_h // 2 - r - 18,
                    cx + r, bn_y + bn_h // 2 + r - 18), fill=clr)
-        # label
         fnt = font(20 if w > 1200 else 18,
                    "bold" if is_active else "regular")
         tw, _ = text_size(d, label, fnt)
@@ -291,10 +346,9 @@ def draw_appbar_title(d, sb, ab_h, w, title, badge=None):
                font=font(16, "bold"), fill=(255, 255, 255))
 
 
-# ── Phone screenshot 1: Ward feed (Notes tab) ─────────────────────────────
+# ── App-screen mocks (content for slides 3-7) ────────────────────────────
 def screen_ward_feed(width, height):
     def content(d, x, y, w, h, img):
-        # Title
         d.text((40, y + 24), "Live ward feed",
                font=font(28, "bold"), fill=TEXT_PRIMARY)
         d.text((40, y + 64), "ICU Ward A · 8 members online",
@@ -316,7 +370,6 @@ def screen_ward_feed(width, height):
             cx, cw, ch = 30, w - 60, 320
             rounded(d, (cx, cy, cx + cw, cy + ch), r=22,
                     fill=CARD, outline=DIVIDER, width=2)
-            # priority pill
             rounded(d, (cx + 22, cy + 22, cx + 150, cy + 60),
                     r=10, fill=tint(prio_clr, 30))
             d.ellipse((cx + 32, cy + 32, cx + 50, cy + 50),
@@ -325,7 +378,6 @@ def screen_ward_feed(width, height):
                    font=font(18, "bold"), fill=prio_clr)
             d.text((cx + 170, cy + 30), who,
                    font=font(18, "regular"), fill=TEXT_SECONDARY)
-            # body (wrap manually)
             d.text((cx + 22, cy + 78), body,
                    font=font(22, "regular"), fill=TEXT_PRIMARY)
             d.text((cx + 22, cy + 200), foot,
@@ -343,7 +395,7 @@ def screen_ward_feed(width, height):
                        font=font(16, "bold"), fill=ACCENT)
             cy += ch + 30
 
-    img, sb, ab_h, bn_h = phone_frame(width, height, content)
+    img, sb, ab_h, bn_h = app_frame(width, height, content)
     d = ImageDraw.Draw(img)
     draw_appbar_title(d, sb, ab_h, width, "Wardly", badge="3 unack")
     draw_bottom_nav(d, width, height, bn_h, 3,
@@ -351,13 +403,12 @@ def screen_ward_feed(width, height):
     return img
 
 
-# ── Phone screenshot 2: Wards screen (5-digit codes) ──────────────────────
 def screen_wards(width, height):
     def content(d, x, y, w, h, img):
         d.text((40, y + 24), "My wards",
                font=font(28, "bold"), fill=TEXT_PRIMARY)
         d.text((40, y + 64),
-               "Tap a 5-digit code to copy and share with your team.",
+               "Tap a 5-digit code to copy and share.",
                font=font(20, "regular"), fill=TEXT_SECONDARY)
 
         wards = [
@@ -370,12 +421,10 @@ def screen_wards(width, height):
             cx, cw, ch = 30, w - 60, 280
             rounded(d, (cx, cy, cx + cw, cy + ch), r=22,
                     fill=CARD, outline=DIVIDER, width=2)
-            # icon
             rounded(d, (cx + 24, cy + 24, cx + 90, cy + 90),
-                    r=14, fill=(220, 235, 250))
-            d.text((cx + 38, cy + 32), "🏥",
-                   font=font(36, "regular"))
-            # name
+                    r=14, fill=PRIMARY)
+            text_centered(d, (cx + 24, cy + 24), 66, 66,
+                          "W", font(36, "black"), (255, 255, 255))
             d.text((cx + 110, cy + 28), name,
                    font=font(26, "bold"), fill=TEXT_PRIMARY)
             d.text((cx + 110, cy + 64), floor,
@@ -383,13 +432,12 @@ def screen_wards(width, height):
             if is_owner:
                 rounded(d, (cx + cw - 220, cy + 28,
                             cx + cw - 24, cy + 68), r=10,
-                        fill=tint(ACCENT, 36))
+                        fill=tint(ACCENT, 60))
                 d.text((cx + cw - 210, cy + 36), "OWNED BY YOU",
                        font=font(14, "bold"), fill=ACCENT)
             d.text((cx + 24, cy + 110),
                    f"Owned by {owner_name}",
                    font=font(20, "regular"), fill=TEXT_PRIMARY)
-            # code chip
             rounded(d, (cx + 24, cy + 150, cx + cw - 24, cy + 220),
                     r=14, fill=SURFACE, outline=DIVIDER, width=2)
             d.text((cx + 40, cy + 168), f"Code: {code}",
@@ -398,7 +446,6 @@ def screen_wards(width, height):
                    font=font(16, "regular"), fill=TEXT_SECONDARY)
             cy += ch + 30
 
-        # Bottom buttons
         by = h + y - 110
         bw = (w - 90) // 2
         rounded(d, (30, by, 30 + bw, by + 80), r=14,
@@ -410,7 +457,7 @@ def screen_wards(width, height):
         text_centered(d, (60 + bw, by), bw, 80, "Create New Ward",
                       font(24, "bold"), (255, 255, 255))
 
-    img, sb, ab_h, bn_h = phone_frame(width, height, content)
+    img, sb, ab_h, bn_h = app_frame(width, height, content)
     d = ImageDraw.Draw(img)
     draw_appbar_title(d, sb, ab_h, width, "Wards")
     draw_bottom_nav(d, width, height, bn_h, 1,
@@ -418,10 +465,8 @@ def screen_wards(width, height):
     return img
 
 
-# ── Phone screenshot 3: Patients with search highlight ───────────────────
 def screen_patients(width, height):
     def content(d, x, y, w, h, img):
-        # Search bar
         rounded(d, (30, y + 24, w - 30, y + 100), r=18,
                 fill=CARD, outline=DIVIDER, width=2)
         d.ellipse((50, y + 50, 78, y + 78),
@@ -446,13 +491,10 @@ def screen_patients(width, height):
             cx, cw, ch = 30, w - 60, 220
             rounded(d, (cx, cy, cx + cw, cy + ch), r=22,
                     fill=CARD, outline=PRIMARY, width=3)
-            # avatar
             rounded(d, (cx + 24, cy + 30, cx + 124, cy + 130),
-                    r=50, fill=(220, 235, 250))
+                    r=50, fill=tint(PRIMARY, 50))
             text_centered(d, (cx + 24, cy + 30), 100, 100,
                           initials, font(36, "bold"), PRIMARY)
-            # name with highlighted match (we just bold the whole name in mock)
-            # split into prefix + match + suffix
             lo = full_name.lower()
             i = lo.find(hi)
             if i >= 0:
@@ -464,11 +506,10 @@ def screen_patients(width, height):
                 ty = cy + 36
                 d.text((tx, ty), prefix, font=fnt, fill=TEXT_PRIMARY)
                 pw, _ = text_size(d, prefix, fnt)
-                # highlighted span with background
                 mw, _ = text_size(d, match, fnt)
                 rounded(d, (tx + pw - 4, ty - 4,
                             tx + pw + mw + 6, ty + 38),
-                        r=6, fill=tint(PRIMARY, 40))
+                        r=6, fill=tint(PRIMARY, 70))
                 d.text((tx + pw, ty), match, font=fnt,
                        fill=PRIMARY)
                 d.text((tx + pw + mw, ty), suffix, font=fnt,
@@ -480,14 +521,13 @@ def screen_patients(width, height):
                    font=font(20, "regular"), fill=TEXT_SECONDARY)
             d.text((cx + 144, cy + 130), dx,
                    font=font(20, "regular"), fill=TEXT_PRIMARY)
-            # status pill
             rounded(d, (cx + 144, cy + 170, cx + 250, cy + 200),
-                    r=8, fill=tint(ACCENT, 36))
+                    r=8, fill=tint(ACCENT, 60))
             d.text((cx + 156, cy + 174), "Active",
                    font=font(15, "bold"), fill=ACCENT)
             cy += ch + 24
 
-    img, sb, ab_h, bn_h = phone_frame(width, height, content)
+    img, sb, ab_h, bn_h = app_frame(width, height, content)
     d = ImageDraw.Draw(img)
     draw_appbar_title(d, sb, ab_h, width, "Patients")
     draw_bottom_nav(d, width, height, bn_h, 2,
@@ -495,10 +535,8 @@ def screen_patients(width, height):
     return img
 
 
-# ── Phone screenshot 4: Comment thread with acknowledgement ─────────────
 def screen_thread(width, height):
     def content(d, x, y, w, h, img):
-        # Original note
         cy = y + 30
         cx, cw, ch = 30, w - 60, 240
         rounded(d, (cx, cy, cx + cw, cy + ch), r=22,
@@ -519,23 +557,20 @@ def screen_thread(width, height):
                "Note by Dr. Pew Pew · a moment ago",
                font=font(16, "regular"), fill=TEXT_SECONDARY)
 
-        # Reply 1 — acknowledgement
         cy += ch + 30
         cx, cw, ch = 30, w - 60, 200
         rounded(d, (cx, cy, cx + cw, cy + ch), r=22,
                 fill=(245, 254, 251), outline=ACCENT, width=3)
-        # avatar
         rounded(d, (cx + 22, cy + 22, cx + 70, cy + 70),
-                r=24, fill=(220, 246, 240))
+                r=24, fill=tint(ACCENT, 50))
         d.text((cx + 30, cy + 32), "SM",
                font=font(20, "bold"), fill=ACCENT)
         d.text((cx + 80, cy + 22), "Sunil Mulgund",
                font=font(22, "bold"), fill=TEXT_PRIMARY)
         rounded(d, (cx + 270, cy + 24, cx + 360, cy + 54),
-                r=8, fill=tint(PRIMARY, 30))
+                r=8, fill=tint(PRIMARY, 60))
         d.text((cx + 282, cy + 28), "Doctor",
                font=font(15, "bold"), fill=PRIMARY)
-        # ack banner
         d.ellipse((cx + 80, cy + 70, cx + 102, cy + 92),
                   outline=ACCENT, width=3)
         d.line([(cx + 86, cy + 81), (cx + 91, cy + 86),
@@ -549,26 +584,23 @@ def screen_thread(width, height):
         d.text((cx + 80, cy + 150), "now",
                font=font(15, "regular"), fill=TEXT_SECONDARY)
 
-        # Reply box
         cy = h + y - 110
         rounded(d, (30, cy, w - 200, cy + 80), r=18,
                 fill=SURFACE, outline=DIVIDER, width=2)
         d.text((54, cy + 26), "Write a reply…",
                font=font(20, "regular"), fill=TEXT_SECONDARY)
-        # ack button
         rounded(d, (w - 180, cy, w - 105, cy + 80),
-                r=18, fill=tint(ACCENT, 50))
+                r=18, fill=tint(ACCENT, 60))
         d.ellipse((w - 162, cy + 14, w - 122, cy + 54),
                   outline=ACCENT, width=4)
         d.line([(w - 153, cy + 36), (w - 144, cy + 45),
                 (w - 130, cy + 25)], fill=ACCENT, width=4)
-        # send button
         rounded(d, (w - 90, cy, w - 30, cy + 80),
                 r=18, fill=PRIMARY)
         d.polygon([(w - 70, cy + 24), (w - 50, cy + 40),
                    (w - 70, cy + 56)], fill=(255, 255, 255))
 
-    img, sb, ab_h, bn_h = phone_frame(width, height, content)
+    img, sb, ab_h, bn_h = app_frame(width, height, content)
     d = ImageDraw.Draw(img)
     draw_appbar_title(d, sb, ab_h, width, "Thread")
     draw_bottom_nav(d, width, height, bn_h, 3,
@@ -576,16 +608,13 @@ def screen_thread(width, height):
     return img
 
 
-# ── Phone screenshot 5: Profile / settings ───────────────────────────────
 def screen_profile(width, height):
     def content(d, x, y, w, h, img):
-        # Avatar header
         cy = y + 30
         rounded(d, (30, cy, w - 30, cy + 280), r=22,
                 fill=CARD, outline=DIVIDER, width=2)
-        # avatar circle
         d.ellipse((w // 2 - 70, cy + 30, w // 2 + 70, cy + 170),
-                  fill=(220, 235, 250))
+                  fill=tint(PRIMARY, 50))
         text_centered(d, (w // 2 - 70, cy + 30), 140, 140,
                       "SM", font(60, "black"), PRIMARY)
         text_centered(d, (0, cy + 180), w, 40,
@@ -595,23 +624,31 @@ def screen_profile(width, height):
                       "Cardiologist", font(20, "bold"),
                       PRIMARY)
 
-        # Tile list
         cy += 320
+        # Each row pairs a small coloured tile (with a single letter) with
+        # a label — emoji glyphs were rendering as tofu boxes on Windows.
         rows = [
-            ("✏", "Edit profile", "Update name and specialty"),
-            ("🔔", "Notification setup", "Re-run the reliability wizard"),
-            ("❓", "Help & FAQs", "Quick answers to the basics"),
-            ("⭐", "Rate on Play Store", "Help other ward teams find Wardly"),
-            ("🐞", "Report a bug", "Auto-fills version + platform"),
+            ("E", "Edit profile", "Update name and specialty", PRIMARY),
+            ("N", "Notification setup", "Re-run the reliability wizard", PRIMARY),
+            ("?", "Help & FAQs", "Quick answers to the basics", PRIMARY),
+            ("★", "Rate on Play Store", "Help other ward teams find Wardly", (229, 127, 0)),
+            ("!", "Report a bug", "Auto-fills version + platform", DANGER),
         ]
         rounded(d, (30, cy, w - 30, cy + len(rows) * 110),
                 r=22, fill=CARD, outline=DIVIDER, width=2)
-        for i, (ico, t, sub) in enumerate(rows):
+        for i, (ico, t, sub, ico_color) in enumerate(rows):
             ry = cy + i * 110
-            d.text((48, ry + 38), ico, font=font(28, "regular"))
-            d.text((110, ry + 22), t,
+            # Coloured tile with letter
+            tile_size = 56
+            tile_x, tile_y = 50, ry + 27
+            rounded(d, (tile_x, tile_y,
+                        tile_x + tile_size, tile_y + tile_size),
+                    r=14, fill=tint(ico_color, 60))
+            text_centered(d, (tile_x, tile_y), tile_size, tile_size,
+                          ico, font(28, "black"), ico_color)
+            d.text((130, ry + 22), t,
                    font=font(22, "bold"), fill=TEXT_PRIMARY)
-            d.text((110, ry + 56), sub,
+            d.text((130, ry + 56), sub,
                    font=font(18, "regular"), fill=TEXT_SECONDARY)
             d.text((w - 70, ry + 38), "›",
                    font=font(36, "bold"), fill=TEXT_TERTIARY)
@@ -620,7 +657,7 @@ def screen_profile(width, height):
                         (w - 30, ry + 109)],
                        fill=DIVIDER, width=2)
 
-    img, sb, ab_h, bn_h = phone_frame(width, height, content)
+    img, sb, ab_h, bn_h = app_frame(width, height, content)
     d = ImageDraw.Draw(img)
     draw_appbar_title(d, sb, ab_h, width, "Profile")
     draw_bottom_nav(d, width, height, bn_h, 4,
@@ -628,37 +665,33 @@ def screen_profile(width, height):
     return img
 
 
-SCREENS = [
-    # (name, render_fn, headline, subtitle, background_color)
+FEATURE_SCREENS = [
     ("ward-feed", screen_ward_feed,
      "Real-time ward feed",
-     "Every note. Live. To the whole team.",
-     PRIMARY),
+     "Every note, live, to the whole team."),
     ("wards", screen_wards,
      "5-digit ward codes",
-     "Share a code, your team is in.",
-     (44, 122, 92)),  # deep green
+     "Share a code — your team is in."),
     ("patients", screen_patients,
      "Search across every ward",
-     "Find any patient in one tap.",
-     (138, 60, 100)),  # plum
+     "Find any patient in one tap."),
     ("thread", screen_thread,
      "Acknowledged, on the record",
-     "See who handled what, when.",
-     (200, 90, 50)),  # warm orange
+     "See who handled what, when."),
     ("profile", screen_profile,
-     "Built for ward teams",
-     "Your data. Your rules. Ward-private.",
-     (60, 70, 110)),  # slate
+     "Yours, end to end",
+     "Settings, FAQs, feedback — all in one place."),
 ]
 
 
-def render_phone_in_frame(inner_img, frame_w, frame_h, corner_r=72,
-                          bezel=18, frame_color=(20, 25, 40)):
+# ── Phone-frame mock for marketing slides (Android-style) ───────────────
+def render_phone_in_frame(inner_img, frame_w, frame_h, corner_r=64,
+                          bezel=14, frame_color=(20, 25, 40)):
     """
-    Wraps an inner-UI image in a phone-style device frame: dark rounded
-    bezel, screen inside with rounded corners, small notch on top.
-    Returns an RGBA image of size (frame_w, frame_h).
+    Draws an Android-style device frame: thin uniform bezel, generous
+    rounded corners, a small punch-hole camera at the top centre. No
+    iPhone notch. Side-rail buttons (volume + power) are rendered as
+    subtle slivers along the right edge.
     """
     img = Image.new("RGBA", (frame_w, frame_h), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
@@ -667,160 +700,278 @@ def render_phone_in_frame(inner_img, frame_w, frame_h, corner_r=72,
     d.rounded_rectangle((0, 0, frame_w, frame_h),
                         radius=corner_r, fill=frame_color)
 
-    # Inner screen area
-    sx = bezel
-    sy = bezel
-    sw = frame_w - bezel * 2
-    sh = frame_h - bezel * 2
-    inner_resized = inner_img.resize((sw, sh), Image.LANCZOS)
+    # Side-rail subtle highlight (gives the body some dimension)
+    d.rounded_rectangle((1, 1, frame_w - 1, frame_h - 1),
+                        radius=corner_r - 1,
+                        outline=(40, 50, 70), width=2)
 
-    # Mask the inner content to rounded corners.
+    # Side buttons on the right edge
+    btn_x = frame_w - 4
+    # power
+    d.rounded_rectangle((btn_x, int(frame_h * 0.18),
+                         btn_x + 6, int(frame_h * 0.22)),
+                        radius=2, fill=(60, 70, 90))
+    # volume up
+    d.rounded_rectangle((btn_x, int(frame_h * 0.28),
+                         btn_x + 6, int(frame_h * 0.33)),
+                        radius=2, fill=(60, 70, 90))
+    # volume down
+    d.rounded_rectangle((btn_x, int(frame_h * 0.34),
+                         btn_x + 6, int(frame_h * 0.39)),
+                        radius=2, fill=(60, 70, 90))
+
+    # Inner screen
+    sx, sy = bezel, bezel
+    sw, sh = frame_w - bezel * 2, frame_h - bezel * 2
+    inner_resized = inner_img.resize((sw, sh), Image.LANCZOS)
     mask = Image.new("L", (sw, sh), 0)
     mk = ImageDraw.Draw(mask)
     mk.rounded_rectangle((0, 0, sw, sh),
                          radius=corner_r - bezel, fill=255)
     img.paste(inner_resized, (sx, sy), mask)
 
-    # Notch (a small pill at the top center of the screen)
-    notch_w = int(frame_w * 0.28)
-    notch_h = int(frame_h * 0.025)
-    nx = (frame_w - notch_w) // 2
-    ny = bezel + 8
-    d.rounded_rectangle((nx, ny, nx + notch_w, ny + notch_h),
-                        radius=notch_h // 2,
-                        fill=(0, 0, 0))
+    # Punch-hole front camera (Galaxy S-style, top-centre, just inside
+    # the screen).
+    cam_d = max(20, int(frame_w * 0.025))
+    cx = frame_w // 2
+    cy = bezel + int(cam_d * 1.4)
+    # Outer dark ring
+    d.ellipse((cx - cam_d // 2, cy - cam_d // 2,
+               cx + cam_d // 2, cy + cam_d // 2),
+              fill=(15, 18, 25))
+    # Lens highlight
+    inset = max(2, cam_d // 6)
+    d.ellipse((cx - cam_d // 2 + inset, cy - cam_d // 2 + inset,
+               cx + cam_d // 2 - inset, cy + cam_d // 2 - inset),
+              fill=(35, 40, 55))
     return img
 
 
-def marketing_wrap(inner_img, canvas_w, canvas_h,
-                   headline, subtitle, bg_color):
-    """
-    Lays out a Play-Store-style marketing screenshot:
-    - Colored background
-    - Headline + subtitle at the top
-    - Phone frame containing the inner UI below
+# ── Slide layouts ────────────────────────────────────────────────────────
+def slide_intro(w, h):
+    """Slide 1: brand hero. No phone. Just brand + tagline."""
+    img = slide_canvas(w, h)
+    d = ImageDraw.Draw(img)
+    div_y = draw_brand_header(d, w, h)
 
-    The phone is sized so ~88% of its height fits in the canvas, leaving
-    space for the title block above.
-    """
-    # Canvas with a soft vertical gradient (top brighter than bottom)
-    canvas = Image.new("RGB", (canvas_w, canvas_h), bg_color)
-    cd = ImageDraw.Draw(canvas)
-    for y in range(canvas_h):
-        t = y / canvas_h
-        r = int(bg_color[0] * (1 - 0.18 * t))
-        g = int(bg_color[1] * (1 - 0.18 * t))
-        b = int(bg_color[2] * (1 - 0.18 * t))
-        cd.line([(0, y), (canvas_w, y)], fill=(r, g, b))
+    # Big logo block, centred
+    logo_size = int(min(w, h) * 0.34)
+    lx = (w - logo_size) // 2
+    ly = int(h * 0.22)
+    rounded(d, (lx, ly, lx + logo_size, ly + logo_size),
+            r=int(logo_size * 0.22), fill=PRIMARY)
+    text_centered(d, (lx, ly), logo_size, logo_size,
+                  "W", font(int(logo_size * 0.7), "black"),
+                  (255, 255, 255))
 
-    # Title block sizing
-    title_pad_top = int(canvas_h * 0.07)
-    title_size = int(canvas_h * 0.045)
-    sub_size = int(canvas_h * 0.022)
+    # Hero copy
+    title_y = ly + logo_size + int(h * 0.05)
+    title = "Ward, connected."
+    title_font = fit_font(d, title, int(h * 0.07),
+                          int(w * 0.86), "black")
+    tw, th = text_size(d, title, title_font)
+    d.text(((w - tw) // 2, title_y), title,
+           font=title_font, fill=(255, 255, 255))
 
-    cd = ImageDraw.Draw(canvas)
+    sub_y = title_y + th + int(h * 0.02)
+    subtitle = "Real-time clinical notes for ward teams."
+    sub_font = font(int(h * 0.026), "regular")
+    sw_, _ = text_size(d, subtitle, sub_font)
+    d.text(((w - sw_) // 2, sub_y), subtitle,
+           font=sub_font, fill=(180, 200, 220))
 
-    # Auto-shrink headline to fit within 92% of canvas width — keeps the
-    # longest headlines (e.g. "Acknowledged, on the record") from
-    # spilling past the edges at 1080px.
-    max_title_w = int(canvas_w * 0.92)
-    cur_size = title_size
-    while cur_size > 18:
-        title_font = font(cur_size, "black")
-        tw, _ = text_size(cd, headline, title_font)
-        if tw <= max_title_w:
-            break
-        cur_size -= 4
-    title_font = font(cur_size, "black")
-    sub_font = font(sub_size, "regular")
+    # Feature pills
+    pills = ["Real-time", "Acknowledged", "Ward-private"]
+    pill_y = sub_y + int(h * 0.08)
+    pill_font = font(int(h * 0.022), "bold")
+    pads_x, pads_y = int(h * 0.02), int(h * 0.012)
+    spaces = int(w * 0.025)
+    sizes = [text_size(d, p, pill_font)[0] + pads_x * 2 for p in pills]
+    total = sum(sizes) + spaces * (len(pills) - 1)
+    x = (w - total) // 2
+    for i, p in enumerate(pills):
+        sw_p = sizes[i]
+        rounded(d, (x, pill_y, x + sw_p,
+                    pill_y + int(h * 0.05)),
+                r=int(h * 0.025),
+                fill=PRIMARY)
+        text_centered(d, (x, pill_y), sw_p, int(h * 0.05),
+                      p, pill_font, (255, 255, 255))
+        x += sw_p + spaces
 
-    # Manual centred draw
-    def centred(text, fnt, y, color):
-        tw, th = text_size(cd, text, fnt)
-        cd.text(((canvas_w - tw) / 2, y), text, font=fnt, fill=color)
-        return th
+    return img
 
-    th = centred(headline, title_font, title_pad_top, (255, 255, 255))
-    sub_y = title_pad_top + th + int(canvas_h * 0.012)
-    centred(subtitle, sub_font, sub_y, (255, 255, 255, 200))
 
-    # Phone frame area — leave ~75% of canvas for the device, vertically
-    # centred under the title.
-    phone_top = sub_y + int(canvas_h * 0.07)
-    phone_bottom_pad = int(canvas_h * 0.04)
-    phone_h = canvas_h - phone_top - phone_bottom_pad
-    # Keep the phone aspect ratio (~9:18) — width follows from height.
+def slide_problem(w, h):
+    """Slide 2: pain points. No phone."""
+    img = slide_canvas(w, h)
+    d = ImageDraw.Draw(img)
+    div_y = draw_brand_header(d, w, h)
+
+    # Eyebrow — dark red text on a light pink pill so it's actually
+    # legible against the navy background.
+    eb_y = div_y + int(h * 0.04)
+    eb = "THE PROBLEM"
+    eb_font = font(int(h * 0.018), "black")
+    ew, eh = text_size(d, eb, eb_font)
+    rounded(d, ((w - ew) // 2 - 18, eb_y,
+                (w + ew) // 2 + 18, eb_y + eh + 14),
+            r=10, fill=(255, 230, 230))
+    d.text(((w - ew) // 2, eb_y + 6), eb,
+           font=eb_font, fill=DANGER)
+
+    # Headline (auto-shrink)
+    title = "Updates lost in chaos."
+    title_y = eb_y + eh + int(h * 0.05)
+    title_font = fit_font(d, title, int(h * 0.058),
+                          int(w * 0.9), "black")
+    tw, th = text_size(d, title, title_font)
+    d.text(((w - tw) // 2, title_y), title,
+           font=title_font, fill=(255, 255, 255))
+
+    sub = "Every shift, critical info slips through the cracks."
+    sub_font = font(int(h * 0.022), "regular")
+    sw_, sh_ = text_size(d, sub, sub_font)
+    d.text(((w - sw_) // 2, title_y + th + int(h * 0.013)),
+           sub, font=sub_font, fill=(180, 200, 220))
+
+    pains = [
+        # (number, title, body) — numbered tiles render reliably across
+        # platforms; emoji glyphs were falling back to tofu boxes.
+        ("01", "WhatsApp burial", "Urgent updates buried in group chats."),
+        ("02", "Lost paper notes", "Plans never reach the next shift."),
+        ("03", "No ack trail", "Did you see the new plan? Nobody knows."),
+        ("04", "Phone tag", "Nurse calls doctor, doctor calls back."),
+        ("05", "Broken handover", "Next team comes in blind."),
+    ]
+    card_x = int(w * 0.08)
+    card_w = int(w * 0.84)
+    card_h = int(h * 0.082)
+    gap = int(h * 0.014)
+    start_y = title_y + th + int(h * 0.13)
+    for i, (num, t, s) in enumerate(pains):
+        cy = start_y + i * (card_h + gap)
+        rounded(d, (card_x, cy, card_x + card_w, cy + card_h),
+                r=int(card_h * 0.18),
+                fill=(255, 255, 255))
+        d.rectangle((card_x, cy, card_x + 6, cy + card_h),
+                    fill=DANGER)
+        ico_size = int(card_h * 0.55)
+        ix = card_x + int(card_h * 0.18)
+        iy = cy + (card_h - ico_size) // 2
+        rounded(d, (ix, iy, ix + ico_size, iy + ico_size),
+                r=int(ico_size * 0.22),
+                fill=DANGER)
+        text_centered(d, (ix, iy), ico_size, ico_size,
+                      num, font(int(ico_size * 0.4), "black"),
+                      (255, 255, 255))
+        tx = ix + ico_size + int(card_h * 0.2)
+        d.text((tx, cy + int(card_h * 0.18)), t,
+               font=font(int(card_h * 0.27), "bold"),
+               fill=TEXT_PRIMARY)
+        d.text((tx, cy + int(card_h * 0.55)), s,
+               font=font(int(card_h * 0.21), "regular"),
+               fill=TEXT_SECONDARY)
+
+    # Closing arrow
+    foot = "→ Wardly fixes that."
+    foot_font = font(int(h * 0.024), "bold")
+    fw, fh = text_size(d, foot, foot_font)
+    d.text(((w - fw) // 2, h - fh - int(h * 0.05)),
+           foot, font=foot_font, fill=ACCENT)
+    return img
+
+
+def slide_feature(inner_img, w, h, headline, subtitle):
+    """Slides 3-7: brand header + headline + phone frame."""
+    img = slide_canvas(w, h)
+    d = ImageDraw.Draw(img)
+    div_y = draw_brand_header(d, w, h)
+
+    # Headline
+    title_y = div_y + int(h * 0.035)
+    title_font = fit_font(d, headline, int(h * 0.045),
+                          int(w * 0.9), "black")
+    tw, th = text_size(d, headline, title_font)
+    d.text(((w - tw) // 2, title_y), headline,
+           font=title_font, fill=(255, 255, 255))
+
+    # Subtitle
+    sub_y = title_y + th + int(h * 0.012)
+    sub_font = font(int(h * 0.022), "regular")
+    sw_, sh_ = text_size(d, subtitle, sub_font)
+    d.text(((w - sw_) // 2, sub_y),
+           subtitle, font=sub_font, fill=(180, 200, 220))
+
+    # Phone-frame area
+    phone_top = sub_y + sh_ + int(h * 0.045)
+    phone_bottom_pad = int(h * 0.04)
+    phone_h = h - phone_top - phone_bottom_pad
     phone_w = int(phone_h * (9 / 18))
-    if phone_w > canvas_w * 0.85:
-        phone_w = int(canvas_w * 0.85)
+    if phone_w > w * 0.78:
+        phone_w = int(w * 0.78)
         phone_h = int(phone_w * (18 / 9))
+    phone_x = (w - phone_w) // 2
 
-    phone_x = (canvas_w - phone_w) // 2
-    phone_y = phone_top
-
-    # Soft drop shadow under the phone
-    shadow_blur = 40
-    shadow_img = Image.new("RGBA",
-                           (phone_w + shadow_blur * 4,
-                            phone_h + shadow_blur * 4),
-                           (0, 0, 0, 0))
-    sd = ImageDraw.Draw(shadow_img)
+    # Drop shadow
+    blur = 50
+    shadow = Image.new("RGBA",
+                       (phone_w + blur * 4, phone_h + blur * 4),
+                       (0, 0, 0, 0))
+    sd = ImageDraw.Draw(shadow)
     sd.rounded_rectangle(
-        (shadow_blur * 2, shadow_blur * 2 + 30,
-         shadow_blur * 2 + phone_w, shadow_blur * 2 + phone_h + 30),
-        radius=72, fill=(0, 0, 0, 120),
+        (blur * 2, blur * 2 + 30,
+         blur * 2 + phone_w, blur * 2 + phone_h + 30),
+        radius=72, fill=(0, 0, 0, 140),
     )
-    shadow_img = shadow_img.filter(ImageFilter.GaussianBlur(shadow_blur))
-    canvas.paste(shadow_img,
-                 (phone_x - shadow_blur * 2,
-                  phone_y - shadow_blur * 2),
-                 shadow_img)
+    shadow = shadow.filter(ImageFilter.GaussianBlur(blur))
+    img.paste(shadow, (phone_x - blur * 2, phone_top - blur * 2),
+              shadow)
 
     framed = render_phone_in_frame(inner_img, phone_w, phone_h)
-    canvas.paste(framed, (phone_x, phone_y), framed)
-    return canvas
+    img.paste(framed, (phone_x, phone_top), framed)
+    return img
+
+
+# ── Producers ────────────────────────────────────────────────────────────
+def make_set(out_w, out_h, prefix):
+    inner_w, inner_h = 1080, 1920
+    slide_intro(out_w, out_h).save(
+        OUT_DIR / f"{prefix}-1-intro.png", "PNG")
+    slide_problem(out_w, out_h).save(
+        OUT_DIR / f"{prefix}-2-problem.png", "PNG")
+    for i, (name, fn, head, sub) in enumerate(FEATURE_SCREENS, start=3):
+        inner = fn(inner_w, inner_h).convert("RGB")
+        slide_feature(inner, out_w, out_h, head, sub).save(
+            OUT_DIR / f"{prefix}-{i}-{name}.png", "PNG")
 
 
 def make_phone_screens():
-    W, H = 1080, 1920
-    # The inner UI screen renders at the same shape so the resize inside
-    # the frame is minimal — keeps text crisp.
-    inner_w, inner_h = 1080, 1920
-    for i, (name, fn, head, sub, bg) in enumerate(SCREENS, start=1):
-        inner = fn(inner_w, inner_h).convert("RGB")
-        out = marketing_wrap(inner, W, H, head, sub, bg)
-        out.save(OUT_DIR / f"phone-{i}-{name}.png", "PNG")
+    make_set(1080, 1920, "phone")
 
 
 def make_tablet_7_screens():
-    W, H = 1200, 1920
-    inner_w, inner_h = 1080, 1920
-    for i, (name, fn, head, sub, bg) in enumerate(SCREENS[:3], start=1):
-        inner = fn(inner_w, inner_h).convert("RGB")
-        out = marketing_wrap(inner, W, H, head, sub, bg)
-        out.save(OUT_DIR / f"tablet-7-{i}-{name}.png", "PNG")
+    make_set(1200, 1920, "tablet-7")
 
 
 def make_tablet_10_screens():
-    W, H = 1800, 2880
-    inner_w, inner_h = 1080, 1920
-    for i, (name, fn, head, sub, bg) in enumerate(SCREENS[:3], start=1):
-        inner = fn(inner_w, inner_h).convert("RGB")
-        out = marketing_wrap(inner, W, H, head, sub, bg)
-        out.save(OUT_DIR / f"tablet-10-{i}-{name}.png", "PNG")
+    make_set(1800, 2880, "tablet-10")
 
 
 # ── Run ──────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    print("→ Generating Play Store assets…")
+    print("Generating Play Store assets...")
+    # Wipe stale screenshots so old filenames don't linger.
+    for f in OUT_DIR.glob("*.png"):
+        f.unlink()
     make_icon()
-    print("  ✓ icon-512.png")
+    print("  + icon-512.png")
     make_feature_graphic()
-    print("  ✓ feature-graphic-1024x500.png")
+    print("  + feature-graphic-1024x500.png")
     make_phone_screens()
-    print("  ✓ 5 phone screenshots")
+    print("  + 7 phone screenshots")
     make_tablet_7_screens()
-    print("  ✓ 3 7-inch tablet screenshots")
+    print("  + 7 tablet-7 screenshots")
     make_tablet_10_screens()
-    print("  ✓ 3 10-inch tablet screenshots")
+    print("  + 7 tablet-10 screenshots")
     print(f"\nAll assets in: {OUT_DIR}")
