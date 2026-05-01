@@ -48,3 +48,7 @@ app.*.map.json
 android/key.properties
 android/app/upload-keystore.jks
 android/app/*.jks
+
+# Generated Play Store assets — re-runnable via tools/play_assets.py
+play-assets/
+play-assets.zip
