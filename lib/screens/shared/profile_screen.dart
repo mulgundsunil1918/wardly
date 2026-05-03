@@ -525,9 +525,6 @@ class ProfileScreen extends StatelessWidget {
       ListTile(
         leading: const Icon(Icons.person_pin_circle_outlined),
         title: const Text('About the maker'),
-        subtitle: const Text(
-          'Meet Sunil & the people behind Wardly',
-        ),
         trailing: const Icon(Icons.open_in_new, size: 18),
         onTap: () => _openExternal(context, 'https://bridgr.co.in/'),
       ),
