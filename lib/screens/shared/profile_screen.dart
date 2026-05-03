@@ -521,7 +521,29 @@ class ProfileScreen extends StatelessWidget {
               : DateFormat('d MMM y').format(created),
         ),
       ),
+      const Divider(height: 1, indent: 60),
+      ListTile(
+        leading: const Icon(Icons.person_pin_circle_outlined),
+        title: const Text('About the maker'),
+        subtitle: const Text(
+          'Meet Sunil & the people behind Wardly',
+        ),
+        trailing: const Icon(Icons.open_in_new, size: 18),
+        onTap: () => _openExternal(context, 'https://bridgr.co.in/'),
+      ),
     ]);
+  }
+
+  /// Opens an external URL in the user's default browser. Falls back to
+  /// a snackbar if no handler is registered.
+  Future<void> _openExternal(BuildContext context, String url) async {
+    final uri = Uri.parse(url);
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Couldn't open $url")),
+      );
+    }
   }
 
   // ───────────────────────── Feedback & support ─────────────────────────
