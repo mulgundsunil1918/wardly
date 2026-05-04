@@ -69,6 +69,11 @@ class _NoteCommentsSheetState extends State<NoteCommentsSheet> {
   }
 
   Future<void> _send({bool acknowledge = false}) async {
+    // Dismiss the soft keyboard before the async work — without this,
+    // the keyboard's IME layer occasionally swallows the tap that
+    // triggered _send and the user has to tap twice.
+    FocusScope.of(context).unfocus();
+
     final text = _textController.text.trim();
     final user = context.read<AuthProvider>().currentUser;
 
@@ -169,6 +174,14 @@ class _NoteCommentsSheetState extends State<NoteCommentsSheet> {
         builder: (ctx, scrollController) => ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           child: Scaffold(
+            // The outer Padding(bottom: viewInsets.bottom) above already
+            // shifts the whole sheet up by the keyboard height. If the
+            // Scaffold ALSO resizes for the keyboard (the default), the
+            // input row gets pushed up TWICE — the buttons render at the
+            // wrong y-position and taps land where the buttons used to be
+            // a frame ago. Disable the inner shift; the outer Padding is
+            // already doing the right thing.
+            resizeToAvoidBottomInset: false,
             backgroundColor: AppColors.card,
             body: Column(
               children: [
