@@ -6,6 +6,7 @@ import '../../models/app_user.dart';
 import '../../utils/app_constants.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/role_badge.dart';
+import '../../widgets/support_action.dart';
 import 'add_staff_bottom_sheet.dart';
 
 class AdminStaffScreen extends StatefulWidget {
@@ -69,6 +70,7 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
               _searching = !_searching;
             }),
           ),
+          const SupportAppBarAction(),
         ],
       ),
       body: Column(

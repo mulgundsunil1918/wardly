@@ -13,6 +13,7 @@ import '../../services/metrics_service.dart';
 import '../../utils/app_constants.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/friendly_error.dart';
+import '../../widgets/support_action.dart';
 
 class _IdCollision implements Exception {}
 
@@ -373,7 +374,10 @@ class WardsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(title: const Text('Wards')),
+      appBar: AppBar(
+        title: const Text('Wards'),
+        actions: const [SupportAppBarAction()],
+      ),
       body: Builder(builder: (context) {
         final myWardIds =
             context.watch<AuthProvider>().currentUser?.wardIds ?? const [];

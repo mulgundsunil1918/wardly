@@ -10,6 +10,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/patient_provider.dart';
 import '../../utils/app_constants.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/support_action.dart';
 import 'add_patient_screen.dart';
 import 'patient_detail_screen.dart';
 
@@ -46,7 +47,7 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
     if (myWardIds.isEmpty) {
       return Scaffold(
         backgroundColor: AppColors.surface,
-        appBar: AppBar(title: const Text('Patients')),
+        appBar: AppBar(title: const Text('Patients'), actions: const [SupportAppBarAction()]),
         body: Center(
           child: Text(
             'Join a ward to see patients.',
@@ -64,7 +65,7 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
       builder: (context, snap) {
         if (!snap.hasData) {
           return Scaffold(
-            appBar: AppBar(title: const Text('Patients')),
+            appBar: AppBar(title: const Text('Patients'), actions: const [SupportAppBarAction()]),
             body: const Center(child: CircularProgressIndicator()),
           );
         }
@@ -72,7 +73,7 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
         if (wards.isEmpty) {
           return Scaffold(
             backgroundColor: AppColors.surface,
-            appBar: AppBar(title: const Text('Patients')),
+            appBar: AppBar(title: const Text('Patients'), actions: const [SupportAppBarAction()]),
             body: Center(
               child: Text(
                 'No wards yet. Create one in the Wards tab.',
@@ -117,7 +118,7 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
 
         return Scaffold(
           backgroundColor: AppColors.surface,
-          appBar: AppBar(title: const Text('Patients')),
+          appBar: AppBar(title: const Text('Patients'), actions: const [SupportAppBarAction()]),
           body: Column(
             children: [
               _searchBar(),

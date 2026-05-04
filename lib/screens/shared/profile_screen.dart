@@ -483,7 +483,7 @@ class ProfileScreen extends StatelessWidget {
         leading: const Icon(Icons.person_pin_circle_outlined),
         title: const Text('About the maker'),
         trailing: const Icon(Icons.open_in_new, size: 18),
-        onTap: () => _openExternal(context, 'https://bridgr.co.in/'),
+        onTap: () => _openExternal(context, 'https://bridgr.co.in'),
       ),
     ]);
   }

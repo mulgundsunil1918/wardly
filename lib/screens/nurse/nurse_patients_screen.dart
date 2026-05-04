@@ -6,6 +6,7 @@ import '../../providers/patient_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/patient_card.dart';
+import '../../widgets/support_action.dart';
 import 'nurse_patient_detail_screen.dart';
 
 class NursePatientsScreen extends StatefulWidget {
@@ -72,6 +73,7 @@ class _NursePatientsScreenState extends State<NursePatientsScreen> {
               _searching = !_searching;
             }),
           ),
+          const SupportAppBarAction(),
         ],
       ),
       body: Consumer<PatientProvider>(

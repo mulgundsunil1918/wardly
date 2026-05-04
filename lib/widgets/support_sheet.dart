@@ -5,7 +5,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../utils/app_theme.dart';
 
-const String _chaiUrl = 'https://www.chai4.me/mulgundsunil';
+// Support tile + daily chai popup both land here. The ?from=wardly
+// query param lets Bridgr attribute the visitor source.
+const String _chaiUrl = 'https://bridgr.co.in/support?from=wardly';
 const String _kLastShownKey = 'support_popup_last_shown';
 const String _kDisabledKey = 'support_popup_disabled';
 const Duration _interval = Duration(hours: 24);

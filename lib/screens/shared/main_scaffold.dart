@@ -11,6 +11,7 @@ import '../../providers/patient_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/rate_prompt.dart';
 import '../../widgets/note_card.dart';
+import '../../widgets/support_action.dart';
 import '../admin/admin_home_screen.dart';
 import '../admin/admin_staff_screen.dart';
 import '../doctor/add_note_screen.dart';
@@ -67,7 +68,10 @@ class _MainScaffoldState extends State<MainScaffold>
       // After the slide tutorial, run the interactive coachmark walk —
       // exactly once per install (keyed in SharedPreferences).
       await _maybeStartInteractiveTutorial();
-      if (mounted) SupportPrompt.maybeShowDaily(context);
+      // Daily chai popup removed at user's request — Support button
+      // now lives in every main-screen AppBar instead, so users still
+      // have a one-tap way to support the project without an
+      // interruption every day.
       // Quietly try a weekly Play in-app review nudge. Google rate-
       // limits the actual dialog server-side; we just ask.
       RatePrompt.maybeShowWeekly();
@@ -408,7 +412,10 @@ class _DoctorNotesList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(title: const Text('Ward Notes')),
+      appBar: AppBar(
+        title: const Text('Ward Notes'),
+        actions: const [SupportAppBarAction()],
+      ),
       body: Consumer<NoteProvider>(
         builder: (context, np, _) {
           if (np.notes.isEmpty) {
