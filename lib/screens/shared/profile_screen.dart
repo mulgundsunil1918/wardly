@@ -504,6 +504,10 @@ class ProfileScreen extends StatelessWidget {
 
   static const String _supportEmail = 'mulgundsunil@gmail.com';
   static const String _androidPackage = 'com.wardly.app';
+  // Replace with the real App Store ID after first iOS submission —
+  // App Store Connect → App Information → "Apple ID" (numeric).
+  // Until then, the search-page URL is the second fallback.
+  static const String _iosAppStoreId = '0000000000';
 
   Widget _feedbackCard(BuildContext context) {
     return _cardWrapper(
@@ -662,31 +666,41 @@ Account: $email
       }
     }
 
-    // Fallback: open the Play Store listing for the package.
-    final marketUri = Uri.parse('market://details?id=$_androidPackage');
-    final webUri = Uri.parse(
-      'https://play.google.com/store/apps/details?id=$_androidPackage',
-    );
-    bool launched = false;
-    if (!kIsWeb) {
-      try {
-        launched = await launchUrl(
-          marketUri,
-          mode: LaunchMode.externalApplication,
-        );
-      } catch (_) {}
+    // Fallback: open the platform-appropriate store listing.
+    // On iOS: itms-apps://itunes.apple.com (deep-link to App Store).
+    // On Android: market:// (deep-link) with HTTPS fallback.
+    final isIOS = !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+    final List<Uri> attempts;
+    if (isIOS) {
+      // App Store ID isn't known until first submission — once you have
+      // it, paste it here as `_iosAppStoreId`. Until then, the search
+      // URL works as a fallback.
+      attempts = [
+        Uri.parse(
+          'https://apps.apple.com/app/id$_iosAppStoreId',
+        ),
+        Uri.parse('https://apps.apple.com/search?term=wardly'),
+      ];
+    } else {
+      attempts = [
+        Uri.parse('market://details?id=$_androidPackage'),
+        Uri.parse(
+            'https://play.google.com/store/apps/details?id=$_androidPackage'),
+      ];
     }
-    if (!launched) {
-      launched = await launchUrl(
-        webUri,
-        mode: LaunchMode.externalApplication,
-      );
+    bool launched = false;
+    for (final uri in attempts) {
+      try {
+        launched = await launchUrl(uri,
+            mode: LaunchMode.externalApplication);
+        if (launched) break;
+      } catch (_) {}
     }
     if (!launched && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            "Couldn't open the Play Store — search for 'Wardly' there.",
+            "Couldn't open the store — search for 'Wardly' there.",
           ),
         ),
       );

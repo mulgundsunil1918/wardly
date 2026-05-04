@@ -1,4 +1,7 @@
+import 'dart:io' show Platform;
+
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -182,6 +185,31 @@ class _LoginScreenState extends State<LoginScreen> {
       final user = authProvider.currentUser!;
       final needsName = user.name.trim().isEmpty ||
           user.name.trim() == user.email.split('@').first;
+      if (!mounted) return;
+      if (needsName) {
+        await _promptForName(authProvider);
+      }
+      if (!mounted) return;
+      await _routePostAuth();
+    } else if (authProvider.error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.danger,
+          content: Text(friendlyError(authProvider.error!)),
+        ),
+      );
+    }
+  }
+
+  Future<void> _signInApple() async {
+    final authProvider = context.read<AuthProvider>();
+    final ok = await authProvider.signInWithApple();
+    if (!mounted) return;
+    if (ok && authProvider.currentUser != null) {
+      await _markOnboardingDone();
+      PushService.register();
+      final user = authProvider.currentUser!;
+      final needsName = user.name.trim().isEmpty;
       if (!mounted) return;
       if (needsName) {
         await _promptForName(authProvider);
@@ -586,6 +614,30 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
+                      // Apple Sign-In is REQUIRED by App Review on iOS
+                      // when Google sign-in is offered. Hidden on Android
+                      // (where it adds nothing) and web (unsupported).
+                      if (!kIsWeb && Platform.isIOS) ...[
+                        const SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          onPressed: authProvider.isLoading
+                              ? null
+                              : _signInApple,
+                          icon: const Icon(Icons.apple, size: 24),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.black,
+                            side: const BorderSide(color: Colors.black),
+                          ),
+                          label: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Text(
+                              _mode == _Mode.signIn
+                                  ? 'Continue with Apple'
+                                  : 'Sign up with Apple',
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

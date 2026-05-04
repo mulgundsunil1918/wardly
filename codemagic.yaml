@@ -1,0 +1,134 @@
+# Codemagic CI/CD config for Wardly iOS builds.
+#
+# Build flow:
+#   1. macOS runner clones the repo.
+#   2. Pulls Flutter, runs `pub get`.
+#   3. `cd ios && pod install` (Podfile pinned to iOS 13.0).
+#   4. Apple App Store Connect API key (configured in Codemagic UI under
+#      Teams → Integrations) auto-generates the provisioning profile +
+#      certificate.
+#   5. `flutter build ipa --release`.
+#   6. Upload IPA to TestFlight.
+#
+# Before the first run:
+#   • Connect this repo to Codemagic at https://codemagic.io
+#   • Teams → Integrations → App Store Connect → set up an API key
+#     (https://appstoreconnect.apple.com/access/api), name the
+#     integration `codemagic` to match the YAML below.
+#   • App Store Connect → My Apps → + → bundle id `com.wardly.app`
+#     → note the numeric Apple ID and paste it as APP_STORE_APPLE_ID
+#     below (or set as a Codemagic env var).
+#   • Apple Developer → Identifiers → enable Push Notifications and
+#     Sign In with Apple capabilities for `com.wardly.app`.
+#   • Generate APNs Auth Key (.p8) and upload to Firebase Console →
+#     Cloud Messaging → Apple app config (iOS push won't deliver
+#     without this).
+
+workflows:
+  ios-release:
+    name: Wardly iOS — App Store
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+
+    integrations:
+      app_store_connect: codemagic
+
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.wardly.app
+      vars:
+        BUNDLE_ID: "com.wardly.app"
+        # Replace with the actual Apple ID (numeric) after the first
+        # App Store Connect entry is created. Until then, the build
+        # still succeeds — only the auto-versionCode-bump step needs it.
+        APP_STORE_APPLE_ID: "0000000000"
+      flutter: 3.41.7
+      xcode: latest
+      cocoapods: default
+
+    cache:
+      cache_paths:
+        - $HOME/Library/Caches/CocoaPods
+        - $HOME/.pub-cache
+        - $FCI_BUILD_DIR/ios/Pods
+
+    scripts:
+      - name: Initialize keychain
+        script: keychain initialize
+
+      - name: Fetch Flutter packages
+        script: flutter pub get
+
+      - name: Set up provisioning profiles
+        # Pulls signing certs + provisioning profiles from App Store
+        # Connect via the API key integration above.
+        script: xcode-project use-profiles
+
+      - name: Pod install
+        script: |
+          cd ios
+          pod install --repo-update
+
+      - name: Auto-bump build number from App Store Connect
+        # Looks up the highest build number on App Store Connect and
+        # increments it. Skipped if APP_STORE_APPLE_ID is the placeholder.
+        script: |
+          cd ios
+          if [ "$APP_STORE_APPLE_ID" = "0000000000" ]; then
+            echo "Skipping auto-bump — APP_STORE_APPLE_ID not configured."
+          else
+            LATEST=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID")
+            agvtool new-version -all $((LATEST + 1))
+          fi
+
+      - name: Build IPA
+        script: |
+          flutter build ipa --release \
+            --export-options-plist=/Users/builder/export_options.plist
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - flutter_drive.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        # First few builds: TestFlight only. Flip submit_to_app_store
+        # to true when you're ready for App Review.
+        submit_to_testflight: true
+        submit_to_app_store: false
+        beta_groups:
+          - Internal Testers
+
+      email:
+        recipients:
+          - mulgundsunil@gmail.com
+        notify:
+          success: true
+          failure: true
+
+  # ── Optional: nightly Android AAB build for parity. Disabled by
+  # default (no `triggering` block); trigger manually from the
+  # Codemagic dashboard if needed.
+  android-release:
+    name: Wardly Android — Play Store
+    instance_type: linux_x2
+    max_build_duration: 60
+
+    environment:
+      android_signing:
+        - keystore_reference
+      vars:
+        PACKAGE_NAME: "com.wardly.app"
+      flutter: 3.41.7
+
+    scripts:
+      - name: Fetch Flutter packages
+        script: flutter pub get
+      - name: Build AAB
+        script: flutter build appbundle --release
+
+    artifacts:
+      - build/app/outputs/bundle/release/*.aab

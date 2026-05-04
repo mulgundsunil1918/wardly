@@ -1,7 +1,10 @@
+import 'dart:io' show Platform;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../models/app_user.dart';
 import '../utils/app_constants.dart';
@@ -120,6 +123,61 @@ class AuthService {
     } catch (e) {
       rethrow;
     }
+  }
+
+  /// Sign in with Apple — iOS-only. Apple App Review rejects apps that
+  /// offer third-party social sign-in (Google, in our case) but not
+  /// Apple Sign-In, so this exists purely to satisfy that requirement
+  /// on iOS. Android raises a runtime error if called there.
+  Future<AppUser?> signInWithApple() async {
+    if (kIsWeb) {
+      throw UnsupportedError('Sign in with Apple is iOS-only.');
+    }
+    if (!Platform.isIOS) {
+      throw UnsupportedError('Sign in with Apple is iOS-only.');
+    }
+    final credential = await SignInWithApple.getAppleIDCredential(
+      scopes: [
+        AppleIDAuthorizationScopes.email,
+        AppleIDAuthorizationScopes.fullName,
+      ],
+    );
+    final oauth = OAuthProvider('apple.com').credential(
+      idToken: credential.identityToken,
+      // We don't generate a nonce — sign_in_with_apple's helper will
+      // sign the request natively. Apple may return null for email on
+      // subsequent sign-ins (it's only sent the FIRST time the user
+      // grants access), so we synthesise a display name if missing.
+    );
+    final cred = await _auth.signInWithCredential(oauth);
+    final user = cred.user;
+    if (user == null) return null;
+
+    final doc = await _users.doc(user.uid).get();
+    if (!doc.exists) {
+      final now = DateTime.now();
+      final composed = [
+        credential.givenName ?? '',
+        credential.familyName ?? '',
+      ].where((s) => s.isNotEmpty).join(' ').trim();
+      final displayName = composed.isNotEmpty
+          ? composed
+          : (user.displayName ??
+              (user.email ?? 'Apple user').split('@').first);
+      await _users.doc(user.uid).set({
+        'name': displayName,
+        'email': user.email ?? credential.email ?? '',
+        'role': 'doctor',
+        'wardId': '',
+        'wardIds': <String>[],
+        'avatarUrl': user.photoURL,
+        'createdAt': Timestamp.fromDate(now),
+      });
+      MetricsService.bump('user',
+          summary: 'New Apple account: $displayName');
+    }
+    final fresh = await _users.doc(user.uid).get();
+    return AppUser.fromFirestore(fresh);
   }
 
   Future<void> sendPasswordReset(String email) async {

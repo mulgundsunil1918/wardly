@@ -19,7 +19,6 @@ import '../doctor/doctor_home_screen.dart';
 import '../doctor/patients_list_screen.dart';
 import '../nurse/nurse_home_screen.dart';
 import '../nurse/nurse_patients_screen.dart';
-import '../../widgets/support_sheet.dart';
 import 'profile_screen.dart';
 import 'tutorial_screen.dart';
 import 'wards_screen.dart';

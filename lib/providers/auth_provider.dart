@@ -83,6 +83,23 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Sign in with Apple — iOS-only. Required by App Review whenever
+  /// Google sign-in is offered.
+  Future<bool> signInWithApple() async {
+    _error = null;
+    _setLoading(true);
+    try {
+      final user = await _authService.signInWithApple();
+      _currentUser = user;
+      _setLoading(false);
+      return user != null;
+    } catch (e) {
+      _error = _friendly(e);
+      _setLoading(false);
+      return false;
+    }
+  }
+
   Future<bool> sendPasswordReset(String email) async {
     _error = null;
     try {

@@ -67,8 +67,44 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Wardly needs microphone access for voice-to-text notes</string>
+	<string>Wardly only records audio when you tap the mic to dictate a note. Recording stops the moment you save or cancel.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Wardly uses speech recognition to convert voice to text notes</string>
+	<string>Wardly transcribes your voice into text only while you're tapping the mic icon, so you can post a note hands-free.</string>
+	<!-- Push notifications via Firebase Cloud Messaging -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
+	<!-- url_launcher needs these schemes whitelisted on iOS to open
+	     external links from inside the app: bridgr.co.in, mailto:
+	     bug-report links, the App Store rating fallback. -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>https</string>
+		<string>http</string>
+		<string>mailto</string>
+		<string>tel</string>
+		<string>itms-apps</string>
+	</array>
+	<!-- Google Sign-In return URL — REVERSED_CLIENT_ID from
+	     GoogleService-Info.plist. Without this, Google Sign-In on iOS
+	     opens the OAuth screen but never returns to the app. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.525482754887-3428e39501bu3jtdmq9e78hqliu6lidb</string>
+			</array>
+		</dict>
+	</array>
+	<!-- ITSAppUsesNonExemptEncryption=false — Wardly only uses standard
+	     HTTPS / TLS encryption (Firebase). Declaring this saves us from
+	     filling out the export-compliance form on every TestFlight upload. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>

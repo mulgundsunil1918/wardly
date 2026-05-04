@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- APNs environment. Xcode auto-flips development -> production
+	     for App Store builds; "development" is a sane default during
+	     TestFlight. -->
+	<key>aps-environment</key>
+	<string>development</string>
+	<!-- Sign In with Apple — required by Apple App Review whenever the
+	     app offers any third-party social sign-in (we have Google). -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
+</dict>
+</plist>
