@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +10,7 @@ import '../models/note_comment.dart';
 import '../providers/auth_provider.dart';
 import '../providers/note_provider.dart';
 import '../services/note_service.dart';
+import '../utils/app_constants.dart';
 import '../utils/app_theme.dart';
 import '../utils/friendly_error.dart';
 
@@ -34,24 +37,56 @@ class _NoteCommentsSheetState extends State<NoteCommentsSheet> {
   final _noteService = NoteService();
   bool _sending = false;
 
+  // Live mirror of the note's ack state, fed by the doc-stream below.
+  // The widget.note we got passed in is captured at sheet-open time —
+  // if we relied on it, the Ack button would still show after a
+  // successful ack and tapping it again would silently re-fire.
+  late bool _isAcked = widget.note.isAcknowledged;
+
   @override
   void dispose() {
     _textController.dispose();
     super.dispose();
   }
 
+  /// Lightweight stream of just the ack state of the note doc — used to
+  /// keep the Ack-button visible / hidden in sync with reality.
+  Stream<bool> get _ackStream => FirebaseFirestore.instance
+      .collection(AppConstants.notesCollection)
+      .doc(widget.note.id)
+      .snapshots()
+      .map((s) => (s.data()?['isAcknowledged'] as bool?) ?? false);
+
+  void _toast(String msg, {bool danger = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: danger ? AppColors.danger : null,
+        duration: Duration(seconds: danger ? 5 : 2),
+        content: Text(msg),
+      ),
+    );
+  }
+
   Future<void> _send({bool acknowledge = false}) async {
     final text = _textController.text.trim();
     final user = context.read<AuthProvider>().currentUser;
-    if (user == null) return;
-    if (text.isEmpty && !acknowledge) return;
+
+    // Visible failure paths — these used to silently `return` and made
+    // it look like the buttons did nothing.
+    if (user == null) {
+      _toast("You're signed out. Sign in again to reply.", danger: true);
+      return;
+    }
+    if (!acknowledge && text.isEmpty) {
+      _toast("Type something before tapping Send.");
+      return;
+    }
 
     setState(() => _sending = true);
     try {
-      // If the user is acknowledging, we always drop a comment in the
-      // thread so the team can see who ack'd from inside the conversation.
-      // If they typed a reply, that reply itself is flagged as the ack.
-      // If they didn't, we post a tiny "Acknowledged" system bubble.
+      // Drop a comment in the thread either way — when acknowledging
+      // the comment is flagged so the bubble shows the green ack stripe.
       if (acknowledge) {
         await _noteService.addComment(
           widget.note.id,
@@ -78,21 +113,20 @@ class _NoteCommentsSheetState extends State<NoteCommentsSheet> {
           ),
         );
       }
-      if (acknowledge && !widget.note.isAcknowledged) {
+      // Flip the parent note's ack flag (idempotent — server-side check
+      // not needed, the field can stay true even if multiple people ack).
+      if (acknowledge && !_isAcked) {
         await context
             .read<NoteProvider>()
             .acknowledgeNote(widget.note.id, user.name);
       }
       _textController.clear();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppColors.danger,
-            content: Text(friendlyError(e)),
-          ),
-        );
-      }
+      _toast(acknowledge ? 'Acknowledged ✓' : 'Reply posted');
+    } catch (e, st) {
+      // Log the raw error so we can diagnose if the friendly version
+      // hides the cause (e.g. permission-denied vs network).
+      debugPrint('NoteCommentsSheet._send failed: $e\n$st');
+      _toast(friendlyError(e), danger: true);
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -234,15 +268,27 @@ class _NoteCommentsSheetState extends State<NoteCommentsSheet> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        if (!n.isAcknowledged)
-                          IconButton(
-                            tooltip: 'Ack with reply',
-                            icon: const Icon(Icons.check_circle_outline,
-                                color: AppColors.accent),
-                            onPressed: _sending
-                                ? null
-                                : () => _send(acknowledge: true),
-                          ),
+                        StreamBuilder<bool>(
+                          stream: _ackStream,
+                          initialData: _isAcked,
+                          builder: (context, snap) {
+                            final acked = snap.data ?? _isAcked;
+                            // Track the live state so _send doesn't
+                            // re-fire the ack flip unnecessarily.
+                            _isAcked = acked;
+                            if (acked) return const SizedBox.shrink();
+                            return IconButton(
+                              tooltip: 'Ack with reply',
+                              icon: const Icon(
+                                Icons.check_circle_outline,
+                                color: AppColors.accent,
+                              ),
+                              onPressed: _sending
+                                  ? null
+                                  : () => _send(acknowledge: true),
+                            );
+                          },
+                        ),
                         IconButton(
                           tooltip: 'Send',
                           icon: _sending

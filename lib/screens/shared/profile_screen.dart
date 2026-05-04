@@ -10,7 +10,6 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../utils/rate_prompt.dart';
 import '../../utils/share_helper.dart';
 import '../../widgets/support_sheet.dart';
 import '../auth/background_setup_screen.dart';
@@ -428,57 +427,15 @@ class ProfileScreen extends StatelessWidget {
           ),
         ),
         const Divider(height: 1, indent: 60),
-        FutureBuilder<bool>(
-          future: SupportPrompt.isEnabled(),
-          builder: (context, snap) {
-            final enabled = snap.data ?? true;
-            return SwitchListTile(
-              secondary: const Icon(
-                Icons.local_cafe_outlined,
-                color: Color(0xFFE57F00),
-              ),
-              title: const Text('Daily support reminder'),
-              subtitle: Text(
-                enabled
-                    ? 'Once a day, a friendly chai prompt'
-                    : 'Off — you can still tap the chai icon any time',
-              ),
-              value: enabled,
-              onChanged: (v) async {
-                await SupportPrompt.setEnabled(v);
-                if (context.mounted) {
-                  (context as Element).markNeedsBuild();
-                }
-              },
-            );
-          },
-        ),
-        const Divider(height: 1, indent: 60),
-        FutureBuilder<bool>(
-          future: RatePrompt.isEnabled(),
-          builder: (context, snap) {
-            final enabled = snap.data ?? true;
-            return SwitchListTile(
-              secondary: const Icon(
-                Icons.star_outline,
-                color: Color(0xFFE57F00),
-              ),
-              title: const Text('Weekly rating reminder'),
-              subtitle: Text(
-                enabled
-                    ? 'Once a week, asks if you\'d like to rate Wardly'
-                    : 'Off — you can still tap "Rate on Play Store" any time',
-              ),
-              value: enabled,
-              onChanged: (v) async {
-                await RatePrompt.setEnabled(v);
-                if (context.mounted) {
-                  (context as Element).markNeedsBuild();
-                }
-              },
-            );
-          },
-        ),
+        // Stateful daily-support toggle — the previous FutureBuilder
+        // version never re-rendered because the future was cached after
+        // the first read, and `markNeedsBuild()` doesn't re-invoke a
+        // already-resolved FutureBuilder. A small dedicated widget owns
+        // the value in state and updates instantly on tap.
+        const _SupportPromptToggle(),
+        // Note: weekly rating reminder is always-on by default and not
+        // user-toggleable. Google Play rate-limits the dialog itself,
+        // so it appears at most a few times a year regardless.
       ],
     );
   }
@@ -1035,3 +992,58 @@ Account: $email
     );
   }
 }
+
+
+// ─────────────────────────── Stateful toggle ────────────────────────────
+// Lives outside ProfileScreen because its state has to survive across
+// the parent rebuilds caused by AuthProvider / TextScaleProvider.
+
+class _SupportPromptToggle extends StatefulWidget {
+  const _SupportPromptToggle();
+
+  @override
+  State<_SupportPromptToggle> createState() => _SupportPromptToggleState();
+}
+
+class _SupportPromptToggleState extends State<_SupportPromptToggle> {
+  bool? _enabled;
+
+  @override
+  void initState() {
+    super.initState();
+    SupportPrompt.isEnabled().then((v) {
+      if (mounted) setState(() => _enabled = v);
+    });
+  }
+
+  Future<void> _toggle(bool v) async {
+    // Update UI optimistically so the switch animates immediately.
+    setState(() => _enabled = v);
+    try {
+      await SupportPrompt.setEnabled(v);
+    } catch (_) {
+      // Revert on failure
+      if (mounted) setState(() => _enabled = !v);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = _enabled ?? true;
+    return SwitchListTile(
+      secondary: const Icon(
+        Icons.local_cafe_outlined,
+        color: Color(0xFFE57F00),
+      ),
+      title: const Text('Daily support reminder'),
+      subtitle: Text(
+        enabled
+            ? 'Once a day, a friendly chai prompt'
+            : 'Off — you can still tap the chai icon any time',
+      ),
+      value: enabled,
+      onChanged: _toggle,
+    );
+  }
+}
+
