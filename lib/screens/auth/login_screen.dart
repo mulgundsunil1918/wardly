@@ -1,6 +1,5 @@
 import 'dart:io' show Platform;
 
-import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -85,64 +84,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
     bool ok;
     if (_mode == _Mode.signIn) {
-      // Pre-check: if this email is a Google-only account, redirect them.
-      try {
-        final methods =
-            await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
-        if (methods.isNotEmpty &&
-            methods.contains('google.com') &&
-            !methods.contains('password')) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              backgroundColor: AppColors.warning,
-              duration: const Duration(seconds: 6),
-              content: const Text(
-                'This email is linked to Google. Tap "Continue with Google" to sign in.',
-              ),
-            ),
-          );
-          return;
-        }
-      } catch (_) {}
       ok = await authProvider.signIn(email, password);
     } else {
-      // Sign-up pre-check: email already registered with Google?
-      try {
-        final methods =
-            await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
-        if (methods.contains('google.com') && !methods.contains('password')) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              backgroundColor: AppColors.warning,
-              duration: const Duration(seconds: 6),
-              content: const Text(
-                'This email already has a Google account. Tap "Sign up with Google" instead.',
-              ),
-            ),
-          );
-          return;
-        }
-        if (methods.contains('password')) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              backgroundColor: AppColors.warning,
-              content: const Text(
-                'This email is already registered. Switch to Sign In.',
-              ),
-            ),
-          );
-          return;
-        }
-      } catch (_) {}
       final name = _nameController.text.trim();
       ok = await authProvider.register(
         name: name,
         email: email,
         password: password,
-        role: 'doctor', // roles hidden — everyone is a ward member
+        role: 'doctor',
       );
     }
 
@@ -298,51 +247,10 @@ class _LoginScreenState extends State<LoginScreen> {
     if (result == null || result.isEmpty || !mounted) return;
     final email = result.trim();
 
-    // Pre-check what sign-in methods Firebase has for this email so we
-    // don't pretend a reset link is on the way when it physically can't
-    // arrive (no account at all) or won't help (Google-only account).
-    List<String> methods = const [];
-    try {
-      methods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
-    } catch (_) {
-      // Network blip or Email Enumeration Protection enabled on the
-      // project — fall through and try the reset anyway.
-    }
-    if (!mounted) return;
-
-    // Case A: nobody has registered with this email.
-    if (methods.isEmpty) {
-      // We can't tell apart "no account" vs "enumeration protection"
-      // perfectly, but the message below covers both: if there IS an
-      // account, the email arrives; if there isn't, the user knows.
-      await _showResetInfoDialog(
-        context,
-        title: 'No account found for that email?',
-        body:
-            "We couldn't find an existing Wardly account for $email.\n\n"
-            "• Double-check the spelling of the email address.\n"
-            "• If you signed up with Google, go back and tap 'Continue "
-            "with Google' — there's no password to reset.\n"
-            "• If you've never signed up before, switch to 'Sign Up' "
-            "and create one.",
-      );
-      return;
-    }
-
-    // Case B: account exists but uses Google sign-in only — no password.
-    if (methods.contains('google.com') && !methods.contains('password')) {
-      await _showResetInfoDialog(
-        context,
-        title: 'Use Google to sign in',
-        body:
-            "$email is linked to a Google account, so there's no Wardly "
-            "password to reset.\n\n"
-            "Go back to the Sign In screen and tap 'Continue with Google'.",
-      );
-      return;
-    }
-
-    // Case C: account has a password — actually send the reset email.
+    // Firebase Email Enumeration Protection (enabled by default since 2023)
+    // means fetchSignInMethodsForEmail always returns [] and sendPasswordReset
+    // always returns 200 — even for non-existent addresses. We just send it
+    // and show a neutral "check your inbox" message either way.
     final ok = await context.read<AuthProvider>().sendPasswordReset(email);
     if (!mounted) return;
     if (ok) {
@@ -350,13 +258,11 @@ class _LoginScreenState extends State<LoginScreen> {
         context,
         title: 'Check your inbox',
         body:
-            "We sent a password-reset link to $email.\n\n"
-            "It usually arrives within a minute. If you don't see it:\n\n"
-            "1. Check your Spam / Junk folder.\n"
-            "2. The link is valid for 1 hour. Tap 'Send link' again to "
-            "get a fresh one if it's expired.\n"
-            "3. Open it on the same device or any browser — the page "
-            "lets you set a new password.",
+            "If a Wardly account exists for $email, a reset link is on its way.\n\n"
+            "• It usually arrives within a minute.\n"
+            "• Check your Spam / Junk folder if you don't see it.\n"
+            "• The link is valid for 1 hour — tap 'Forgot?' again for a fresh one.\n\n"
+            "If you signed up with Google, go back and tap 'Continue with Google' — there's no password to reset.",
       );
     } else {
       final err = context.read<AuthProvider>().error;
@@ -366,7 +272,7 @@ class _LoginScreenState extends State<LoginScreen> {
           duration: const Duration(seconds: 6),
           content: Text(
             err == null
-                ? "Couldn't send the reset email. Try again in a moment."
+                ? "Couldn't send the reset email. Check your internet and try again."
                 : "Reset failed — ${friendlyError(err)}",
           ),
         ),

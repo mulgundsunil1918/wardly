@@ -169,9 +169,15 @@ class AuthProvider extends ChangeNotifier {
     final msg = e.toString();
     if (msg.contains('user-not-found')) return 'No account with that email';
     if (msg.contains('wrong-password')) return 'Wrong password';
+    // Firebase Email Enumeration Protection collapses wrong-password +
+    // user-not-found into this single code to prevent account probing.
+    if (msg.contains('invalid-credential') ||
+        msg.contains('invalid-login-credentials')) {
+      return 'Email or password is incorrect';
+    }
     if (msg.contains('invalid-email')) return 'Invalid email';
     if (msg.contains('email-already-in-use')) {
-      return 'Email already registered';
+      return 'That email is already registered. Switch to Sign In.';
     }
     if (msg.contains('weak-password')) return 'Password too weak';
     if (msg.contains('network-request-failed')) return 'Network error';

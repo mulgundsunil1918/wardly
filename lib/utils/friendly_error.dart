@@ -20,6 +20,12 @@ String friendlyError(Object e) {
   if (lower.contains('wrong-password')) {
     return 'That password is incorrect.';
   }
+  // Firebase Email Enumeration Protection merges wrong-password +
+  // user-not-found into a single generic code to prevent account probing.
+  if (lower.contains('invalid-credential') ||
+      lower.contains('invalid-login-credentials')) {
+    return 'Email or password is incorrect. Please check and try again.';
+  }
   if (lower.contains('invalid-email')) {
     return 'That email address looks invalid.';
   }
