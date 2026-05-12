@@ -59,6 +59,7 @@ dependencies:
   # iOS-only: required by Apple App Review whenever the app offers
   # third-party sign-in (we have Google). Android safely ignores it.
   sign_in_with_apple: ^6.1.0
+  http: ^1.2.0
 
 dev_dependencies:
   flutter_test:

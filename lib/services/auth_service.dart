@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:http/http.dart' as http;
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../models/app_user.dart';
@@ -180,11 +181,24 @@ class AuthService {
     return AppUser.fromFirestore(fresh);
   }
 
+  /// Sends a branded password-reset email via our Cloud Function + Resend.
+  ///
+  /// Firebase's built-in delivery (noreply@wardly-24081996.firebaseapp.com)
+  /// is silently dropped by many providers, so we generate the reset link
+  /// with the Admin SDK and hand delivery to Resend.
+  ///
+  /// The Cloud Function always returns 200 regardless of whether the address
+  /// is registered — we intentionally never reveal that to callers either.
   Future<void> sendPasswordReset(String email) async {
-    // No ActionCodeSettings — Firebase sends its standard hosted reset
-    // email. Custom ActionCodeSettings with androidPackageName can cause
-    // Firebase to silently drop the delivery on some providers.
-    await _auth.sendPasswordResetEmail(email: email.trim());
+    const url =
+        'https://us-central1-wardly-24081996.cloudfunctions.net/sendPasswordResetEmail';
+    await http.post(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json'},
+      body: '{"email":"${email.trim().toLowerCase()}"}',
+    );
+    // We don't check the response body — the function always returns ok:true.
+    // The caller shows a neutral "check your inbox" message.
   }
 
   Future<void> signOut() async {

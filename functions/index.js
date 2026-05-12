@@ -20,11 +20,15 @@ const {
   onDocumentDeleted,
 } = require('firebase-functions/v2/firestore');
 const { onRequest } = require('firebase-functions/v2/https');
+const { defineSecret } = require('firebase-functions/params');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
+const { getAuth } = require('firebase-admin/auth');
 // v1 needed for auth.user().onDelete trigger (not in v2 API surface).
 const functionsV1 = require('firebase-functions/v1');
+
+const resendApiKey = defineSecret('RESEND_API_KEY');
 
 initializeApp();
 
@@ -259,6 +263,125 @@ exports.onUserDeletedCleanup = functionsV1
       `${joinedWards.size} memberships removed)`,
     );
   });
+
+/**
+ * Wardly — password reset email via Resend.
+ *
+ * POST body: { "email": "user@example.com" }
+ *
+ * Generates a Firebase password-reset link (Admin SDK), then delivers it
+ * through Resend so the email comes from a real domain instead of
+ * noreply@wardly-24081996.firebaseapp.com (which gets silently dropped by
+ * many providers).
+ *
+ * Always responds 200 regardless of whether the address exists — avoids
+ * email enumeration.
+ */
+exports.sendPasswordResetEmail = onRequest(
+  { ...COMMON_OPTS, cors: true, secrets: [resendApiKey], timeoutSeconds: 30 },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.status(405).send('Method Not Allowed');
+      return;
+    }
+
+    const email = (req.body?.email || '').trim().toLowerCase();
+    if (!email) {
+      // Still 200 — don't reveal anything useful to an attacker.
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    try {
+      // 1. Ask Firebase Admin to generate the reset link.
+      //    This throws if the email is not registered — we catch silently.
+      const link = await getAuth().generatePasswordResetLink(email);
+
+      // 2. Send via Resend.
+      const { Resend } = require('resend');
+      const resend = new Resend(resendApiKey.value());
+
+      await resend.emails.send({
+        from: 'Wardly <onboarding@resend.dev>',
+        to: email,
+        subject: 'Reset your Wardly password',
+        html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+</head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'DM Sans',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr>
+      <td align="center">
+        <table width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+          <!-- Header -->
+          <tr>
+            <td style="background:#0A5C8A;padding:32px 40px;text-align:center;">
+              <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;letter-spacing:-0.5px;">Wardly</h1>
+              <p style="margin:4px 0 0;color:rgba(255,255,255,0.8);font-size:13px;">Clinical Notes for Ward Teams</p>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px;">
+              <h2 style="margin:0 0 12px;color:#1a1a2e;font-size:20px;font-weight:600;">Reset your password</h2>
+              <p style="margin:0 0 24px;color:#555;font-size:15px;line-height:1.6;">
+                We received a request to reset the password for your Wardly account
+                (<strong>${email}</strong>).<br><br>
+                Click the button below to set a new password. This link expires in 1 hour.
+              </p>
+              <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+                <tr>
+                  <td align="center" style="background:#0A5C8A;border-radius:8px;">
+                    <a href="${link}"
+                       style="display:inline-block;padding:14px 32px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">
+                      Reset Password
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0 0 8px;color:#888;font-size:13px;line-height:1.5;">
+                If the button doesn't work, copy and paste this link into your browser:
+              </p>
+              <p style="margin:0 0 32px;word-break:break-all;">
+                <a href="${link}" style="color:#0A5C8A;font-size:12px;">${link}</a>
+              </p>
+              <hr style="border:none;border-top:1px solid #eee;margin:0 0 24px;">
+              <p style="margin:0;color:#aaa;font-size:12px;line-height:1.5;">
+                If you didn't request a password reset, you can safely ignore this email.
+                Your password won't change until you click the link above.
+              </p>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="background:#f8f9fb;padding:20px 40px;text-align:center;border-top:1px solid #eee;">
+              <p style="margin:0;color:#bbb;font-size:12px;">
+                © ${new Date().getFullYear()} Wardly &nbsp;·&nbsp;
+                <a href="https://bridgr.co.in/support?from=wardly" style="color:#0A5C8A;text-decoration:none;">Support</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`,
+      });
+
+      console.log(`Wardly: password reset email sent to ${email}`);
+    } catch (e) {
+      // Swallow all errors — never leak whether the address is registered.
+      console.warn('sendPasswordResetEmail suppressed error:', e?.message ?? e);
+    }
+
+    res.status(200).json({ ok: true });
+  },
+);
 
 /**
  * Wardly — one-shot metrics backfill.
