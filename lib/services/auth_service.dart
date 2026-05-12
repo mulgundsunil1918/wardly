@@ -181,22 +181,10 @@ class AuthService {
   }
 
   Future<void> sendPasswordReset(String email) async {
-    // Pinning the action settings so the email link is predictable:
-    // Firebase hosts the reset form itself at
-    //   https://wardly-24081996.firebaseapp.com/__/auth/action?...
-    // and after the user enters a new password, redirects them to the
-    // `url` below. The url just has to be on the project's authorised
-    // domains list (the firebaseapp.com domain is always whitelisted).
-    await _auth.sendPasswordResetEmail(
-      email: email.trim(),
-      actionCodeSettings: ActionCodeSettings(
-        url: 'https://wardly-24081996.firebaseapp.com',
-        handleCodeInApp: false,
-        androidPackageName: 'com.wardly.app',
-        androidInstallApp: false,
-        androidMinimumVersion: '1',
-      ),
-    );
+    // No ActionCodeSettings — Firebase sends its standard hosted reset
+    // email. Custom ActionCodeSettings with androidPackageName can cause
+    // Firebase to silently drop the delivery on some providers.
+    await _auth.sendPasswordResetEmail(email: email.trim());
   }
 
   Future<void> signOut() async {
