@@ -39,9 +39,15 @@ service cloud.firestore {
       // stamp themselves as the creator.
       allow create: if signedIn() &&
         request.resource.data.creatorId == request.auth.uid;
-      // Update / delete: only the creator can mutate or remove the ward.
-      allow update, delete: if signedIn() &&
+      // Delete: creator only.
+      allow delete: if signedIn() &&
         resource.data.creatorId == request.auth.uid;
+      // Update: creator can change anything.
+      // Any member can change ONLY memberIds (join / leave / account deletion).
+      allow update: if signedIn() && (
+        resource.data.creatorId == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds'])
+      );
     }
 
     match /patients/{patientId} {
