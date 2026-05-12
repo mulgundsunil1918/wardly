@@ -23,6 +23,8 @@ const { onRequest } = require('firebase-functions/v2/https');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
+// v1 needed for auth.user().onDelete trigger (not in v2 API surface).
+const functionsV1 = require('firebase-functions/v1');
 
 initializeApp();
 
@@ -158,6 +160,105 @@ exports.onWardDeleted = onDocumentDeleted(
     );
   },
 );
+
+/**
+ * Wardly — full account cleanup on Firebase Auth user deletion.
+ *
+ * Trigger: a Firebase Auth user is deleted (by the user via delete-account
+ *          flow, or by an admin).
+ * Action:
+ *   1. Cascade-delete every ward the user created (notes + comments +
+ *      patients + ward doc).
+ *   2. Remove the user's UID from memberIds on any ward they joined.
+ *
+ * Runs with Admin SDK → bypasses all Firestore security rules. This is
+ * intentional: the client cannot cascade-delete across collections it
+ * doesn't own, but the server can.
+ */
+exports.onUserDeletedCleanup = functionsV1
+  .runWith({ memory: '256MB', timeoutSeconds: 120 })
+  .auth.user()
+  .onDelete(async (user) => {
+    const uid = user.uid;
+    const db = getFirestore();
+
+    // Helper: cascade-delete a single ward (notes + their comments,
+    // patients, then the ward doc itself). Uses batches of 400 ops.
+    async function cascadeDeleteWard(wardId) {
+      let batch = db.batch();
+      let ops = 0;
+
+      async function flushIfNeeded() {
+        if (ops >= 400) {
+          await batch.commit();
+          batch = db.batch();
+          ops = 0;
+        }
+      }
+
+      // Notes + comment subcollections.
+      const notes = await db
+        .collection('notes')
+        .where('wardId', '==', wardId)
+        .get();
+      for (const note of notes.docs) {
+        const comments = await note.ref.collection('comments').get();
+        for (const comment of comments.docs) {
+          batch.delete(comment.ref);
+          ops++;
+          await flushIfNeeded();
+        }
+        batch.delete(note.ref);
+        ops++;
+        await flushIfNeeded();
+      }
+
+      // Patients.
+      const patients = await db
+        .collection('patients')
+        .where('wardId', '==', wardId)
+        .get();
+      for (const patient of patients.docs) {
+        batch.delete(patient.ref);
+        ops++;
+        await flushIfNeeded();
+      }
+
+      if (ops > 0) await batch.commit();
+
+      // Ward doc last.
+      await db.collection('wards').doc(wardId).delete();
+      console.log(`Wardly cleanup: deleted ward ${wardId}`);
+    }
+
+    // 1. Cascade-delete owned wards.
+    const ownedWards = await db
+      .collection('wards')
+      .where('creatorId', '==', uid)
+      .get();
+    for (const w of ownedWards.docs) {
+      await cascadeDeleteWard(w.id);
+    }
+
+    // 2. Remove UID from memberIds on joined (non-owned) wards.
+    const joinedWards = await db
+      .collection('wards')
+      .where('memberIds', 'array-contains', uid)
+      .get();
+    if (!joinedWards.empty) {
+      const batch = db.batch();
+      joinedWards.forEach((w) => {
+        batch.update(w.ref, { memberIds: FieldValue.arrayRemove(uid) });
+      });
+      await batch.commit();
+    }
+
+    console.log(
+      `Wardly cleanup: account ${uid} fully erased ` +
+      `(${ownedWards.size} wards deleted, ` +
+      `${joinedWards.size} memberships removed)`,
+    );
+  });
 
 /**
  * Wardly — one-shot metrics backfill.

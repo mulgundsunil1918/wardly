@@ -869,90 +869,15 @@ Account: $email
       final db = FirebaseFirestore.instance;
       final uid = fbUser.uid;
 
-      // Helper: batched cascade delete for a single ward.
-      Future<void> cascadeDeleteWard(String wardId) async {
-        var batch = db.batch();
-        var ops = 0;
-        Future<void> flushIfNeeded() async {
-          if (ops >= 450) {
-            await batch.commit();
-            batch = db.batch();
-            ops = 0;
-          }
-        }
-
-        // Delete every note (+ its comments subcollection) in the ward.
-        final notes = await db
-            .collection(AppConstants.notesCollection)
-            .where('wardId', isEqualTo: wardId)
-            .get();
-        for (final n in notes.docs) {
-          final comments = await n.reference.collection('comments').get();
-          for (final c in comments.docs) {
-            batch.delete(c.reference);
-            ops++;
-            await flushIfNeeded();
-          }
-          batch.delete(n.reference);
-          ops++;
-          await flushIfNeeded();
-        }
-
-        // Delete every patient in the ward.
-        final patients = await db
-            .collection(AppConstants.patientsCollection)
-            .where('wardId', isEqualTo: wardId)
-            .get();
-        for (final p in patients.docs) {
-          batch.delete(p.reference);
-          ops++;
-          await flushIfNeeded();
-        }
-
-        if (ops > 0) await batch.commit();
-
-        // Delete the ward doc itself.
-        await db
-            .collection(AppConstants.wardsCollection)
-            .doc(wardId)
-            .delete();
-      }
-
-      // 1. Cascade delete every ward this user created.
-      final ownedWards = await db
-          .collection(AppConstants.wardsCollection)
-          .where('creatorId', isEqualTo: uid)
-          .get();
-      for (final w in ownedWards.docs) {
-        await cascadeDeleteWard(w.id);
-      }
-
-      // 2. Remove user from memberIds on wards they joined but didn't create.
-      final userDoc = await db
-          .collection(AppConstants.usersCollection)
-          .doc(uid)
-          .get();
-      if (userDoc.exists) {
-        final allWardIds =
-            List<String>.from(userDoc.data()?['wardIds'] ?? <String>[]);
-        final ownedIds = ownedWards.docs.map((d) => d.id).toSet();
-        final joinedIds =
-            allWardIds.where((id) => !ownedIds.contains(id)).toList();
-        if (joinedIds.isNotEmpty) {
-          final batch = db.batch();
-          for (final wid in joinedIds) {
-            batch.update(db.collection(AppConstants.wardsCollection).doc(wid), {
-              'memberIds': FieldValue.arrayRemove([uid]),
-            });
-          }
-          await batch.commit();
-        }
-      }
-
-      // 3. Delete the Firestore profile doc.
+      // 1. Delete the Firestore profile doc (user has permission for own doc).
       await db.collection(AppConstants.usersCollection).doc(uid).delete();
 
-      // 4. Delete the Firebase Auth account.
+      // 2. Delete the Firebase Auth account.
+      //    This triggers the onUserDeletedCleanup Cloud Function server-side,
+      //    which cascade-deletes owned wards (notes + patients) and removes
+      //    the UID from all joined ward memberIds — using Admin SDK so it
+      //    bypasses Firestore security rules entirely. No permissions needed
+      //    client-side for any of that cleanup.
       await fbUser.delete();
 
       await auth.signOut();
