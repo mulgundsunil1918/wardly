@@ -265,18 +265,37 @@ class _LoginScreenState extends State<LoginScreen> {
             "If you signed up with Google, go back and tap 'Continue with Google' — there's no password to reset.",
       );
     } else {
-      final err = context.read<AuthProvider>().error;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: AppColors.danger,
-          duration: const Duration(seconds: 6),
-          content: Text(
-            err == null
-                ? "Couldn't send the reset email. Check your internet and try again."
-                : "Reset failed — ${friendlyError(err)}",
+      final err = context.read<AuthProvider>().error ?? '';
+      final isNotFound = err.toLowerCase().contains('not found') ||
+          err.toLowerCase().contains('no account') ||
+          err.toLowerCase().contains('user-not-found');
+
+      if (isNotFound) {
+        // Most likely a Google-only account — no password to reset.
+        await _showResetInfoDialog(
+          context,
+          title: 'No password account found',
+          body:
+              "We couldn't find a Wardly password account for $email.\n\n"
+              "• If you signed up with Google, go back and tap "
+              "'Continue with Google' — there's no password to reset.\n\n"
+              "• Double-check the spelling of the email.\n\n"
+              "• If you've never signed up, switch to 'Sign Up' and create an account.",
+        );
+      } else {
+        // Network error or something else unexpected.
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.danger,
+            duration: const Duration(seconds: 6),
+            content: Text(
+              err.isEmpty
+                  ? "Couldn't send the reset email. Check your internet and try again."
+                  : "Reset failed — ${friendlyError(err)}",
+            ),
           ),
-        ),
-      );
+        );
+      }
     }
   }
 
