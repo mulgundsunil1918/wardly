@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider, EmailAuthProvider;
 import 'package:firebase_auth/firebase_auth.dart' as fba show EmailAuthProvider;
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
@@ -773,44 +774,119 @@ Account: $email
     BuildContext context,
     AuthProvider auth,
   ) async {
-    final confirm = await showDialog<bool>(
+    // Step 1 — scary confirmation: user must type DELETE to proceed.
+    final typed = await showDialog<String>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Delete your account?'),
-        content: const Text(
-          'This will permanently delete your account and remove you from every ward — fully erased from our database. There is no backup and no way to recover your account once you tap Delete forever.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.danger,
+      builder: (_) {
+        final tc = TextEditingController();
+        return StatefulBuilder(
+          builder: (ctx, setState) => AlertDialog(
+            title: const Text('Delete your account?'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'This will permanently:\n'
+                  '• Remove you from all wards\n'
+                  '• Delete your profile forever\n'
+                  '• Sign you out on every device\n\n'
+                  'Your notes stay in the ward feed — they are part of the medical record.\n\n'
+                  'There is no undo. Type DELETE to confirm:',
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: tc,
+                  autofocus: true,
+                  decoration: const InputDecoration(hintText: 'DELETE'),
+                  onChanged: (_) => setState(() {}),
+                ),
+              ],
             ),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete forever'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.danger,
+                ),
+                onPressed: tc.text.trim() == 'DELETE'
+                    ? () => Navigator.pop(ctx, tc.text.trim())
+                    : null,
+                child: const Text('Delete forever'),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
-    if (confirm != true) return;
+
+    if (typed != 'DELETE' || !context.mounted) return;
+    await _doDeleteAccount(context, auth);
+  }
+
+  /// Performs the actual deletion — removes user from all ward memberIds,
+  /// deletes the Firestore user doc, then deletes the Firebase Auth account.
+  /// If Firebase requires re-authentication first, prompts for it and retries.
+  Future<void> _doDeleteAccount(
+    BuildContext context,
+    AuthProvider auth, {
+    bool isRetry = false,
+  }) async {
     try {
       final fbUser = FirebaseAuth.instance.currentUser;
-      if (fbUser != null) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(fbUser.uid)
-            .delete();
-        await fbUser.delete();
+      if (fbUser == null) return;
+
+      final db = FirebaseFirestore.instance;
+
+      // 1. Remove user from every ward's memberIds array.
+      final userDoc = await db.collection('users').doc(fbUser.uid).get();
+      if (userDoc.exists) {
+        final wardIds =
+            List<String>.from(userDoc.data()?['wardIds'] ?? <String>[]);
+        if (wardIds.isNotEmpty) {
+          final batch = db.batch();
+          for (final wid in wardIds) {
+            batch.update(db.collection('wards').doc(wid), {
+              'memberIds': FieldValue.arrayRemove([fbUser.uid]),
+            });
+          }
+          await batch.commit();
+        }
       }
+
+      // 2. Delete the Firestore profile doc.
+      await db.collection('users').doc(fbUser.uid).delete();
+
+      // 3. Delete the Firebase Auth account.
+      await fbUser.delete();
+
       await auth.signOut();
       if (context.mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          '/login',
-          (_) => false,
-        );
+        Navigator.of(context)
+            .pushNamedAndRemoveUntil('/login', (_) => false);
+      }
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login' && !isRetry) {
+        // Firebase needs fresh credentials before deleting an account.
+        if (!context.mounted) return;
+        final ok = await _reAuthenticate(context);
+        if (ok && context.mounted) {
+          // Retry once after successful re-auth.
+          await _doDeleteAccount(context, auth, isRetry: true);
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: AppColors.danger,
+              content: Text(
+                  'Could not delete account — ${friendlyError(e)}'),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (context.mounted) {
@@ -818,10 +894,102 @@ Account: $email
           SnackBar(
             backgroundColor: AppColors.danger,
             content: Text(
-              'Could not delete your account — ${friendlyError(e)}\nSign out and back in, then try again.',
-            ),
+                'Could not delete account — ${friendlyError(e)}'),
           ),
         );
+      }
+    }
+  }
+
+  /// Re-authenticates the current Firebase user before a sensitive op.
+  /// Google users get a Google sign-in prompt; email/password users get
+  /// a password dialog. Returns true on success.
+  Future<bool> _reAuthenticate(BuildContext context) async {
+    final fbUser = FirebaseAuth.instance.currentUser;
+    if (fbUser == null) return false;
+
+    final isGoogle =
+        fbUser.providerData.any((p) => p.providerId == 'google.com');
+
+    if (isGoogle) {
+      try {
+        final googleUser = await GoogleSignIn().signIn();
+        if (googleUser == null) return false;
+        final googleAuth = await googleUser.authentication;
+        final cred = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+        await fbUser.reauthenticateWithCredential(cred);
+        return true;
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: AppColors.danger,
+              content: Text(
+                  'Re-authentication failed — ${friendlyError(e)}'),
+            ),
+          );
+        }
+        return false;
+      }
+    } else {
+      // Email/password re-auth.
+      final passwordController = TextEditingController();
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Confirm your identity'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'For security, enter your current password to confirm account deletion.',
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                autofocus: true,
+                decoration:
+                    const InputDecoration(labelText: 'Current password'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.danger),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Confirm'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !context.mounted) return false;
+      try {
+        final cred = fba.EmailAuthProvider.credential(
+          email: fbUser.email!,
+          password: passwordController.text,
+        );
+        await fbUser.reauthenticateWithCredential(cred);
+        return true;
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: AppColors.danger,
+              content: Text('Incorrect password — ${friendlyError(e)}'),
+            ),
+          );
+        }
+        return false;
       }
     }
   }
