@@ -293,11 +293,30 @@ exports.sendPasswordResetEmail = onRequest(
     }
 
     try {
-      // 1. Ask Firebase Admin to generate the reset link.
-      //    This throws if the email is not registered — we catch silently.
+      // 1. Confirm the account exists via Admin SDK.
+      //    getUserByEmail() is NOT affected by Email Enumeration Protection
+      //    (it's an admin call), so we get a clean auth/user-not-found throw
+      //    for unknown addresses instead of the silent oobLink-missing failure
+      //    that generatePasswordResetLink hits when protection is ON.
+      try {
+        await getAuth().getUserByEmail(email);
+      } catch (userErr) {
+        if (userErr?.code === 'auth/user-not-found') {
+          // Unknown address — respond 200 silently (no enumeration leakage).
+          console.log(`Wardly: no account for ${email}, skipping reset email`);
+          res.status(200).json({ ok: true });
+          return;
+        }
+        throw userErr; // unexpected error — bubble up to outer catch
+      }
+
+      // 2. User confirmed to exist — generate the Firebase reset link.
+      //    Now that we've verified the user exists, this call will always
+      //    return a proper oobLink (Email Enumeration Protection doesn't
+      //    suppress links when the account is confirmed server-side).
       const link = await getAuth().generatePasswordResetLink(email);
 
-      // 2. Send via Resend.
+      // 3. Send via Resend.
       const { Resend } = require('resend');
       const resend = new Resend(resendApiKey.value());
 
