@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider, EmailAuthProvider;
 import 'package:firebase_auth/firebase_auth.dart' as fba show EmailAuthProvider;
 import 'package:google_sign_in/google_sign_in.dart';
+import '../../utils/app_constants.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
@@ -774,7 +775,31 @@ Account: $email
     BuildContext context,
     AuthProvider auth,
   ) async {
-    // Step 1 — scary confirmation: user must type DELETE to proceed.
+    final fbUser = FirebaseAuth.instance.currentUser;
+    if (fbUser == null) return;
+
+    // Load wards this user created so we can warn them specifically.
+    List<String> ownedWardNames = [];
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection(AppConstants.wardsCollection)
+          .where('creatorId', isEqualTo: fbUser.uid)
+          .get();
+      ownedWardNames = snap.docs
+          .map((d) => d.data()['name'] as String? ?? 'Unnamed ward')
+          .toList();
+    } catch (_) {}
+
+    if (!context.mounted) return;
+
+    // Build the ward warning text dynamically.
+    final wardWarning = ownedWardNames.isEmpty
+        ? ''
+        : '\n⚠️ You are the creator of ${ownedWardNames.length} ward${ownedWardNames.length > 1 ? 's' : ''}. '
+          'Deleting your account will permanently delete ${ownedWardNames.length > 1 ? 'them' : 'it'} and '
+          'ALL their patients, notes and replies — even for other team members still using them:\n'
+          '${ownedWardNames.map((n) => '  • $n').join('\n')}\n';
+
     final typed = await showDialog<String>(
       context: context,
       builder: (_) {
@@ -782,26 +807,28 @@ Account: $email
         return StatefulBuilder(
           builder: (ctx, setState) => AlertDialog(
             title: const Text('Delete your account?'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'This will permanently:\n'
-                  '• Remove you from all wards\n'
-                  '• Delete your profile forever\n'
-                  '• Sign you out on every device\n\n'
-                  'Your notes stay in the ward feed — they are part of the medical record.\n\n'
-                  'There is no undo. Type DELETE to confirm:',
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: tc,
-                  autofocus: true,
-                  decoration: const InputDecoration(hintText: 'DELETE'),
-                  onChanged: (_) => setState(() {}),
-                ),
-              ],
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'This will permanently:\n'
+                    '• Delete your profile forever\n'
+                    '• Remove you from all wards\n'
+                    '• Sign you out on every device\n'
+                    '$wardWarning\n'
+                    'There is no undo. Type DELETE to confirm:',
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: tc,
+                    autofocus: true,
+                    decoration: const InputDecoration(hintText: 'DELETE'),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ],
+              ),
             ),
             actions: [
               TextButton(
@@ -840,27 +867,92 @@ Account: $email
       if (fbUser == null) return;
 
       final db = FirebaseFirestore.instance;
+      final uid = fbUser.uid;
 
-      // 1. Remove user from every ward's memberIds array.
-      final userDoc = await db.collection('users').doc(fbUser.uid).get();
+      // Helper: batched cascade delete for a single ward.
+      Future<void> cascadeDeleteWard(String wardId) async {
+        var batch = db.batch();
+        var ops = 0;
+        Future<void> flushIfNeeded() async {
+          if (ops >= 450) {
+            await batch.commit();
+            batch = db.batch();
+            ops = 0;
+          }
+        }
+
+        // Delete every note (+ its comments subcollection) in the ward.
+        final notes = await db
+            .collection(AppConstants.notesCollection)
+            .where('wardId', isEqualTo: wardId)
+            .get();
+        for (final n in notes.docs) {
+          final comments = await n.reference.collection('comments').get();
+          for (final c in comments.docs) {
+            batch.delete(c.reference);
+            ops++;
+            await flushIfNeeded();
+          }
+          batch.delete(n.reference);
+          ops++;
+          await flushIfNeeded();
+        }
+
+        // Delete every patient in the ward.
+        final patients = await db
+            .collection(AppConstants.patientsCollection)
+            .where('wardId', isEqualTo: wardId)
+            .get();
+        for (final p in patients.docs) {
+          batch.delete(p.reference);
+          ops++;
+          await flushIfNeeded();
+        }
+
+        if (ops > 0) await batch.commit();
+
+        // Delete the ward doc itself.
+        await db
+            .collection(AppConstants.wardsCollection)
+            .doc(wardId)
+            .delete();
+      }
+
+      // 1. Cascade delete every ward this user created.
+      final ownedWards = await db
+          .collection(AppConstants.wardsCollection)
+          .where('creatorId', isEqualTo: uid)
+          .get();
+      for (final w in ownedWards.docs) {
+        await cascadeDeleteWard(w.id);
+      }
+
+      // 2. Remove user from memberIds on wards they joined but didn't create.
+      final userDoc = await db
+          .collection(AppConstants.usersCollection)
+          .doc(uid)
+          .get();
       if (userDoc.exists) {
-        final wardIds =
+        final allWardIds =
             List<String>.from(userDoc.data()?['wardIds'] ?? <String>[]);
-        if (wardIds.isNotEmpty) {
+        final ownedIds = ownedWards.docs.map((d) => d.id).toSet();
+        final joinedIds =
+            allWardIds.where((id) => !ownedIds.contains(id)).toList();
+        if (joinedIds.isNotEmpty) {
           final batch = db.batch();
-          for (final wid in wardIds) {
-            batch.update(db.collection('wards').doc(wid), {
-              'memberIds': FieldValue.arrayRemove([fbUser.uid]),
+          for (final wid in joinedIds) {
+            batch.update(db.collection(AppConstants.wardsCollection).doc(wid), {
+              'memberIds': FieldValue.arrayRemove([uid]),
             });
           }
           await batch.commit();
         }
       }
 
-      // 2. Delete the Firestore profile doc.
-      await db.collection('users').doc(fbUser.uid).delete();
+      // 3. Delete the Firestore profile doc.
+      await db.collection(AppConstants.usersCollection).doc(uid).delete();
 
-      // 3. Delete the Firebase Auth account.
+      // 4. Delete the Firebase Auth account.
       await fbUser.delete();
 
       await auth.signOut();
