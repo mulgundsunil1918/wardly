@@ -20,10 +20,19 @@ Future<void> showNotificationsPanel(BuildContext context) {
 class NotificationsPanel extends StatelessWidget {
   const NotificationsPanel({super.key});
 
+  static const int _maxNotifications = 30;
+
   @override
   Widget build(BuildContext context) {
     final np = context.watch<NoteProvider>();
-    final unack = np.notes.where((n) => !n.isAcknowledged).toList();
+
+    // Cap at last 30, sorted newest first.
+    final allUnack = np.notes
+        .where((n) => !n.isAcknowledged)
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final unack = allUnack.take(_maxNotifications).toList();
+
     final urgent = unack.where((n) => n.priority == 'Urgent').toList();
     final other = unack.where((n) => n.priority != 'Urgent').toList();
 
@@ -87,6 +96,9 @@ class NotificationsPanel extends StatelessWidget {
                         ),
                       ],
                       const Spacer(),
+                      // Clear all button — only shown when there are notifications.
+                      if (unack.isNotEmpty)
+                        _ClearAllButton(notes: unack),
                       IconButton(
                         onPressed: () => Navigator.of(context).pop(),
                         icon: const Icon(Icons.close),
@@ -100,7 +112,7 @@ class NotificationsPanel extends StatelessWidget {
                       ? _emptyState()
                       : ListView(
                           controller: scrollController,
-                          padding: const EdgeInsets.all(0),
+                          padding: const EdgeInsets.only(bottom: 16),
                           children: [
                             if (urgent.isNotEmpty) ...[
                               _sectionHeader('Urgent', AppColors.danger),
@@ -110,6 +122,21 @@ class NotificationsPanel extends StatelessWidget {
                               _sectionHeader('Other', AppColors.primary),
                               for (final n in other) _tile(context, n),
                             ],
+                            // Hint when there are more than 30 total.
+                            if (allUnack.length > _maxNotifications)
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
+                                child: Center(
+                                  child: Text(
+                                    'Showing latest 30 of ${allUnack.length}',
+                                    style: GoogleFonts.dmSans(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                 ),
@@ -245,5 +272,89 @@ class NotificationsPanel extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Stateful clear-all button with a confirmation dialog.
+class _ClearAllButton extends StatefulWidget {
+  final List<Note> notes;
+  const _ClearAllButton({required this.notes});
+
+  @override
+  State<_ClearAllButton> createState() => _ClearAllButtonState();
+}
+
+class _ClearAllButtonState extends State<_ClearAllButton> {
+  bool _loading = false;
+
+  Future<void> _confirm() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: Text(
+          'Clear all notifications?',
+          style: GoogleFonts.dmSans(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          'This will acknowledge all ${widget.notes.length} notifications.',
+          style: GoogleFonts.dmSans(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel',
+                style: GoogleFonts.dmSans(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Clear all',
+                style: GoogleFonts.dmSans(
+                    color: AppColors.danger, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _loading = true);
+    final by =
+        context.read<AuthProvider>().currentUser?.name ?? 'staff';
+    await context
+        .read<NoteProvider>()
+        .acknowledgeAllNotes(widget.notes.map((n) => n.id).toList(), by);
+    if (mounted) {
+      setState(() => _loading = false);
+      Navigator.of(context).pop(); // close panel — it's now empty
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _loading
+        ? const SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        : TextButton.icon(
+            onPressed: _confirm,
+            icon: Icon(Icons.done_all, size: 16, color: AppColors.danger),
+            label: Text(
+              'Clear all',
+              style: GoogleFonts.dmSans(
+                color: AppColors.danger,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            style: TextButton.styleFrom(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            ),
+          );
   }
 }

@@ -101,6 +101,23 @@ class NoteService {
     MetricsService.bump('ack', summary: '$acknowledgedBy ack\'d a note');
   }
 
+  Future<void> acknowledgeAllNotes(
+      List<String> noteIds, String acknowledgedBy) async {
+    if (noteIds.isEmpty) return;
+    final now = Timestamp.fromDate(DateTime.now());
+    final batch = _firestore.batch();
+    for (final id in noteIds) {
+      batch.update(_notes.doc(id), {
+        'isAcknowledged': true,
+        'acknowledgedBy': acknowledgedBy,
+        'acknowledgedAt': now,
+      });
+    }
+    await batch.commit();
+    MetricsService.bump('ack',
+        summary: '$acknowledgedBy cleared ${noteIds.length} notifications');
+  }
+
   Future<void> unacknowledgeNote(String noteId) async {
     await _notes.doc(noteId).update({
       'isAcknowledged': false,
