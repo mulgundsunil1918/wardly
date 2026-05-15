@@ -15,11 +15,11 @@
 #   • Teams → Integrations → App Store Connect → set up an API key
 #     (https://appstoreconnect.apple.com/access/api), name the
 #     integration `codemagic` to match the YAML below.
-#   • App Store Connect → My Apps → + → bundle id `com.wardly.app`
+#   • App Store Connect → My Apps → + → bundle id `com.wardlyapple.app`
 #     → note the numeric Apple ID and paste it as APP_STORE_APPLE_ID
 #     below (or set as a Codemagic env var).
 #   • Apple Developer → Identifiers → enable Push Notifications and
-#     Sign In with Apple capabilities for `com.wardly.app`.
+#     Sign In with Apple capabilities for `com.wardlyapple.app`.
 #   • Generate APNs Auth Key (.p8) and upload to Firebase Console →
 #     Cloud Messaging → Apple app config (iOS push won't deliver
 #     without this).
@@ -36,9 +36,9 @@ workflows:
     environment:
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.wardly.app
+        bundle_identifier: com.wardlyapple.app
       vars:
-        BUNDLE_ID: "com.wardly.app"
+        BUNDLE_ID: "com.wardlyapple.app"
         # Replace with the actual Apple ID (numeric) after the first
         # App Store Connect entry is created. Until then, the build
         # still succeeds — only the auto-versionCode-bump step needs it.
@@ -121,7 +121,7 @@ workflows:
       android_signing:
         - keystore_reference
       vars:
-        PACKAGE_NAME: "com.wardly.app"
+        PACKAGE_NAME: "com.wardlyapple.app"
       flutter: 3.41.7
 
     scripts:

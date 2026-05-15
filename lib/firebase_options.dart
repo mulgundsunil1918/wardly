@@ -66,7 +66,7 @@ class DefaultFirebaseOptions {
     storageBucket: 'wardly-24081996.firebasestorage.app',
     androidClientId: '525482754887-b2qomokmmcs36550pit58700d0qpp5f1.apps.googleusercontent.com',
     iosClientId: '525482754887-3428e39501bu3jtdmq9e78hqliu6lidb.apps.googleusercontent.com',
-    iosBundleId: 'com.wardly.app',
+    iosBundleId: 'com.wardlyapple.app',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
