@@ -42,7 +42,7 @@ workflows:
         # Replace with the actual Apple ID (numeric) after the first
         # App Store Connect entry is created. Until then, the build
         # still succeeds — only the auto-versionCode-bump step needs it.
-        APP_STORE_APPLE_ID: "0000000000"
+        APP_STORE_APPLE_ID: "6769839332"
       flutter: 3.41.7
       xcode: latest
       cocoapods: default
