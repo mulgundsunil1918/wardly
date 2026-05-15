@@ -2,21 +2,25 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- App Store Connect upload -->
 	<key>method</key>
 	<string>app-store</string>
 
-	<!-- Let Xcode pick the right profile automatically -->
 	<key>signingStyle</key>
-	<string>automatic</string>
+	<string>manual</string>
 
-	<!-- Upload the dSYM and bitcode-stripped binary -->
+	<key>teamID</key>
+	<string>SR35PG294W</string>
+
+	<key>provisioningProfiles</key>
+	<dict>
+		<key>com.wardlyapple.app</key>
+		<string>Wardly App Store</string>
+	</dict>
+
 	<key>uploadBitcode</key>
 	<false/>
 	<key>uploadSymbols</key>
 	<true/>
-
-	<!-- Strip Swift symbols to reduce binary size -->
 	<key>stripSwiftSymbols</key>
 	<true/>
 
