@@ -119,6 +119,18 @@ class NoteProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> acknowledgeAllNotes(
+      List<String> noteIds, String acknowledgedBy) async {
+    try {
+      await _noteService.acknowledgeAllNotes(noteIds, acknowledgedBy);
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> unacknowledgeNote(String noteId) async {
     try {
       await _noteService.unacknowledgeNote(noteId);
