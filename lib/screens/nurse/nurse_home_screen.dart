@@ -5,7 +5,9 @@ import 'package:provider/provider.dart';
 import '../../models/note.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/note_provider.dart';
+import '../../providers/notification_provider.dart';
 import '../../providers/patient_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/app_utils.dart';
 import '../../widgets/note_card.dart';
@@ -40,6 +42,7 @@ class _NurseHomeScreenState extends State<NurseHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>();
     final auth = context.watch<AuthProvider>();
     final user = auth.currentUser;
     return Scaffold(
@@ -76,8 +79,9 @@ class _NurseHomeScreenState extends State<NurseHomeScreen> {
   }
 
   Widget _header(String name) {
-    return Consumer<NoteProvider>(
-      builder: (context, np, _) {
+    return Consumer<NotificationProvider>(
+      builder: (context, notifProvider, _) {
+        final notifCount = notifProvider.items.length;
         return Container(
           decoration: BoxDecoration(
             color: AppColors.appBarBg,
@@ -97,7 +101,7 @@ class _NurseHomeScreenState extends State<NurseHomeScreen> {
                     onPressed: () => showNotificationsPanel(context),
                     icon: const Icon(Icons.notifications_outlined),
                   ),
-                  if (np.unacknowledgedCount > 0)
+                  if (notifCount > 0)
                     Positioned(
                       right: 6,
                       top: 6,
@@ -112,7 +116,7 @@ class _NurseHomeScreenState extends State<NurseHomeScreen> {
                           shape: BoxShape.circle,
                         ),
                         child: Text(
-                          '${np.unacknowledgedCount}',
+                          '$notifCount',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: Colors.white,

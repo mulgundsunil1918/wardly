@@ -42,7 +42,14 @@ class ShareHelper {
   }
 
   static Future<void> shareApp() async {
-    final msg = await personalisedMessage();
-    await Share.share(msg, subject: 'Check out Wardly');
+    try {
+      final msg = await personalisedMessage().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => message(),
+      );
+      await Share.share(msg, subject: 'Check out Wardly');
+    } catch (_) {
+      await Share.share(message(), subject: 'Check out Wardly');
+    }
   }
 }

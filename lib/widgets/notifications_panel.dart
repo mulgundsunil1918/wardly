@@ -3,9 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
-import '../models/note.dart';
-import '../providers/auth_provider.dart';
-import '../providers/note_provider.dart';
+import '../providers/notification_provider.dart';
 import '../utils/app_theme.dart';
 
 Future<void> showNotificationsPanel(BuildContext context) {
@@ -22,10 +20,8 @@ class NotificationsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final np = context.watch<NoteProvider>();
-    final unack = np.notes.where((n) => !n.isAcknowledged).toList();
-    final urgent = unack.where((n) => n.priority == 'Urgent').toList();
-    final other = unack.where((n) => n.priority != 'Urgent').toList();
+    final np = context.watch<NotificationProvider>();
+    final items = np.items;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.7,
@@ -52,10 +48,8 @@ class NotificationsPanel extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(20, 14, 12, 4),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.notifications_outlined,
-                        color: AppColors.textPrimary,
-                      ),
+                      Icon(Icons.notifications_outlined,
+                          color: AppColors.textPrimary),
                       const SizedBox(width: 8),
                       Text(
                         'Notifications',
@@ -65,19 +59,17 @@ class NotificationsPanel extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      if (unack.isNotEmpty) ...[
+                      if (items.isNotEmpty) ...[
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
+                              horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AppColors.danger,
+                            color: AppColors.primary,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
-                            '${unack.length}',
+                            '${items.length}',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 11,
@@ -87,6 +79,36 @@ class NotificationsPanel extends StatelessWidget {
                         ),
                       ],
                       const Spacer(),
+                      OutlinedButton(
+                        onPressed: items.isEmpty
+                            ? null
+                            : () async {
+                                await context
+                                    .read<NotificationProvider>()
+                                    .clear();
+                              },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.danger,
+                          disabledForegroundColor:
+                              AppColors.textSecondary.withOpacity(0.5),
+                          side: BorderSide(
+                            color: items.isEmpty
+                                ? AppColors.divider
+                                : AppColors.danger,
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 4),
+                          minimumSize: const Size(0, 30),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          textStyle: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        child: const Text('Clear all'),
+                      ),
                       IconButton(
                         onPressed: () => Navigator.of(context).pop(),
                         icon: const Icon(Icons.close),
@@ -96,21 +118,14 @@ class NotificationsPanel extends StatelessWidget {
                 ),
                 const Divider(height: 1),
                 Expanded(
-                  child: unack.isEmpty
+                  child: items.isEmpty
                       ? _emptyState()
-                      : ListView(
+                      : ListView.builder(
                           controller: scrollController,
-                          padding: const EdgeInsets.all(0),
-                          children: [
-                            if (urgent.isNotEmpty) ...[
-                              _sectionHeader('Urgent', AppColors.danger),
-                              for (final n in urgent) _tile(context, n),
-                            ],
-                            if (other.isNotEmpty) ...[
-                              _sectionHeader('Other', AppColors.primary),
-                              for (final n in other) _tile(context, n),
-                            ],
-                          ],
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          itemCount: items.length,
+                          itemBuilder: (context, i) => _tile(items[i]),
                         ),
                 ),
               ],
@@ -126,14 +141,11 @@ class NotificationsPanel extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.check_circle_outline,
-            size: 56,
-            color: AppColors.accent.withOpacity(0.6),
-          ),
+          Icon(Icons.notifications_none_outlined,
+              size: 56, color: AppColors.textSecondary.withOpacity(0.4)),
           const SizedBox(height: 10),
           Text(
-            'All caught up',
+            'No notifications yet',
             style: GoogleFonts.dmSans(
               color: AppColors.textPrimary,
               fontSize: 16,
@@ -142,7 +154,7 @@ class NotificationsPanel extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'No unacknowledged notes right now.',
+            'Notifications from your ward will appear here.',
             style: GoogleFonts.dmSans(
               color: AppColors.textSecondary,
               fontSize: 13,
@@ -153,96 +165,63 @@ class NotificationsPanel extends StatelessWidget {
     );
   }
 
-  Widget _sectionHeader(String label, Color color) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-      child: Text(
-        label.toUpperCase(),
-        style: GoogleFonts.dmSans(
-          color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1.1,
-        ),
-      ),
-    );
-  }
-
-  Widget _tile(BuildContext context, Note n) {
+  Widget _tile(AppNotification n) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.divider),
       ),
-      child: ListTile(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: n.priorityColor.withOpacity(0.12),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(n.categoryIcon, size: 18, color: n.priorityColor),
-        ),
-        title: Text(
-          n.patientName,
-          style: GoogleFonts.dmSans(
-            color: AppColors.textPrimary,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        subtitle: Text(
-          n.content,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.dmSans(
-            color: AppColors.textSecondary,
-            fontSize: 12,
-          ),
-        ),
-        trailing: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              timeago.format(n.createdAt, locale: 'en_short'),
-              style: GoogleFonts.dmSans(
-                color: AppColors.textSecondary,
-                fontSize: 11,
-              ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
             ),
-            const SizedBox(height: 6),
-            GestureDetector(
-              onTap: () async {
-                final by = context.read<AuthProvider>().currentUser?.name ??
-                    'staff';
-                await context
-                    .read<NoteProvider>()
-                    .acknowledgeNote(n.id, by);
-              },
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.accent.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  'Ack ✓',
-                  style: GoogleFonts.dmSans(
-                    color: AppColors.accent,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
+            child: Icon(Icons.notifications_outlined,
+                size: 18, color: AppColors.primary),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (n.title.isNotEmpty)
+                  Text(
+                    n.title,
+                    style: GoogleFonts.dmSans(
+                      color: AppColors.textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-              ),
+                if (n.body.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    n.body,
+                    style: GoogleFonts.dmSans(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            timeago.format(n.receivedAt, locale: 'en_short'),
+            style: GoogleFonts.dmSans(
+              color: AppColors.textSecondary,
+              fontSize: 11,
+            ),
+          ),
+        ],
       ),
     );
   }

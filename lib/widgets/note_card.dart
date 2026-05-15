@@ -339,56 +339,51 @@ class _NoteCardState extends State<NoteCard> {
                   ],
                 ),
               ] else if (widget.onAcknowledge != null) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 Row(
                   children: [
-                    Icon(
-                      Icons.info_outline,
-                      size: 14,
-                      color: AppColors.textSecondary,
-                    ),
+                    Icon(Icons.info_outline,
+                        size: 13, color: AppColors.textSecondary),
                     const SizedBox(width: 4),
                     Text(
                       'Tap to acknowledge',
                       style: GoogleFonts.dmSans(
-                        color: AppColors.textSecondary,
-                        fontSize: 11,
-                      ),
+                          color: AppColors.textSecondary, fontSize: 11),
                     ),
-                    const Spacer(),
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primary,
-                        side: const BorderSide(color: AppColors.primary),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 0,
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: const BorderSide(color: AppColors.primary),
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 0),
+                          minimumSize: const Size(0, 34),
                         ),
-                        minimumSize: const Size(0, 32),
+                        icon: const Icon(Icons.chat_bubble_outline, size: 14),
+                        label: const Text('Reply',
+                            style: TextStyle(fontSize: 12)),
+                        onPressed: () =>
+                            showNoteCommentsSheet(context, widget.note),
                       ),
-                      icon: const Icon(Icons.chat_bubble_outline, size: 14),
-                      label: const Text(
-                        'Reply',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                      onPressed: () =>
-                          showNoteCommentsSheet(context, widget.note),
                     ),
                     const SizedBox(width: 8),
-                    OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.accent,
-                        side: const BorderSide(color: AppColors.accent),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 0,
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.accent,
+                          side: const BorderSide(color: AppColors.accent),
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 0),
+                          minimumSize: const Size(0, 34),
                         ),
-                        minimumSize: const Size(0, 32),
-                      ),
-                      onPressed: widget.onAcknowledge,
-                      child: const Text(
-                        'Acknowledge ✓',
-                        style: TextStyle(fontSize: 12),
+                        onPressed: widget.onAcknowledge,
+                        child: const Text('Acknowledge ✓',
+                            style: TextStyle(fontSize: 12)),
                       ),
                     ),
                   ],

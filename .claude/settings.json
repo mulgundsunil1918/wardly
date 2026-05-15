@@ -10,6 +10,18 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/sunil/wardly && (git diff --quiet && git diff --cached --quiet) || bash tools/deploy.sh 2>&1",
+            "timeout": 300,
+            "statusMessage": "Deploying to GitHub + Firebase..."
+          }
+        ]
+      }
     ]
   }
 }

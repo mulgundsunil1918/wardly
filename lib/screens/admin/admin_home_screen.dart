@@ -6,6 +6,7 @@ import 'package:timeago/timeago.dart' as timeago;
 
 import '../../models/ward.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../providers/ward_provider.dart';
 import '../../utils/app_constants.dart';
 import '../../utils/app_theme.dart';
@@ -155,6 +156,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>();
     final auth = context.watch<AuthProvider>();
     final user = auth.currentUser;
     return Scaffold(
@@ -187,6 +189,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'admin_home_fab',
         backgroundColor: AppColors.adminColor,
         foregroundColor: Colors.white,
         onPressed: () {

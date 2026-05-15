@@ -8,6 +8,10 @@ import 'utils/app_theme.dart';
 import 'utils/app_routes.dart';
 import 'providers/providers.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
+
 @pragma('vm:entry-point')
 Future<void> _bgHandler(RemoteMessage message) async {
   // Required by FlutterFire for background isolate; system shows the
@@ -44,15 +48,17 @@ class WardlyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => WardProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()..load()),
         ChangeNotifierProvider(create: (_) => TextScaleProvider()..load()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
       child: Consumer2<ThemeProvider, TextScaleProvider>(
         builder: (context, themeProvider, textScale, _) {
           return MaterialApp(
-            key: ValueKey(themeProvider.isDark),
             title: 'Wardly',
             theme: AppTheme.light,
             darkTheme: AppTheme.dark,
             themeMode: themeProvider.mode,
+            navigatorKey: navigatorKey,
+            scaffoldMessengerKey: scaffoldMessengerKey,
             initialRoute: AppRoutes.splash,
             routes: AppRoutes.routes,
             onGenerateRoute: AppRoutes.generateRoute,

@@ -120,6 +120,7 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'admin_staff_fab',
         backgroundColor: AppColors.adminColor,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.person_add_alt),

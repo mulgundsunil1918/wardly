@@ -1,5 +1,13 @@
 {
   "projects": {
     "default": "wardly-24081996"
+  },
+  "targets": {
+    "wardly-24081996": {
+      "hosting": {
+        "app": ["wardly-24081996"],
+        "landing": ["wardly-24081996-landing"]
+      }
+    }
   }
 }

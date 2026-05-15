@@ -45,20 +45,22 @@ class WardsScreen extends StatelessWidget {
       onPressed: onTap,
       icon: Icon(
         icon,
-        size: 16,
+        size: 14,
         color: disabled ? AppColors.textSecondary.withOpacity(0.5) : color,
       ),
       label: Text(
         label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
-          fontSize: 13,
+          fontSize: 11,
           fontWeight: FontWeight.w600,
           color: disabled ? AppColors.textSecondary.withOpacity(0.5) : color,
         ),
       ),
       style: OutlinedButton.styleFrom(
         minimumSize: const Size.fromHeight(44),
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 6),
         side: BorderSide(
           color: disabled
               ? AppColors.divider

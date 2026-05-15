@@ -7,6 +7,8 @@ import '../../models/patient.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/note_provider.dart';
 import '../../providers/patient_provider.dart';
+import '../../providers/notification_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/note_card.dart';
 import '../../widgets/notifications_panel.dart';
@@ -53,6 +55,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>();
     final auth = context.watch<AuthProvider>();
     final user = auth.currentUser;
 
@@ -152,6 +155,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'doctor_home_fab',
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
@@ -162,8 +166,9 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
   }
 
   Widget _buildHeader(String name) {
-    return Consumer<NoteProvider>(
-      builder: (context, noteProvider, _) {
+    return Consumer<NotificationProvider>(
+      builder: (context, notifProvider, _) {
+        final notifCount = notifProvider.items.length;
         return Container(
           decoration: BoxDecoration(
             color: AppColors.appBarBg,
@@ -183,7 +188,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                     onPressed: () => showNotificationsPanel(context),
                     icon: const Icon(Icons.notifications_outlined),
                   ),
-                  if (noteProvider.unacknowledgedCount > 0)
+                  if (notifCount > 0)
                     Positioned(
                       right: 6,
                       top: 6,
@@ -198,7 +203,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                           shape: BoxShape.circle,
                         ),
                         child: Text(
-                          '${noteProvider.unacknowledgedCount}',
+                          '$notifCount',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: Colors.white,

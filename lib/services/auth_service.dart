@@ -7,6 +7,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
+import '../firebase_options.dart';
 import '../models/app_user.dart';
 import '../utils/app_constants.dart';
 import 'metrics_service.dart';
@@ -88,7 +89,9 @@ class AuthService {
         final googleProvider = GoogleAuthProvider();
         cred = await _auth.signInWithPopup(googleProvider);
       } else {
-        final googleUser = await GoogleSignIn().signIn();
+        final googleUser = await GoogleSignIn(
+          clientId: DefaultFirebaseOptions.currentPlatform.iosClientId,
+        ).signIn();
         if (googleUser == null) return null;
         final googleAuth = await googleUser.authentication;
         final credential = GoogleAuthProvider.credential(
@@ -203,7 +206,9 @@ class AuthService {
 
   Future<void> signOut() async {
     try {
-      await GoogleSignIn().signOut();
+      await GoogleSignIn(
+        clientId: DefaultFirebaseOptions.currentPlatform.iosClientId,
+      ).signOut();
     } catch (_) {}
     await _auth.signOut();
   }
