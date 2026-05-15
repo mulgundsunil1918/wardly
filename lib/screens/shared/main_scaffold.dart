@@ -412,6 +412,7 @@ class _DoctorNotesList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(

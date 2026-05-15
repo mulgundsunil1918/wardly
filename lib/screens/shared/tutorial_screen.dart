@@ -298,6 +298,7 @@ class _SlideView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 20, 28, 20),
       child: Column(

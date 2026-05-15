@@ -31,6 +31,7 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
     final auth = context.watch<AuthProvider>();
     final user = auth.currentUser;
 
@@ -1228,6 +1229,7 @@ class _SupportPromptToggleState extends State<_SupportPromptToggle> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
     final enabled = _enabled ?? true;
     return SwitchListTile(
       secondary: const Icon(

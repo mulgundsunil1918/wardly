@@ -199,6 +199,7 @@ class _FaqTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(

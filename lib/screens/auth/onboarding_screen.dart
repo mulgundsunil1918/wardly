@@ -109,6 +109,7 @@ class _SlideProblem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 36, 28, 28),
       child: Column(
@@ -178,6 +179,7 @@ class _PainPoint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -219,6 +221,7 @@ class _SlideSolution extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 36, 28, 28),
       child: Column(
@@ -342,6 +345,7 @@ class _BenefitTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -394,6 +398,7 @@ class _SlideHowItWorks extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 36, 28, 28),
       child: Column(
@@ -760,6 +765,7 @@ class _NumberedStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -836,6 +842,7 @@ class _SlideGetStarted extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 36, 28, 28),
       child: Column(
@@ -982,6 +989,7 @@ class _SlideEyebrow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
     return Row(
       children: [
         Container(
@@ -1028,6 +1036,7 @@ class _NavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
     final isLast = page == total - 1;
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
