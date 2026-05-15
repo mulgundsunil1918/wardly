@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../utils/app_theme.dart';
+import '../../providers/theme_provider.dart';
 
 class TutorialScreen extends StatefulWidget {
   const TutorialScreen({super.key});
@@ -170,6 +172,8 @@ class _TutorialScreenState extends State<TutorialScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: SafeArea(

@@ -14,6 +14,7 @@ import '../../utils/app_theme.dart';
 import '../../utils/web_notice.dart';
 import 'background_setup_screen.dart';
 import 'onboarding_screen.dart';
+import '../../providers/theme_provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -86,6 +87,8 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
+
     return Scaffold(
       backgroundColor: AppColors.primary,
       body: SafeArea(

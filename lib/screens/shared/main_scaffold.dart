@@ -22,6 +22,7 @@ import '../nurse/nurse_patients_screen.dart';
 import 'profile_screen.dart';
 import 'tutorial_screen.dart';
 import 'wards_screen.dart';
+import '../../providers/theme_provider.dart';
 
 class MainScaffold extends StatefulWidget {
   final UserRole role;
@@ -359,6 +360,8 @@ class _MainScaffoldState extends State<MainScaffold>
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
+
     // Wrap everything in ShowCaseWidget so any Showcase descendant can
     // be triggered by ShowCaseWidget.of(context).startShowCase(...).
     // Coachmarks are themed for the app palette and dismiss themselves

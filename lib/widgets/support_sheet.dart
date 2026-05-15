@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../utils/app_theme.dart';
+import '../providers/theme_provider.dart';
 
 // Support tile + daily chai popup both land here. The ?from=wardly
 // query param lets Bridgr attribute the visitor source.
@@ -61,6 +63,8 @@ class _SupportSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
+
     return SafeArea(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),

@@ -9,6 +9,7 @@ import '../../providers/note_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/app_utils.dart';
 import '../../widgets/note_card.dart';
+import '../../providers/theme_provider.dart';
 
 enum NoteFilterType { urgent, today, all, unacknowledged }
 
@@ -37,6 +38,8 @@ class FilteredNotesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(title: Text(title)),

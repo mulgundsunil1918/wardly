@@ -1,4 +1,5 @@
 import 'package:app_settings/app_settings.dart';
+import 'package:provider/provider.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -9,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../utils/app_theme.dart';
 import '../../utils/oem_autostart.dart';
+import '../../providers/theme_provider.dart';
 
 class BackgroundSetupScreen extends StatefulWidget {
   const BackgroundSetupScreen({super.key});
@@ -122,6 +124,8 @@ class _BackgroundSetupScreenState extends State<BackgroundSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
+
     final guide = OemAutostart.guideFor(_manufacturer);
     return Scaffold(
       backgroundColor: AppColors.surface,

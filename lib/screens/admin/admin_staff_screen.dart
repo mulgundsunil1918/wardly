@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -8,6 +9,7 @@ import '../../utils/app_theme.dart';
 import '../../widgets/role_badge.dart';
 import '../../widgets/support_action.dart';
 import 'add_staff_bottom_sheet.dart';
+import '../../providers/theme_provider.dart';
 
 class AdminStaffScreen extends StatefulWidget {
   const AdminStaffScreen({super.key});
@@ -44,6 +46,8 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(

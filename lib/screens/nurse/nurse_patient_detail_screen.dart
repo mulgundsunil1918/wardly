@@ -9,6 +9,7 @@ import '../../providers/patient_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/note_card.dart';
 import 'acknowledge_sheet.dart';
+import '../../providers/theme_provider.dart';
 
 class NursePatientDetailScreen extends StatefulWidget {
   final String patientId;
@@ -38,6 +39,8 @@ class _NursePatientDetailScreenState extends State<NursePatientDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
+
     final pp = context.watch<PatientProvider>();
     final patient = _resolve(pp);
     return Scaffold(

@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../../models/ward.dart';
 import '../../providers/ward_provider.dart';
 import '../../utils/app_theme.dart';
+import '../../providers/theme_provider.dart';
 
 class AddWardScreen extends StatefulWidget {
   const AddWardScreen({super.key});
@@ -54,6 +55,8 @@ class _AddWardScreenState extends State<AddWardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(

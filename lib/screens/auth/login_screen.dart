@@ -12,6 +12,7 @@ import '../../utils/app_theme.dart';
 import '../../utils/friendly_error.dart';
 import 'background_setup_screen.dart';
 import 'onboarding_screen.dart';
+import '../../providers/theme_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -321,6 +322,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
+
     final authProvider = context.watch<AuthProvider>();
     final size = MediaQuery.of(context).size;
 
@@ -527,42 +530,43 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
                       const SizedBox(height: 14),
-                      OutlinedButton.icon(
-                        onPressed: authProvider.isLoading ? null : _signInGoogle,
-                        icon: const Icon(Icons.g_mobiledata, size: 28),
-                        label: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Text(
-                            _mode == _Mode.signIn
-                                ? 'Continue with Google'
-                                : 'Sign up with Google',
-                          ),
-                        ),
-                      ),
-                      // Apple Sign-In is REQUIRED by App Review on iOS
-                      // when Google sign-in is offered. Hidden on Android
-                      // (where it adds nothing) and web (unsupported).
-                      if (!kIsWeb && Platform.isIOS) ...[
-                        const SizedBox(height: 10),
+                      if (!kIsWeb && Platform.isIOS)
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: authProvider.isLoading ? null : _signInGoogle,
+                                icon: const Icon(Icons.g_mobiledata, size: 24),
+                                label: const Text('Google'),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: authProvider.isLoading ? null : _signInApple,
+                                icon: const Icon(Icons.apple, size: 22),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.black,
+                                  side: const BorderSide(color: Colors.black),
+                                ),
+                                label: const Text('Apple'),
+                              ),
+                            ),
+                          ],
+                        )
+                      else
                         OutlinedButton.icon(
-                          onPressed: authProvider.isLoading
-                              ? null
-                              : _signInApple,
-                          icon: const Icon(Icons.apple, size: 24),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.black,
-                            side: const BorderSide(color: Colors.black),
-                          ),
+                          onPressed: authProvider.isLoading ? null : _signInGoogle,
+                          icon: const Icon(Icons.g_mobiledata, size: 28),
                           label: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 4),
                             child: Text(
                               _mode == _Mode.signIn
-                                  ? 'Continue with Apple'
-                                  : 'Sign up with Apple',
+                                  ? 'Continue with Google'
+                                  : 'Sign up with Google',
                             ),
                           ),
                         ),
-                      ],
                     ],
                   ),
                 ),

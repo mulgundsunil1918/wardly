@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import '../models/note.dart';
 import '../utils/app_theme.dart';
 import 'note_comments_sheet.dart';
+import '../providers/theme_provider.dart';
 
 class NoteCard extends StatefulWidget {
   final Note note;
@@ -64,6 +66,8 @@ class _NoteCardState extends State<NoteCard> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
+
     final n = widget.note;
     final pColor = _priorityColor(n.priority);
     final rColor = _roleColor(n.authorRole);

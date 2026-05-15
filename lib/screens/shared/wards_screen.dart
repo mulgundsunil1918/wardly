@@ -14,6 +14,7 @@ import '../../utils/app_constants.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/friendly_error.dart';
 import '../../widgets/support_action.dart';
+import '../../providers/theme_provider.dart';
 
 class _IdCollision implements Exception {}
 
@@ -374,6 +375,8 @@ class WardsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(

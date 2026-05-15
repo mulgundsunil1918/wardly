@@ -5,6 +5,7 @@ import 'package:timeago/timeago.dart' as timeago;
 
 import '../providers/notification_provider.dart';
 import '../utils/app_theme.dart';
+import '../providers/theme_provider.dart';
 
 Future<void> showNotificationsPanel(BuildContext context) {
   return showModalBottomSheet(
@@ -20,6 +21,8 @@ class NotificationsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
+
     final np = context.watch<NotificationProvider>();
     final items = np.items;
 

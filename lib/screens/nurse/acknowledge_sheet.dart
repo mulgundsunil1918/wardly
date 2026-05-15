@@ -6,6 +6,7 @@ import '../../models/note.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/note_provider.dart';
 import '../../utils/app_theme.dart';
+import '../../providers/theme_provider.dart';
 
 Future<void> showAcknowledgeSheet(BuildContext context, Note note) {
   return showModalBottomSheet(
@@ -44,6 +45,8 @@ class _AcknowledgeSheetState extends State<AcknowledgeSheet> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
+
     return Container(
       height: 300,
       decoration: BoxDecoration(

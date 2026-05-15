@@ -14,6 +14,7 @@ import '../../widgets/note_card.dart';
 import '../../widgets/patient_card.dart';
 import '../../widgets/role_badge.dart';
 import 'add_staff_bottom_sheet.dart';
+import '../../providers/theme_provider.dart';
 
 class WardDetailScreen extends StatefulWidget {
   final String wardId;
@@ -56,6 +57,8 @@ class _WardDetailScreenState extends State<WardDetailScreen>
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(

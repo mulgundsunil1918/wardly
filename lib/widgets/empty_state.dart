@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../utils/app_theme.dart';
+import '../providers/theme_provider.dart';
 
 class EmptyState extends StatelessWidget {
   final IconData icon;
@@ -21,6 +23,8 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),

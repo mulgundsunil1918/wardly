@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../utils/app_theme.dart';
+import '../../providers/theme_provider.dart';
 
 /// Static FAQ / Help screen. No Firestore reads — everything is hardcoded
 /// content the user can read offline. Reachable from Profile.
@@ -120,6 +122,8 @@ class HelpScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(

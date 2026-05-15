@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../utils/app_theme.dart';
+import '../../providers/theme_provider.dart';
 
 /// Bumping this string forces the tutorial to re-show for everyone, even
 /// users whose SharedPreferences got restored by a phone-cloning tool
@@ -65,6 +67,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(

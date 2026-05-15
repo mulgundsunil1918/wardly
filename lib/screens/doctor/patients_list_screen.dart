@@ -13,6 +13,7 @@ import '../../utils/app_theme.dart';
 import '../../widgets/support_action.dart';
 import 'add_patient_screen.dart';
 import 'patient_detail_screen.dart';
+import '../../providers/theme_provider.dart';
 
 class PatientsListScreen extends StatefulWidget {
   const PatientsListScreen({super.key});
@@ -42,6 +43,8 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
+
     final myWardIds =
         context.watch<AuthProvider>().currentUser?.wardIds ?? const [];
     if (myWardIds.isEmpty) {

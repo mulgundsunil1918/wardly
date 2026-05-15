@@ -10,6 +10,7 @@ import '../../providers/note_provider.dart';
 import '../../utils/app_constants.dart';
 import '../../utils/app_theme.dart';
 import 'add_patient_screen.dart';
+import '../../providers/theme_provider.dart';
 
 Future<void> showAddNoteBottomSheet(
   BuildContext context, {
@@ -133,6 +134,8 @@ class _AddNoteBottomSheetState extends State<AddNoteBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
+
     return DraggableScrollableSheet(
       initialChildSize: 0.85,
       minChildSize: 0.5,

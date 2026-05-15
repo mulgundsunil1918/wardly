@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_theme.dart';
+import '../../providers/theme_provider.dart';
 
 Future<void> showAddStaffBottomSheet(
   BuildContext context, {
@@ -94,6 +96,8 @@ class _AddStaffBottomSheetState extends State<AddStaffBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
+
     return DraggableScrollableSheet(
       initialChildSize: 0.7,
       minChildSize: 0.4,

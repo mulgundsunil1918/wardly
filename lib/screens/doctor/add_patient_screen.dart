@@ -11,6 +11,7 @@ import '../../providers/patient_provider.dart';
 import '../../utils/app_constants.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/friendly_error.dart';
+import '../../providers/theme_provider.dart';
 
 class AddPatientScreen extends StatefulWidget {
   final String? initialWardId;
@@ -108,6 +109,8 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(

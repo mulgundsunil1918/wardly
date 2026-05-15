@@ -11,6 +11,7 @@ import '../../providers/patient_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/note_card.dart';
 import 'add_note_screen.dart';
+import '../../providers/theme_provider.dart';
 
 class PatientDetailScreen extends StatefulWidget {
   final String patientId;
@@ -57,6 +58,8 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
+
     final patientProvider = context.watch<PatientProvider>();
     final patient = _resolvePatient(patientProvider);
 

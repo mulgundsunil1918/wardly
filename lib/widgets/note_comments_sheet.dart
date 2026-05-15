@@ -13,6 +13,7 @@ import '../services/note_service.dart';
 import '../utils/app_constants.dart';
 import '../utils/app_theme.dart';
 import '../utils/friendly_error.dart';
+import '../providers/theme_provider.dart';
 
 Future<void> showNoteCommentsSheet(BuildContext context, Note note) {
   return showModalBottomSheet(
@@ -161,6 +162,8 @@ class _NoteCommentsSheetState extends State<NoteCommentsSheet> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
+
     final n = widget.note;
     return Padding(
       padding: EdgeInsets.only(
