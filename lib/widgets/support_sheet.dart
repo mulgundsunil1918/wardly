@@ -1,3 +1,6 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -28,7 +31,11 @@ class SupportPrompt {
 
   /// Shows the popup if more than 24h have passed since the last show
   /// AND the user hasn't disabled it. Safe to call on every home open.
+  /// Never shown on iOS (App Store guideline 3.1.1 — no external tip links).
   static Future<void> maybeShowDaily(BuildContext context) async {
+    // Apple guideline 3.1.1: no external tip/payment prompts on iOS.
+    if (!kIsWeb && Platform.isIOS) return;
+
     final prefs = await SharedPreferences.getInstance();
     final disabled = prefs.getBool(_kDisabledKey) ?? false;
     if (disabled) return;
@@ -110,48 +117,97 @@ class _SupportSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 22),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () async {
-                  await _open(_chaiUrl);
-                  if (context.mounted) Navigator.pop(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE57F00),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+            // On iOS we cannot link to external payments (App Store 3.1.1).
+            // Show a "Get Help" contact button instead.
+            if (!kIsWeb && Platform.isIOS) ...[
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    await _open(
+                      'mailto:mulgundsunil@gmail.com?subject=Wardly%20Feedback',
+                    );
+                    if (context.mounted) Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.mail_outline, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Send Feedback',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.favorite, size: 18),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Buy me a chai',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Close',
+                  style: GoogleFonts.dmSans(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ] else ...[
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    await _open(_chaiUrl);
+                    if (context.mounted) Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE57F00),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                  ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.favorite, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Buy me a chai',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'Maybe later',
-                style: GoogleFonts.dmSans(
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w600,
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Maybe later',
+                  style: GoogleFonts.dmSans(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
+            ],
             const SizedBox(height: 4),
             Text(
               '— Sunil M.',
