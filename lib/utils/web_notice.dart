@@ -11,7 +11,8 @@ class WebNotice {
   static const _prefKey = 'web_notice_shown';
   static const _playStore =
       'https://play.google.com/store/apps/details?id=com.wardly.app';
-  static const _appStore = 'https://apps.apple.com/app/wardly/id0000000000';
+  static const _appStore =
+      'https://apps.apple.com/us/app/wardly-ward-connected/id6769839332';
 
   static Future<void> maybeShow(BuildContext context) async {
     if (!kIsWeb) return;
