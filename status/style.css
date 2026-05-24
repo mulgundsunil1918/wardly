@@ -265,24 +265,14 @@ code {
 .store-badges {
   display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
 }
-.store-btn {
-  display: inline-flex; align-items: center; gap: 10px;
-  padding: 9px 16px; border-radius: 11px;
-  border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(255,255,255,0.05);
-  color: var(--text); text-decoration: none;
-  transition: transform 0.15s, background 0.15s, border-color 0.15s;
-  white-space: nowrap;
+.store-badge-link {
+  display: inline-block; border-radius: 9px; overflow: hidden;
+  line-height: 0; transition: transform 0.15s, opacity 0.15s;
 }
-.store-btn:hover {
-  transform: translateY(-2px);
-  background: rgba(255,255,255,0.1);
-  border-color: rgba(255,255,255,0.25);
-}
-.store-btn svg { flex-shrink: 0; }
-.store-btn-label { display: flex; flex-direction: column; }
-.store-btn-sub { font-size: 9px; font-weight: 500; opacity: 0.6; line-height: 1; margin-bottom: 2px; }
-.store-btn-name { font-size: 14px; font-weight: 800; letter-spacing: -0.3px; line-height: 1; }
+.store-badge-link:hover { transform: translateY(-2px); opacity: 0.88; }
+.store-badge-link img { display: block; height: 40px; width: auto; }
+.store-badge-link.gplay { background: #000; }
+.store-badge-link.gplay img { height: 60px; margin: -10px 0; }
 
 .download-strip {
   background: rgba(10,92,138,0.12);
