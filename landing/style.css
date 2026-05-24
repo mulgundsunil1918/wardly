@@ -548,37 +548,41 @@ a { color: inherit; text-decoration: none; }
   display: flex;
   gap: 12px;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 .store-btn {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 22px;
-  border-radius: 14px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.11);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  gap: 11px;
+  padding: 11px 20px;
+  border-radius: 13px;
+  background: rgba(14, 122, 184, 0.15);
+  border: 1px solid rgba(255,255,255,0.18);
   color: #fff;
   text-decoration: none;
   transition: background 0.18s, border-color 0.18s, transform 0.15s;
   white-space: nowrap;
+  flex: 1;
+  min-width: 0;
 }
 .store-btn:hover {
-  background: rgba(255,255,255,0.11);
-  border-color: rgba(255,255,255,0.22);
+  background: rgba(14, 122, 184, 0.28);
+  border-color: rgba(255,255,255,0.32);
   transform: translateY(-2px);
 }
-.store-btn svg { flex-shrink: 0; opacity: 0.9; }
-.store-btn-label { display: flex; flex-direction: column; text-align: left; }
+.store-btn svg { flex-shrink: 0; }
+.store-btn-label { display: flex; flex-direction: column; text-align: left; min-width: 0; }
 .store-btn-sub {
-  font-size: 10px; font-weight: 500; opacity: 0.55;
-  line-height: 1; margin-bottom: 3px; letter-spacing: 0.2px;
+  font-size: 10px; font-weight: 500; opacity: 0.6;
+  line-height: 1; margin-bottom: 3px;
 }
 .store-btn-name {
-  font-size: 17px; font-weight: 800;
-  letter-spacing: -0.4px; line-height: 1;
+  font-size: 16px; font-weight: 800;
+  letter-spacing: -0.3px; line-height: 1;
+}
+@media (max-width: 400px) {
+  .store-btn-name { font-size: 14px; }
+  .store-btn { padding: 10px 14px; gap: 8px; }
 }
 
 /* ---------- Mobile ---------- */
