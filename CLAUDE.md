@@ -6,7 +6,9 @@ A real-time clinical notes app for hospital ward teams. Built with Flutter + Fir
 **Developer:** Sunil Mulgund (mulgundsunil@gmail.com)  
 **Personal site:** https://bridgr.co.in  
 **Support link:** https://bridgr.co.in/support?from=wardly  
-**Web app:** https://wardly-24081996.web.app/  
+**Landing page:** https://wardly.bridgr.co.in  
+**Web app:** https://wardlyapp.bridgr.co.in  
+**Status page:** https://wardly.bridgr.co.in/status/  
 **Firebase project:** wardly-24081996  
 **Bundle ID (Android + iOS):** com.wardly.app  
 **GitHub repo:** private  
