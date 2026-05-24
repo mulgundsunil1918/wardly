@@ -283,6 +283,13 @@ code {
 .store-btn-sub { font-size: 9px; font-weight: 500; opacity: 0.55; line-height: 1; margin-bottom: 2px; }
 .store-btn-name { font-size: 14px; font-weight: 800; letter-spacing: -0.3px; line-height: 1; }
 
+.status-badge-link {
+  display: inline-flex;
+  transition: transform 0.15s, opacity 0.15s;
+}
+.status-badge-link:hover { transform: translateY(-2px); opacity: 0.85; }
+.status-badge-link img { display: block; height: 38px; width: auto; }
+
 .download-strip {
   background: rgba(10,92,138,0.12);
   border-bottom: 1px solid var(--divider);

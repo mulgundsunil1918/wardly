@@ -594,6 +594,28 @@ a { color: inherit; text-decoration: none; }
   font-size: 11px; font-weight: 600; letter-spacing: 1px;
   text-transform: uppercase; opacity: 0.4; margin-bottom: 8px;
 }
+
+/* ── Real badge images ── */
+.img-badges {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+.img-badges a {
+  display: inline-flex;
+  flex-shrink: 0;
+  transition: transform 0.15s, opacity 0.15s;
+}
+.img-badges a:hover { transform: translateY(-2px); opacity: 0.88; }
+.img-badges img {
+  height: 44px;
+  width: auto;
+  display: block;
+}
+@media (max-width: 400px) {
+  .img-badges img { height: 38px; }
+}
 @media (max-width: 400px) {
   .store-btn-name { font-size: 14px; }
   .store-btn { padding: 10px 14px; gap: 9px; }

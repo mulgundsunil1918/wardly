@@ -15,36 +15,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          flutter-version: 3.41.7
-          cache: true
+      - name: Prepare output directory
+        run: mkdir -p build
 
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build web
-        run: flutter build web --release --base-href "/wardly/" --no-tree-shake-icons
-
-      - name: Add .nojekyll
-        run: touch build/web/.nojekyll
-
-      - name: Copy landing page
-        run: |
-          mkdir -p build/web/dashboard
-          cp -r landing/* build/web/dashboard/
+      - name: Copy landing page to root
+        run: cp -r landing/. build/
 
       - name: Copy status page
         run: |
-          mkdir -p build/web/status
-          cp -r status/* build/web/status/
+          mkdir -p build/status
+          cp -r status/. build/status/
+
+      - name: Add CNAME for custom domain
+        run: echo "wardly.bridgr.co.in" > build/CNAME
+
+      - name: Add .nojekyll
+        run: touch build/.nojekyll
 
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./build/web
+          publish_dir: ./build
           publish_branch: gh-pages
           force_orphan: true
