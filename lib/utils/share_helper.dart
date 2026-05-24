@@ -6,7 +6,7 @@ import 'package:share_plus/share_plus.dart';
 /// for the current platform. When the app is published these links
 /// can be swapped without changing call sites.
 class ShareHelper {
-  static const String _webUrl = 'https://wardly-24081996.web.app/';
+  static const String _webUrl = 'https://wardlyapp.bridgr.co.in';
 
   // Switch to Play / App Store URLs once published.
   static String _platformLink() => _webUrl;
