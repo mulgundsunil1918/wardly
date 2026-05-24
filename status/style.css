@@ -261,7 +261,41 @@ code {
 .footer-links a { color: var(--text-2); font-size: 13px; }
 .footer-note { color: var(--text-2); font-size: 12px; }
 
+/* ---------- Store badges ---------- */
+.store-badges {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+}
+.store-btn {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 9px 16px; border-radius: 11px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.05);
+  color: var(--text); text-decoration: none;
+  transition: transform 0.15s, background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.store-btn:hover {
+  transform: translateY(-2px);
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.25);
+}
+.store-btn svg { flex-shrink: 0; }
+.store-btn-label { display: flex; flex-direction: column; }
+.store-btn-sub { font-size: 9px; font-weight: 500; opacity: 0.6; line-height: 1; margin-bottom: 2px; }
+.store-btn-name { font-size: 14px; font-weight: 800; letter-spacing: -0.3px; line-height: 1; }
+
+.download-strip {
+  background: rgba(10,92,138,0.12);
+  border-bottom: 1px solid var(--divider);
+  padding: 16px 0;
+}
+.download-strip-inner {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.download-strip-label { color: var(--text-2); font-size: 13px; font-weight: 600; flex-shrink: 0; }
+
 @media (max-width: 620px) {
   .nav-links a { display: none; }
   .nav-links a:first-child { display: inline; }
+  .download-strip-label { display: none; }
 }

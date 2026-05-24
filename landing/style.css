@@ -462,6 +462,57 @@ a { color: inherit; text-decoration: none; }
   margin: 18px 0 0;
 }
 
+/* ---------- Store badges ---------- */
+.store-badges {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.store-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 20px;
+  border-radius: 13px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.05);
+  color: var(--text);
+  text-decoration: none;
+  transition: transform 0.15s, background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+}
+.store-btn:hover {
+  transform: translateY(-2px);
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.28);
+}
+.store-btn svg { flex-shrink: 0; }
+.store-btn-label { display: flex; flex-direction: column; }
+.store-btn-sub { font-size: 10px; font-weight: 500; opacity: 0.65; line-height: 1; margin-bottom: 2px; }
+.store-btn-name { font-size: 16px; font-weight: 800; letter-spacing: -0.3px; line-height: 1; }
+
+/* download strip below hero */
+.download-strip {
+  background: rgba(10, 92, 138, 0.12);
+  border-top: 1px solid var(--divider);
+  border-bottom: 1px solid var(--divider);
+  padding: 20px 0;
+}
+.download-strip-inner {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.download-strip-label {
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
 /* ---------- Mobile ---------- */
 @media (max-width: 680px) {
   .nav-links a:not(.btn) { display: none; }
@@ -471,4 +522,5 @@ a { color: inherit; text-decoration: none; }
   .how-steps li { padding: 20px 18px; gap: 16px; }
   .benefit { padding: 18px; gap: 12px; }
   .benefit-icon { width: 44px; height: 44px; font-size: 22px; }
+  .download-strip-label { display: none; }
 }
