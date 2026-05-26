@@ -501,26 +501,22 @@ a { color: inherit; text-decoration: none; }
   min-width: 200px;
 }
 .launch-text strong { color: #fff; font-weight: 800; }
-.launch-store-links {
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
-}
-.launch-store-pill {
+.launch-download-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   background: rgba(255,255,255,0.15);
-  border: 1px solid rgba(255,255,255,0.25);
+  border: 1px solid rgba(255,255,255,0.3);
   color: #fff;
   font-size: 12px;
   font-weight: 700;
-  padding: 5px 12px;
+  padding: 5px 14px;
   border-radius: 999px;
   text-decoration: none;
+  flex-shrink: 0;
   transition: background 0.15s, border-color 0.15s;
 }
-.launch-store-pill:hover {
+.launch-download-btn:hover {
   background: rgba(255,255,255,0.25);
   border-color: rgba(255,255,255,0.5);
 }
