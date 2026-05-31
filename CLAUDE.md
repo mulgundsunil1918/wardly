@@ -117,10 +117,17 @@ A real-time clinical notes app for hospital ward teams. Built with Flutter + Fir
 - Play App Signing is active — Play re-signs with their own key for distribution
 
 ## iOS Signing
-- Bundle ID: `com.wardly.app`
+- **iOS Bundle ID: `com.wardlyapple.app`** (NOTE: differs from Android `com.wardly.app` — confirmed in `ios/Runner.xcodeproj/project.pbxproj` + `GoogleService-Info.plist`)
 - Codemagic handles provisioning profiles automatically via App Store Connect API key
-- APNs Auth Key (.p8) must be uploaded to Firebase Console → Cloud Messaging → Apple app config
+- APNs Auth Key (.p8): **Key ID `NUMA3S765L`, Team ID `SR35PG294W`**, team-scoped (all topics), Sandbox & Production. Uploaded to Firebase Console → Cloud Messaging → Apple app config in BOTH Development and Production slots.
 - APP_STORE_APPLE_ID in codemagic.yaml: update once App Store Connect entry is created (currently placeholder `0000000000`)
+
+### ⚠️ CRITICAL iOS PUSH GOTCHA — aps-environment must be `production`
+- `ios/Runner/Runner.entitlements` → `aps-environment` **MUST be `production`** for any TestFlight/App Store build.
+- **Why:** Codemagic signs with the literal entitlements file — it does NOT do the Xcode-archive auto-flip from development→production. A distribution-signed binary carrying `aps-environment: development` makes iOS refuse remote-notification registration → no APNs token → `FirebaseMessaging.getToken()` throws → `PushService` swallows it → `fcmTokens` never written to the user doc → Cloud Function has nothing to send → **no notifications on iOS** (in-app FCM banners still work since those skip APNs).
+- `production` works for BOTH TestFlight and App Store. Never set it back to `development`.
+- **Android is unaffected** by this — Android push goes FCM→Google Play Services directly, never touches APNs. So "works on Android, not iOS" is the signature symptom of this bug.
+- Fixed in commit (May 2026), version bumped to `1.5.1+21`. Requires a new build + users updating before it takes effect (entitlement is compiled into the binary).
 
 ---
 
