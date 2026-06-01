@@ -120,7 +120,21 @@ A real-time clinical notes app for hospital ward teams. Built with Flutter + Fir
 - **iOS Bundle ID: `com.wardlyapple.app`** (NOTE: differs from Android `com.wardly.app` — confirmed in `ios/Runner.xcodeproj/project.pbxproj` + `GoogleService-Info.plist`)
 - Codemagic handles provisioning profiles automatically via App Store Connect API key
 - APNs Auth Key (.p8): **Key ID `NUMA3S765L`, Team ID `SR35PG294W`**, team-scoped (all topics), Sandbox & Production. Uploaded to Firebase Console → Cloud Messaging → Apple app config in BOTH Development and Production slots.
-- APP_STORE_APPLE_ID in codemagic.yaml: update once App Store Connect entry is created (currently placeholder `0000000000`)
+- APP_STORE_APPLE_ID: **`6769839332`** (set in codemagic.yaml)
+
+### Local iOS build + upload (no Codemagic) — works on this Mac
+Signing assets are already installed locally (Apple Distribution cert Team `SR35PG294W` + `Wardly App Store` provisioning profile with production push). To build + ship a TestFlight build without Codemagic:
+```bash
+# 1. Build signed IPA (heavy on low-end Mac, ~15-20 min)
+cd ~/wardly && flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+# 2. Upload to TestFlight via App Store Connect API key
+xcrun altool --upload-app -f build/ios/ipa/Wardly.ipa -t ios \
+  --apiKey SDMDVN88HB --apiIssuer d74c90c0-e215-495a-b937-27d3619b1874
+```
+- App Store Connect API key: **Key ID `SDMDVN88HB`**, **Issuer `d74c90c0-e215-495a-b937-27d3619b1874`**, key file at `~/.appstoreconnect/private_keys/AuthKey_SDMDVN88HB.p8` (shared with the `docshelf` project).
+- `ios/ExportOptions.plist`: app-store method, manual signing, team `SR35PG294W`, profile "Wardly App Store".
+- **Build number must be strictly higher than the last uploaded** (Apple rejects duplicates with `cfBundleVersion` 409). Bump `+N` in pubspec before building.
+- altool can crawl for ~1h on a slow connection then succeed, or stall — if it hangs, use Apple's **Transporter** app (Mac App Store): drag in `build/ios/ipa/Wardly.ipa`. First successful upload was `1.5.1+21` (Jun 2026).
 
 ### ⚠️ CRITICAL iOS PUSH GOTCHA — aps-environment must be `production`
 - `ios/Runner/Runner.entitlements` → `aps-environment` **MUST be `production`** for any TestFlight/App Store build.
