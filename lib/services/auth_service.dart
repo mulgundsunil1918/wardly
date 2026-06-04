@@ -1,6 +1,9 @@
+import 'dart:convert';
 import 'dart:io' show Platform;
+import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -140,18 +143,28 @@ class AuthService {
     if (!Platform.isIOS) {
       throw UnsupportedError('Sign in with Apple is iOS-only.');
     }
+    // Firebase verifies Apple Sign-In with a nonce to block replay attacks:
+    //  1. generate a random rawNonce
+    //  2. send its SHA-256 hash to Apple (baked into the returned idToken)
+    //  3. hand the RAW nonce to Firebase, which re-hashes it and compares.
+    // Skipping this makes Firebase reject the credential with
+    // `invalid-credential` — which the UI then mislabels as a wrong
+    // email/password. The nonce flow is mandatory, not optional.
+    final rawNonce = _generateNonce();
+    final hashedNonce = _sha256ofString(rawNonce);
+
     final credential = await SignInWithApple.getAppleIDCredential(
       scopes: [
         AppleIDAuthorizationScopes.email,
         AppleIDAuthorizationScopes.fullName,
       ],
+      nonce: hashedNonce,
     );
     final oauth = OAuthProvider('apple.com').credential(
       idToken: credential.identityToken,
-      // We don't generate a nonce — sign_in_with_apple's helper will
-      // sign the request natively. Apple may return null for email on
-      // subsequent sign-ins (it's only sent the FIRST time the user
-      // grants access), so we synthesise a display name if missing.
+      rawNonce: rawNonce,
+      // Apple only sends email on the FIRST grant, so a display name is
+      // synthesised below if it comes back null on later sign-ins.
     );
     final cred = await _auth.signInWithCredential(oauth);
     final user = cred.user;
@@ -182,6 +195,23 @@ class AuthService {
     }
     final fresh = await _users.doc(user.uid).get();
     return AppUser.fromFirestore(fresh);
+  }
+
+  /// Cryptographically-random nonce for Apple Sign-In (see [signInWithApple]).
+  String _generateNonce([int length = 32]) {
+    const charset =
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = Random.secure();
+    return List.generate(
+      length,
+      (_) => charset[random.nextInt(charset.length)],
+    ).join();
+  }
+
+  /// SHA-256 hash of [input], lowercase hex — the form Apple expects.
+  String _sha256ofString(String input) {
+    final bytes = utf8.encode(input);
+    return sha256.convert(bytes).toString();
   }
 
   /// Sends a branded password-reset email via our Cloud Function + Resend.
