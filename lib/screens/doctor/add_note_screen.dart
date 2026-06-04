@@ -396,62 +396,152 @@ class _AddNoteBottomSheetState extends State<AddNoteBottomSheet> {
         return InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: () async {
+            // isScrollControlled + explicit max height lets the sheet
+            // take 80% of the screen instead of the ~50% default — fixes
+            // the issue where the first real patient row got pushed below
+            // the fold and was hard to reach with a thumb.
             final result = await showModalBottomSheet<Patient>(
               context: context,
               backgroundColor: AppColors.card,
+              isScrollControlled: true,
               shape: const RoundedRectangleBorder(
                 borderRadius:
                     BorderRadius.vertical(top: Radius.circular(24)),
               ),
-              builder: (sheetCtx) => ListView(
-                shrinkWrap: true,
-                padding: const EdgeInsets.all(16),
-                children: [
-                  ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: AppColors.accent.withOpacity(0.15),
-                      child:
-                          const Icon(Icons.add, color: AppColors.accent),
-                    ),
-                    title: const Text('Add new patient'),
-                    subtitle: const Text('Create and use for this note'),
-                    onTap: () {
-                      Navigator.of(sheetCtx).pop();
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const AddPatientScreen(),
+              builder: (sheetCtx) {
+                final maxH = MediaQuery.of(sheetCtx).size.height * 0.8;
+                return ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: maxH),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Drag handle.
+                      Container(
+                        margin: const EdgeInsets.only(top: 10, bottom: 6),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.textSecondary.withOpacity(0.25),
+                          borderRadius: BorderRadius.circular(2),
                         ),
-                      );
-                    },
+                      ),
+                      // Header.
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
+                        child: Row(
+                          children: [
+                            Text(
+                              'Select Patient',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              '${patients.length} '
+                              '${patients.length == 1 ? 'patient' : 'patients'}',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Pinned "Add new patient" CTA — always reachable.
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: ListTile(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: AppColors.accent.withOpacity(0.25),
+                            ),
+                          ),
+                          tileColor: AppColors.accent.withOpacity(0.06),
+                          leading: CircleAvatar(
+                            backgroundColor:
+                                AppColors.accent.withOpacity(0.15),
+                            child: const Icon(Icons.add,
+                                color: AppColors.accent),
+                          ),
+                          title: const Text('Add new patient'),
+                          subtitle:
+                              const Text('Create and use for this note'),
+                          onTap: () {
+                            Navigator.of(sheetCtx).pop();
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const AddPatientScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Divider(
+                        color: AppColors.divider,
+                        height: 1,
+                        indent: 20,
+                        endIndent: 20,
+                      ),
+                      // Scrollable patient list — flexes to fill remaining
+                      // height of the 80%-tall sheet.
+                      Expanded(
+                        child: patients.isEmpty
+                            ? Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(24),
+                                  child: Text(
+                                    'No patients in this ward yet.\n'
+                                    'Tap "Add new patient" above.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                        color: AppColors.textSecondary),
+                                  ),
+                                ),
+                              )
+                            : ListView.separated(
+                                padding: const EdgeInsets.fromLTRB(
+                                    8, 8, 8, 16),
+                                itemCount: patients.length,
+                                separatorBuilder: (_, __) => Divider(
+                                  height: 1,
+                                  color: AppColors.divider.withOpacity(0.4),
+                                  indent: 72,
+                                  endIndent: 16,
+                                ),
+                                itemBuilder: (_, i) {
+                                  final p = patients[i];
+                                  return ListTile(
+                                    leading: CircleAvatar(
+                                      backgroundColor: AppColors.primary
+                                          .withOpacity(0.1),
+                                      child: Text(
+                                        p.initials,
+                                        style: const TextStyle(
+                                            color: AppColors.primary,
+                                            fontWeight: FontWeight.w600),
+                                      ),
+                                    ),
+                                    title: Text(p.name),
+                                    subtitle: Text(
+                                      p.bedNumber.isEmpty
+                                          ? '—'
+                                          : 'Bed ${p.bedNumber}',
+                                    ),
+                                    onTap: () =>
+                                        Navigator.of(sheetCtx).pop(p),
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
                   ),
-                  if (patients.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Center(
-                        child: Text(
-                          'No patients in this ward yet.',
-                          style: TextStyle(color: AppColors.textSecondary),
-                        ),
-                      ),
-                    ),
-                  for (final p in patients)
-                    ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor:
-                            AppColors.primary.withOpacity(0.1),
-                        child: Text(
-                          p.initials,
-                          style: const TextStyle(color: AppColors.primary),
-                        ),
-                      ),
-                      title: Text(p.name),
-                      subtitle: Text(
-                        p.bedNumber.isEmpty ? '—' : 'Bed ${p.bedNumber}',
-                      ),
-                      onTap: () => Navigator.of(sheetCtx).pop(p),
-                    ),
-                ],
-              ),
+                );
+              },
             );
             if (result != null) setState(() => _selectedPatient = result);
           },
