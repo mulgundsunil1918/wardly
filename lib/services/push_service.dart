@@ -30,11 +30,19 @@ class PushService {
   static Future<void> register() async {
     try {
       // Ask for permission (iOS + web). Android grants by default.
-      await _msg.requestPermission(
+      final settings = await _msg.requestPermission(
         alert: true,
         badge: true,
         sound: true,
       );
+      // If the user denied (now or previously), iOS silently returns
+      // `denied` without re-prompting and getToken() will fail. Bail
+      // early so we don't waste retries on a doomed registration.
+      if (settings.authorizationStatus == AuthorizationStatus.denied) {
+        debugPrint(
+            'PushService: notifications denied by user — skipping token fetch');
+        return;
+      }
       // Show notifications even when app is in foreground (iOS).
       await _msg.setForegroundNotificationPresentationOptions(
         alert: true,
@@ -44,6 +52,26 @@ class PushService {
 
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid == null) return;
+
+      // iOS-only: the APNs registration with Apple runs asynchronously
+      // after permission is granted, and FirebaseMessaging.getToken()
+      // throws / returns null until that's done. Poll getAPNSToken()
+      // with a short backoff so we don't lose the token on a cold-launch
+      // first-grant scenario. Without this the silent catch below
+      // swallowed the race and fcmTokens was never written.
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+        String? apns;
+        for (var i = 0; i < 10; i++) {
+          apns = await _msg.getAPNSToken();
+          if (apns != null && apns.isNotEmpty) break;
+          await Future<void>.delayed(const Duration(seconds: 1));
+        }
+        if (apns == null || apns.isEmpty) {
+          debugPrint(
+              'PushService: APNs token still null after 10s — skipping');
+          return;
+        }
+      }
 
       String? token;
       try {
@@ -59,7 +87,11 @@ class PushService {
         debugPrint('PushService: FCM token unavailable — $e');
         return;
       }
-      if (token == null || token.isEmpty) return;
+      if (token == null || token.isEmpty) {
+        debugPrint('PushService: FCM token came back empty');
+        return;
+      }
+      debugPrint('PushService: FCM token registered (${token.length} chars)');
 
       await _fs
           .collection(AppConstants.usersCollection)
