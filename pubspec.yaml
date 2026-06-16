@@ -62,6 +62,10 @@ dependencies:
   http: ^1.2.0
   # SHA-256 for the Apple Sign-In nonce (Firebase credential verification).
   crypto: ^3.0.3
+  # Wardly Pro: camera + on-device OCR for bedside vital-sign recognition.
+  camera: ^0.11.0+2
+  google_mlkit_text_recognition: ^0.14.0
+  firebase_storage: ^12.3.7
 
 dev_dependencies:
   flutter_test:

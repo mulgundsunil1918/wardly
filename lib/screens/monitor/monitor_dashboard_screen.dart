@@ -10,6 +10,7 @@ import '../../providers/theme_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/support_action.dart';
 import '../subscription/paywall_screen.dart';
+import 'bedside_sender_screen.dart';
 import 'patient_monitor_screen.dart';
 
 class MonitorDashboardScreen extends StatelessWidget {
@@ -101,6 +102,14 @@ class MonitorDashboardScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.surface,
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'bedside_cam_fab',
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.videocam),
+        label: const Text('Bedside Camera'),
+        onPressed: () => _showBedsideSetup(context, patients),
+      ),
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
@@ -287,6 +296,48 @@ class MonitorDashboardScreen extends StatelessWidget {
           const SizedBox(height: 2),
           Text(value, style: GoogleFonts.dmSans(color: color, fontSize: 15, fontWeight: FontWeight.w800)),
         ],
+      ),
+    );
+  }
+
+  void _showBedsideSetup(BuildContext context, List<MonitoredPatient> patients) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Set up bedside camera', style: GoogleFonts.dmSans(
+              color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            Text('Select a patient to start streaming vitals from their bedside monitor.',
+              style: GoogleFonts.dmSans(color: AppColors.textSecondary, fontSize: 13)),
+            const SizedBox(height: 16),
+            ...patients.map((p) => ListTile(
+              leading: Icon(Icons.person, color: AppColors.primary),
+              title: Text(p.name, style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+              subtitle: Text('${p.ward} · ${p.bed}', style: GoogleFonts.dmSans(fontSize: 12)),
+              trailing: const Icon(Icons.videocam, color: AppColors.accent),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => BedsideSenderScreen(
+                    patientId: p.id,
+                    patientName: p.name,
+                    wardId: p.wardId,
+                  ),
+                ));
+              },
+            )),
+            const SizedBox(height: 10),
+          ],
+        ),
       ),
     );
   }
