@@ -1,0 +1,179 @@
+import 'dart:async';
+import 'dart:math';
+
+import 'package:flutter/foundation.dart';
+
+import '../models/monitor_alert.dart';
+import '../models/monitor_vitals.dart';
+import '../models/monitored_patient.dart';
+
+class MonitorProvider extends ChangeNotifier {
+  List<MonitoredPatient> _patients = [];
+  List<MonitorAlert> _alerts = [];
+  bool _soundEnabled = true;
+  Timer? _simTimer;
+  final _rng = Random();
+  final Map<String, DateTime> _lastAlertTime = {};
+
+  List<MonitoredPatient> get patients => _patients;
+  List<MonitorAlert> get alerts => _alerts;
+  bool get soundEnabled => _soundEnabled;
+
+  void init() {
+    _patients = List.from(_demoPatients);
+    _startSimulation();
+  }
+
+  @override
+  void dispose() {
+    _simTimer?.cancel();
+    super.dispose();
+  }
+
+  void toggleSound() {
+    _soundEnabled = !_soundEnabled;
+    notifyListeners();
+  }
+
+  void setThreshold(String patientId, VitalType vital, String key, double value) {
+    final idx = _patients.indexWhere((p) => p.id == patientId);
+    if (idx < 0) return;
+    final patient = _patients[idx];
+    final old = patient.thresholds[vital] ?? const VitalThreshold();
+    final updated = VitalThreshold(
+      warnLow: key == 'warnLow' ? value : old.warnLow,
+      critLow: key == 'critLow' ? value : old.critLow,
+      warnHigh: key == 'warnHigh' ? value : old.warnHigh,
+      critHigh: key == 'critHigh' ? value : old.critHigh,
+    );
+    final newThresholds = Map<VitalType, VitalThreshold>.from(patient.thresholds);
+    newThresholds[vital] = updated;
+    _patients[idx] = patient.copyWith(thresholds: newThresholds);
+    notifyListeners();
+  }
+
+  List<MonitorAlert> alertsFor(String patientId) =>
+      _alerts.where((a) => a.patientId == patientId).toList();
+
+  MonitoredPatient? patientById(String id) {
+    for (final p in _patients) {
+      if (p.id == id) return p;
+    }
+    return null;
+  }
+
+  void _startSimulation() {
+    _simTimer?.cancel();
+    _simTimer = Timer.periodic(const Duration(seconds: 2), (_) => _simTick());
+  }
+
+  double _simStep(double current, SimConfig cfg) {
+    final pull = 0.08 * (cfg.base - current);
+    final noise = ((_rng.nextDouble() * 2) - 1) * cfg.range;
+    double next = current + pull + noise;
+    return next.clamp(cfg.base - cfg.maxDrift, cfg.base + cfg.maxDrift);
+  }
+
+  void _simTick() {
+    for (int i = 0; i < _patients.length; i++) {
+      final p = _patients[i];
+      final newVitals = <VitalType, double>{};
+
+      for (final vt in VitalType.values) {
+        if (vt == VitalType.map) continue;
+        final current = p.vitals[vt] ?? 0;
+        final cfg = p.sim[vt];
+        if (cfg == null) { newVitals[vt] = current; continue; }
+        newVitals[vt] = _simStep(current, cfg).roundToDouble();
+      }
+
+      final sbp = newVitals[VitalType.sbp] ?? 0;
+      final dbp = newVitals[VitalType.dbp] ?? 0;
+      newVitals[VitalType.map] = ((sbp + 2 * dbp) / 3).roundToDouble();
+
+      for (final vt in VitalType.values) {
+        final meta = vitalMeta[vt]!;
+        newVitals[vt] = (newVitals[vt] ?? 0).clamp(meta.absMin, meta.absMax);
+      }
+
+      _patients[i] = p.copyWith(vitals: newVitals);
+      _checkAlerts(p.id, newVitals, p.thresholds);
+    }
+    notifyListeners();
+  }
+
+  void _checkAlerts(String patientId, Map<VitalType, double> vitals, Map<VitalType, VitalThreshold> thresholds) {
+    for (final vt in VitalType.values) {
+      final val = vitals[vt];
+      final thr = thresholds[vt];
+      if (val == null || thr == null) continue;
+
+      final sev = thr.severity(val);
+      if (sev == 'stable') continue;
+
+      final key = '$patientId-${vt.name}-$sev';
+      final last = _lastAlertTime[key];
+      if (last != null && DateTime.now().difference(last).inSeconds < 20) continue;
+
+      final meta = vitalMeta[vt]!;
+      final isLow = (thr.critLow != null && val < thr.critLow!) ||
+                     (thr.warnLow != null && val < thr.warnLow!);
+      final direction = isLow ? 'below' : 'above';
+      final label = vt == VitalType.spo2 ? 'SpO₂' : meta.label;
+
+      _alerts.insert(0, MonitorAlert(
+        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        patientId: patientId,
+        message: '$label $direction ${sev == "critical" ? "critical" : "warning"}: ${val.round()}${meta.unit}',
+        severity: sev,
+        time: DateTime.now(),
+      ));
+      _lastAlertTime[key] = DateTime.now();
+    }
+  }
+}
+
+// Demo patients for simulation mode
+const _neonatalThresholds = {
+  VitalType.hr: VitalThreshold(warnLow: 110, critLow: 80, warnHigh: 180, critHigh: 200),
+  VitalType.spo2: VitalThreshold(warnLow: 92, critLow: 88),
+  VitalType.rr: VitalThreshold(warnLow: 30, critLow: 20, warnHigh: 65, critHigh: 75),
+  VitalType.sbp: VitalThreshold(warnLow: 45, critLow: 35, warnHigh: 90, critHigh: 100),
+  VitalType.dbp: VitalThreshold(warnLow: 25, critLow: 18, warnHigh: 60, critHigh: 70),
+  VitalType.map: VitalThreshold(warnLow: 40, critLow: 30, warnHigh: 65, critHigh: 75),
+};
+
+final List<MonitoredPatient> _demoPatients = [
+  MonitoredPatient(
+    id: '1', name: 'Baby Kiran', gender: 'M', age: '2 days',
+    diagnosis: 'PPHN', support: 'HFO Ventilator', bed: 'Bed 3', ward: 'NICU',
+    dutyPhone: '+911234567890',
+    thresholds: Map.from(_neonatalThresholds),
+    vitals: { VitalType.hr: 88, VitalType.spo2: 87, VitalType.rr: 48, VitalType.sbp: 52, VitalType.dbp: 32, VitalType.map: 39 },
+    sim: { VitalType.hr: SimConfig(base: 88, range: 10, maxDrift: 28), VitalType.spo2: SimConfig(base: 87, range: 3, maxDrift: 9), VitalType.rr: SimConfig(base: 48, range: 6, maxDrift: 14), VitalType.sbp: SimConfig(base: 52, range: 5, maxDrift: 12), VitalType.dbp: SimConfig(base: 32, range: 3, maxDrift: 8) },
+  ),
+  MonitoredPatient(
+    id: '2', name: 'Mr. Arjun Kumar', gender: 'M', age: '58 years',
+    diagnosis: 'Post CABG (Day 1)', support: 'T-piece / Noradrenaline', bed: 'Bed 2', ward: 'ICU',
+    dutyPhone: '+911234567891',
+    thresholds: { VitalType.hr: VitalThreshold(warnLow: 55, critLow: 45, warnHigh: 100, critHigh: 120), VitalType.spo2: VitalThreshold(warnLow: 94, critLow: 90), VitalType.rr: VitalThreshold(warnLow: 10, critLow: 6, warnHigh: 22, critHigh: 28), VitalType.sbp: VitalThreshold(warnLow: 90, critLow: 75, warnHigh: 140, critHigh: 165), VitalType.dbp: VitalThreshold(warnLow: 50, critLow: 40, warnHigh: 90, critHigh: 100), VitalType.map: VitalThreshold(warnLow: 65, critLow: 50, warnHigh: 100, critHigh: 110) },
+    vitals: { VitalType.hr: 82, VitalType.spo2: 97, VitalType.rr: 16, VitalType.sbp: 118, VitalType.dbp: 72, VitalType.map: 87 },
+    sim: { VitalType.hr: SimConfig(base: 82, range: 5, maxDrift: 15), VitalType.spo2: SimConfig(base: 97, range: 1, maxDrift: 3), VitalType.rr: SimConfig(base: 16, range: 2, maxDrift: 5), VitalType.sbp: SimConfig(base: 118, range: 6, maxDrift: 18), VitalType.dbp: SimConfig(base: 72, range: 4, maxDrift: 12) },
+  ),
+  MonitoredPatient(
+    id: '4', name: 'Mr. Rajesh Mehta', gender: 'M', age: '62 years',
+    diagnosis: 'Septic Shock + ARDS', support: 'Invasive Vent + Norad + Vasopressin', bed: 'Bed 4', ward: 'MICU',
+    dutyPhone: '+911234567893',
+    thresholds: { VitalType.hr: VitalThreshold(warnLow: 55, critLow: 45, warnHigh: 125, critHigh: 145), VitalType.spo2: VitalThreshold(warnLow: 90, critLow: 88), VitalType.rr: VitalThreshold(warnLow: 8, critLow: 6, warnHigh: 30, critHigh: 36), VitalType.sbp: VitalThreshold(warnLow: 90, critLow: 70, warnHigh: 160, critHigh: 180), VitalType.dbp: VitalThreshold(warnLow: 50, critLow: 40, warnHigh: 100, critHigh: 110), VitalType.map: VitalThreshold(warnLow: 65, critLow: 55, warnHigh: 100, critHigh: 110) },
+    vitals: { VitalType.hr: 122, VitalType.spo2: 86, VitalType.rr: 28, VitalType.sbp: 78, VitalType.dbp: 44, VitalType.map: 55 },
+    sim: { VitalType.hr: SimConfig(base: 122, range: 12, maxDrift: 25), VitalType.spo2: SimConfig(base: 86, range: 3, maxDrift: 8), VitalType.rr: SimConfig(base: 28, range: 4, maxDrift: 10), VitalType.sbp: SimConfig(base: 78, range: 10, maxDrift: 22), VitalType.dbp: SimConfig(base: 44, range: 6, maxDrift: 15) },
+  ),
+  MonitoredPatient(
+    id: '3', name: 'Mrs. Sunita Devi', gender: 'F', age: '28 years',
+    diagnosis: 'Severe Pre-eclampsia', support: 'IV MgSO₄ / Hydralazine PRN', bed: 'LR Bed 1', ward: 'Labor Room',
+    dutyPhone: '+911234567892',
+    thresholds: { VitalType.hr: VitalThreshold(warnLow: 60, critLow: 50, warnHigh: 110, critHigh: 130), VitalType.spo2: VitalThreshold(warnLow: 94, critLow: 90), VitalType.rr: VitalThreshold(warnLow: 12, critLow: 8, warnHigh: 24, critHigh: 30), VitalType.sbp: VitalThreshold(warnLow: 100, critLow: 80, warnHigh: 155, critHigh: 170), VitalType.dbp: VitalThreshold(warnLow: 60, critLow: 50, warnHigh: 100, critHigh: 110), VitalType.map: VitalThreshold(warnLow: 70, critLow: 55, warnHigh: 110, critHigh: 120) },
+    vitals: { VitalType.hr: 96, VitalType.spo2: 98, VitalType.rr: 20, VitalType.sbp: 158, VitalType.dbp: 104, VitalType.map: 122 },
+    sim: { VitalType.hr: SimConfig(base: 96, range: 6, maxDrift: 18), VitalType.spo2: SimConfig(base: 98, range: 1, maxDrift: 2), VitalType.rr: SimConfig(base: 20, range: 2, maxDrift: 6), VitalType.sbp: SimConfig(base: 158, range: 8, maxDrift: 20), VitalType.dbp: SimConfig(base: 104, range: 5, maxDrift: 15) },
+  ),
+];

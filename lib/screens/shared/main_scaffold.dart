@@ -17,6 +17,7 @@ import '../admin/admin_staff_screen.dart';
 import '../doctor/add_note_screen.dart';
 import '../doctor/doctor_home_screen.dart';
 import '../doctor/patients_list_screen.dart';
+import '../monitor/monitor_dashboard_screen.dart';
 import '../nurse/nurse_home_screen.dart';
 import '../nurse/nurse_patients_screen.dart';
 import 'profile_screen.dart';
@@ -44,6 +45,7 @@ class _MainScaffoldState extends State<MainScaffold>
   final GlobalKey _wardsKey = GlobalKey();
   final GlobalKey _patientsKey = GlobalKey();
   final GlobalKey _notesKey = GlobalKey();
+  final GlobalKey _monitorKey = GlobalKey();
   final GlobalKey _profileKey = GlobalKey();
 
   static const String _interactiveTutorialKey =
@@ -126,6 +128,7 @@ class _MainScaffoldState extends State<MainScaffold>
           WardsScreen(),
           PatientsListScreen(),
           _DoctorNotesList(),
+          MonitorDashboardScreen(),
           ProfileScreen(),
         ];
       case UserRole.nurse:
@@ -226,6 +229,18 @@ class _MainScaffoldState extends State<MainScaffold>
                   _notesIcon(np.unacknowledgedCount, active: true),
             ),
             label: 'Notes',
+          ),
+          BottomNavigationBarItem(
+            icon: _showcase(
+              key: _monitorKey,
+              title: 'Monitor',
+              description:
+                  'Live patient monitoring — vitals, alerts, and bedside '
+                  'camera. Requires Wardly Pro.',
+              child: const Icon(Icons.monitor_heart_outlined),
+            ),
+            activeIcon: const Icon(Icons.monitor_heart),
+            label: 'Monitor',
           ),
           BottomNavigationBarItem(
             icon: _showcase(

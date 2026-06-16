@@ -49,6 +49,12 @@ class WardlyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ThemeProvider()..load()),
         ChangeNotifierProvider(create: (_) => TextScaleProvider()..load()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(create: (_) {
+          final m = MonitorProvider();
+          m.init();
+          return m;
+        }),
+        ChangeNotifierProvider(create: (_) => SubscriptionProvider()..checkSubscription()),
       ],
       child: Consumer2<ThemeProvider, TextScaleProvider>(
         builder: (context, themeProvider, textScale, _) {
