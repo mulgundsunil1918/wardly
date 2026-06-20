@@ -4,23 +4,39 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 
 import '../models/monitor_alert.dart';
+import '../models/monitor_comment.dart';
 import '../models/monitor_vitals.dart';
 import '../models/monitored_patient.dart';
+
+class VitalSnapshot {
+  final DateTime time;
+  final Map<VitalType, double> vitals;
+  const VitalSnapshot(this.time, this.vitals);
+}
 
 class MonitorProvider extends ChangeNotifier {
   List<MonitoredPatient> _patients = [];
   List<MonitorAlert> _alerts = [];
+  List<MonitorComment> _comments = [];
   bool _soundEnabled = true;
   Timer? _simTimer;
   final _rng = Random();
   final Map<String, DateTime> _lastAlertTime = {};
 
+  final Map<String, List<VitalSnapshot>> _history = {};
+  static const int _maxHistory = 2200;
+
   List<MonitoredPatient> get patients => _patients;
   List<MonitorAlert> get alerts => _alerts;
+  List<MonitorComment> get comments => _comments;
   bool get soundEnabled => _soundEnabled;
+
+  List<VitalSnapshot> historyFor(String patientId) => _history[patientId] ?? [];
 
   void init() {
     _patients = List.from(_demoPatients);
+    _comments = List.from(_seedComments);
+    _seedHistory();
     _startSimulation();
   }
 
@@ -30,10 +46,51 @@ class MonitorProvider extends ChangeNotifier {
     super.dispose();
   }
 
+  void _seedHistory() {
+    final now = DateTime.now();
+    for (final p in _patients) {
+      final snapshots = <VitalSnapshot>[];
+      var vitals = Map<VitalType, double>.from(p.vitals);
+      for (int i = 720; i >= 0; i--) {
+        final time = now.subtract(Duration(minutes: i));
+        final newVitals = <VitalType, double>{};
+        for (final vt in VitalType.values) {
+          if (vt == VitalType.map) continue;
+          final cfg = p.sim[vt];
+          if (cfg == null) { newVitals[vt] = vitals[vt] ?? 0; continue; }
+          newVitals[vt] = _simStep(vitals[vt] ?? cfg.base, cfg).roundToDouble();
+          final meta = vitalMeta[vt]!;
+          newVitals[vt] = newVitals[vt]!.clamp(meta.absMin, meta.absMax);
+        }
+        final sbp = newVitals[VitalType.sbp] ?? 0;
+        final dbp = newVitals[VitalType.dbp] ?? 0;
+        newVitals[VitalType.map] = ((sbp + 2 * dbp) / 3).roundToDouble();
+        vitals = newVitals;
+        snapshots.add(VitalSnapshot(time, Map.from(newVitals)));
+      }
+      _history[p.id] = snapshots;
+    }
+  }
+
   void toggleSound() {
     _soundEnabled = !_soundEnabled;
     notifyListeners();
   }
+
+  void addComment(String patientId, String text, String type) {
+    _comments.insert(0, MonitorComment(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      patientId: patientId,
+      text: text,
+      author: 'Dr. Sunil',
+      time: DateTime.now(),
+      type: type,
+    ));
+    notifyListeners();
+  }
+
+  List<MonitorComment> commentsFor(String patientId) =>
+      _comments.where((c) => c.patientId == patientId).toList();
 
   void setThreshold(String patientId, VitalType vital, String key, double value) {
     final idx = _patients.indexWhere((p) => p.id == patientId);
@@ -98,6 +155,12 @@ class MonitorProvider extends ChangeNotifier {
 
       _patients[i] = p.copyWith(vitals: newVitals);
       _checkAlerts(p.id, newVitals, p.thresholds);
+
+      _history.putIfAbsent(p.id, () => []);
+      _history[p.id]!.add(VitalSnapshot(DateTime.now(), Map.from(newVitals)));
+      if (_history[p.id]!.length > _maxHistory) {
+        _history[p.id]!.removeAt(0);
+      }
     }
     notifyListeners();
   }
@@ -132,6 +195,14 @@ class MonitorProvider extends ChangeNotifier {
     }
   }
 }
+
+final List<MonitorComment> _seedComments = [
+  MonitorComment(id: 's1', patientId: '1', text: 'iNO started at 20 ppm, wean by 5 ppm q4h if SpO₂ > 90%', author: 'Dr. Sunil', time: DateTime.now().subtract(const Duration(hours: 2)), type: 'order'),
+  MonitorComment(id: 's2', patientId: '1', text: 'Parents counselled about PPHN prognosis. Echo scheduled for tomorrow.', author: 'Dr. Sunil', time: DateTime.now().subtract(const Duration(hours: 3)), type: 'note'),
+  MonitorComment(id: 's3', patientId: '2', text: 'Noradrenaline tapered to 0.05 mcg/kg/min, reassess in 2 hrs', author: 'Dr. Sunil', time: DateTime.now().subtract(const Duration(hours: 1)), type: 'order'),
+  MonitorComment(id: 's4', patientId: '4', text: 'Blood cultures sent, Meropenem + Vancomycin started empirically', author: 'Dr. Sunil', time: DateTime.now().subtract(const Duration(hours: 4)), type: 'order'),
+  MonitorComment(id: 's5', patientId: '3', text: 'MgSO₄ loading dose completed. BP target < 155/100', author: 'Dr. Sunil', time: DateTime.now().subtract(const Duration(hours: 5)), type: 'order'),
+];
 
 // Demo patients for simulation mode
 const _neonatalThresholds = {

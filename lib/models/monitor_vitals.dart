@@ -6,19 +6,23 @@ class VitalMeta {
   final String label;
   final String unit;
   final IconData icon;
+  final String stringIcon;
   final double absMin;
   final double absMax;
 
-  const VitalMeta(this.label, this.unit, this.icon, this.absMin, this.absMax);
+  const VitalMeta(this.label, this.unit, this.icon, this.absMin, this.absMax, [this.stringIcon = '']);
+
+  double get min => absMin;
+  double get max => absMax;
 }
 
 const vitalMeta = {
-  VitalType.hr: VitalMeta('Heart Rate', 'bpm', Icons.favorite, 30, 220),
-  VitalType.spo2: VitalMeta('SpO₂', '%', Icons.circle, 50, 100),
-  VitalType.rr: VitalMeta('Resp. Rate', 'br/min', Icons.air, 4, 60),
-  VitalType.sbp: VitalMeta('SBP', 'mmHg', Icons.swap_vert, 30, 250),
-  VitalType.dbp: VitalMeta('DBP', 'mmHg', Icons.swap_vert, 15, 150),
-  VitalType.map: VitalMeta('MAP', 'mmHg', Icons.swap_vert, 20, 180),
+  VitalType.hr: VitalMeta('Heart Rate', 'bpm', Icons.favorite, 30, 220, '♥'),
+  VitalType.spo2: VitalMeta('SpO₂', '%', Icons.circle, 50, 100, '◉'),
+  VitalType.rr: VitalMeta('Resp. Rate', 'br/min', Icons.air, 4, 60, '≈'),
+  VitalType.sbp: VitalMeta('SBP', 'mmHg', Icons.swap_vert, 30, 250, '↑'),
+  VitalType.dbp: VitalMeta('DBP', 'mmHg', Icons.swap_vert, 15, 150, '↓'),
+  VitalType.map: VitalMeta('MAP', 'mmHg', Icons.swap_vert, 20, 180, '~'),
 };
 
 class VitalThreshold {

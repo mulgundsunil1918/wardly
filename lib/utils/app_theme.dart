@@ -13,6 +13,17 @@ class AppColors {
   static const Color nurseColor = Color(0xFF00838F);
   static const Color adminColor = Color(0xFF6A1B9A);
 
+  // Clinical severity aliases
+  static const Color critical = danger;
+  static const Color warningColor = warning;
+  static const Color stable = Color(0xFF43A047);
+  static const Color criticalBg = Color(0xFFFDE8E8);
+  static const Color warningBg = Color(0xFFFFF3E0);
+  static const Color stableBg = Color(0xFFE8F5E9);
+  static const Color darkCriticalBg = Color(0xFF3B1111);
+  static const Color darkWarningBg = Color(0xFF3B2A0A);
+  static const Color darkStableBg = Color(0xFF0E2B10);
+
   static const Color lightSurface = Color(0xFFEDF1F7);
   static const Color lightCard = Color(0xFFF7F9FC);
   static const Color lightTextPrimary = Color(0xFF0D1B2A);
@@ -55,6 +66,9 @@ class AppColors {
   static Color get textSecondary =>
       isDark ? darkTextSecondary : lightTextSecondary;
   static Color get divider => isDark ? darkDivider : lightDivider;
+  static Color get criticalBackground => isDark ? darkCriticalBg : criticalBg;
+  static Color get warningBackground => isDark ? darkWarningBg : warningBg;
+  static Color get stableBackground => isDark ? darkStableBg : stableBg;
 }
 
 class AppTheme {

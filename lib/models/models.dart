@@ -1,5 +1,6 @@
 export 'app_user.dart';
 export 'monitor_alert.dart';
+export 'monitor_comment.dart';
 export 'monitor_vitals.dart';
 export 'monitored_patient.dart';
 export 'note.dart';

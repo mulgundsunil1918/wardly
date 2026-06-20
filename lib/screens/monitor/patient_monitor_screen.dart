@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:timeago/timeago.dart' as timeago;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/monitor_vitals.dart';
-import '../../models/monitored_patient.dart';
 import '../../providers/monitor_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/monitor/alert_log.dart';
+import '../../widgets/monitor/bp_card.dart';
+import '../../widgets/monitor/comment_panel.dart';
+import '../../widgets/monitor/remote_video_viewer.dart';
+import '../../widgets/monitor/threshold_panel.dart';
+import '../../widgets/monitor/vital_card.dart';
+import 'vital_trends_screen.dart';
 
 class PatientMonitorScreen extends StatelessWidget {
   final String patientId;
@@ -28,8 +33,14 @@ class PatientMonitorScreen extends StatelessWidget {
     }
 
     final sev = patient.worstSeverity;
-    final sevColor = sev == 'critical' ? AppColors.danger : sev == 'warning' ? AppColors.warning : AppColors.accent;
+    final sevColor = sev == 'critical'
+        ? AppColors.critical
+        : sev == 'warning'
+            ? AppColors.warningColor
+            : AppColors.stable;
     final alerts = monitor.alertsFor(patientId);
+    final comments = monitor.commentsFor(patientId);
+    final isWide = MediaQuery.of(context).size.width > 800;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -51,9 +62,9 @@ class PatientMonitorScreen extends StatelessWidget {
             child: ElevatedButton.icon(
               onPressed: () => _callWard(patient.dutyPhone),
               icon: const Icon(Icons.phone, size: 16),
-              label: const Text('Call'),
+              label: const Text('Call Ward'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accent,
+                backgroundColor: AppColors.stable,
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 textStyle: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600),
               ),
@@ -75,17 +86,20 @@ class PatientMonitorScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('${patient.name} · ${patient.gender} · ${patient.age}',
-                        style: GoogleFonts.dmSans(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w700)),
+                        style: GoogleFonts.dmSans(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w700)),
                       Text('${patient.diagnosis} · ${patient.support} · ${patient.bed} · ${patient.ward}',
-                        style: GoogleFonts.dmSans(color: AppColors.textSecondary, fontSize: 11)),
+                        style: GoogleFonts.dmSans(color: AppColors.textSecondary, fontSize: 12)),
                     ],
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: sevColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                  decoration: BoxDecoration(
+                    color: sevColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   child: Text(
-                    sev == 'critical' ? 'Critical' : sev == 'warning' ? 'Watch' : 'Stable',
+                    sev == 'critical' ? '🔴 Critical' : sev == 'warning' ? '🟡 Watch' : '🟢 Stable',
                     style: GoogleFonts.dmSans(color: sevColor, fontSize: 11, fontWeight: FontWeight.w700),
                   ),
                 ),
@@ -94,70 +108,121 @@ class PatientMonitorScreen extends StatelessWidget {
           ),
 
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Camera placeholder
-                  _cameraPlaceholder(patient),
-                  const SizedBox(height: 16),
-
-                  // Vitals
-                  Text('LIVE VITALS', style: GoogleFonts.dmSans(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1)),
-                  const SizedBox(height: 8),
-                  _vitalsGrid(patient),
-                  const SizedBox(height: 16),
-
-                  // Alerts
-                  _alertLog(alerts),
-                  const SizedBox(height: 80),
-                ],
-              ),
-            ),
+            child: isWide
+                ? _wideLayout(context, patient, alerts, comments, monitor)
+                : _narrowLayout(context, patient, alerts, comments, monitor),
           ),
         ],
       ),
     );
   }
 
-  Widget _cameraPlaceholder(MonitoredPatient patient) {
-    return Container(
-      height: 200,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.black87,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Stack(
-        children: [
-          Center(
+  Widget _wideLayout(BuildContext context, patient, List alerts, List comments, MonitorProvider monitor) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 3,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.videocam, color: Colors.white30, size: 40),
+                RemoteVideoViewer(
+                  patientId: patientId,
+                  patientName: patient.name,
+                  ward: patient.ward,
+                  bed: patient.bed,
+                ),
+                const SizedBox(height: 16),
+                _vitalsHeader(context, patient),
                 const SizedBox(height: 8),
-                Text('${patient.ward} Camera · ${patient.bed}',
-                  style: GoogleFonts.dmSans(color: Colors.white54, fontSize: 13)),
-                Text('Stream connected · tap to expand',
-                  style: GoogleFonts.dmSans(color: Colors.white30, fontSize: 11)),
+                _vitalsGrid(patient),
               ],
             ),
           ),
-          Positioned(
-            top: 12, left: 12,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(color: AppColors.danger, borderRadius: BorderRadius.circular(6)),
-              child: Text('LIVE', style: GoogleFonts.dmSans(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+        ),
+        Expanded(
+          flex: 2,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                AlertLog(alerts: alerts.cast()),
+                const SizedBox(height: 12),
+                MonitorCommentPanel(
+                  comments: comments.cast(),
+                  onAdd: (text, type) => monitor.addComment(patient.id, text, type),
+                ),
+                const SizedBox(height: 12),
+                ThresholdPanel(
+                  patient: patient,
+                  onSet: monitor.setThreshold,
+                ),
+                const SizedBox(height: 80),
+              ],
             ),
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _narrowLayout(BuildContext context, patient, List alerts, List comments, MonitorProvider monitor) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          RemoteVideoViewer(
+            patientId: patientId,
+            patientName: patient.name,
+            ward: patient.ward,
+            bed: patient.bed,
+          ),
+          const SizedBox(height: 16),
+          _vitalsHeader(context, patient),
+          const SizedBox(height: 8),
+          _vitalsGrid(patient),
+          const SizedBox(height: 16),
+          AlertLog(alerts: alerts.cast()),
+          const SizedBox(height: 12),
+          MonitorCommentPanel(
+            comments: comments.cast(),
+            onAdd: (text, type) => monitor.addComment(patient.id, text, type),
+          ),
+          const SizedBox(height: 12),
+          ThresholdPanel(
+            patient: patient,
+            onSet: monitor.setThreshold,
+          ),
+          const SizedBox(height: 80),
         ],
       ),
     );
   }
 
-  Widget _vitalsGrid(MonitoredPatient patient) {
+  Widget _vitalsHeader(BuildContext context, patient) {
+    return Row(
+      children: [
+        Text('LIVE VITALS', style: GoogleFonts.dmSans(
+          color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1)),
+        const Spacer(),
+        GestureDetector(
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => VitalTrendsScreen(patientId: patientId, patientName: patient.name),
+          )),
+          child: Row(
+            children: [
+              Icon(Icons.show_chart, size: 14, color: AppColors.primary),
+              const SizedBox(width: 4),
+              Text('Trends', style: GoogleFonts.dmSans(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w700)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _vitalsGrid(patient) {
     return LayoutBuilder(builder: (context, constraints) {
       final crossCount = constraints.maxWidth > 500 ? 4 : 2;
       return GridView.count(
@@ -168,159 +233,28 @@ class PatientMonitorScreen extends StatelessWidget {
         mainAxisSpacing: 10,
         childAspectRatio: 1.1,
         children: [
-          _vitalCard(VitalType.hr, patient),
-          _vitalCard(VitalType.spo2, patient),
-          _vitalCard(VitalType.rr, patient),
-          _bpCard(patient),
+          VitalCard(
+            type: VitalType.hr,
+            value: patient.vitals[VitalType.hr] ?? 0,
+            threshold: patient.thresholds[VitalType.hr] ?? const VitalThreshold(),
+          ),
+          VitalCard(
+            type: VitalType.spo2,
+            value: patient.vitals[VitalType.spo2] ?? 0,
+            threshold: patient.thresholds[VitalType.spo2] ?? const VitalThreshold(),
+          ),
+          VitalCard(
+            type: VitalType.rr,
+            value: patient.vitals[VitalType.rr] ?? 0,
+            threshold: patient.thresholds[VitalType.rr] ?? const VitalThreshold(),
+          ),
+          BPCard(
+            vitals: patient.vitals,
+            thresholds: patient.thresholds,
+          ),
         ],
       );
     });
-  }
-
-  Widget _vitalCard(VitalType type, MonitoredPatient patient) {
-    final meta = vitalMeta[type]!;
-    final val = patient.vitals[type] ?? 0;
-    final thr = patient.thresholds[type] ?? const VitalThreshold();
-    final sev = thr.severity(val);
-    final color = sev == 'critical' ? AppColors.danger : sev == 'warning' ? AppColors.warning : AppColors.accent;
-    final bg = sev == 'critical'
-        ? AppColors.danger.withOpacity(0.08)
-        : sev == 'warning'
-            ? AppColors.warning.withOpacity(0.08)
-            : AppColors.card;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(meta.icon, size: 14, color: color),
-              const SizedBox(width: 6),
-              Expanded(child: Text(meta.label, style: GoogleFonts.dmSans(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600))),
-            ],
-          ),
-          const Spacer(),
-          Text('${val.round()}', style: GoogleFonts.dmSans(color: color, fontSize: 32, fontWeight: FontWeight.w800)),
-          Text(meta.unit, style: GoogleFonts.dmSans(color: AppColors.textSecondary, fontSize: 11)),
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(4)),
-            child: Text(
-              sev == 'critical' ? 'Critical' : sev == 'warning' ? 'Warning' : 'Normal',
-              style: GoogleFonts.dmSans(color: color, fontSize: 9, fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _bpCard(MonitoredPatient patient) {
-    final sbp = patient.vitals[VitalType.sbp]?.round() ?? 0;
-    final dbp = patient.vitals[VitalType.dbp]?.round() ?? 0;
-    final map = patient.vitals[VitalType.map]?.round() ?? 0;
-
-    String worst = 'stable';
-    for (final vt in [VitalType.sbp, VitalType.dbp, VitalType.map]) {
-      final s = patient.thresholds[vt]?.severity(patient.vitals[vt] ?? 0) ?? 'stable';
-      if (s == 'critical') { worst = 'critical'; break; }
-      if (s == 'warning') worst = 'warning';
-    }
-
-    final color = worst == 'critical' ? AppColors.danger : worst == 'warning' ? AppColors.warning : AppColors.accent;
-    final bg = worst == 'critical'
-        ? AppColors.danger.withOpacity(0.08)
-        : worst == 'warning'
-            ? AppColors.warning.withOpacity(0.08)
-            : AppColors.card;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.swap_vert, size: 14, color: color),
-              const SizedBox(width: 6),
-              Text('Blood Pressure', style: GoogleFonts.dmSans(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600)),
-            ],
-          ),
-          const Spacer(),
-          RichText(text: TextSpan(children: [
-            TextSpan(text: '$sbp', style: GoogleFonts.dmSans(color: color, fontSize: 28, fontWeight: FontWeight.w800)),
-            TextSpan(text: '/$dbp', style: GoogleFonts.dmSans(color: color, fontSize: 22, fontWeight: FontWeight.w600)),
-          ])),
-          Text('MAP $map mmHg', style: GoogleFonts.dmSans(color: AppColors.textSecondary, fontSize: 11)),
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(4)),
-            child: Text(
-              worst == 'critical' ? 'Critical' : worst == 'warning' ? 'Warning' : 'Normal',
-              style: GoogleFonts.dmSans(color: color, fontSize: 9, fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _alertLog(List alerts) {
-    if (alerts.isEmpty) return const SizedBox.shrink();
-    final shown = alerts.take(10).toList();
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: AppColors.cardShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Alert log', style: GoogleFonts.dmSans(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w700)),
-              Text('${alerts.length} total', style: GoogleFonts.dmSans(color: AppColors.textSecondary, fontSize: 11)),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ...shown.map((a) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              children: [
-                Container(
-                  width: 8, height: 8,
-                  decoration: BoxDecoration(
-                    color: a.severity == 'critical' ? AppColors.danger : AppColors.warning,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(child: Text(a.message, style: GoogleFonts.dmSans(color: AppColors.textPrimary, fontSize: 12))),
-                Text(timeago.format(a.time), style: GoogleFonts.dmSans(color: AppColors.textSecondary, fontSize: 10)),
-              ],
-            ),
-          )),
-        ],
-      ),
-    );
   }
 
   void _callWard(String phone) async {
