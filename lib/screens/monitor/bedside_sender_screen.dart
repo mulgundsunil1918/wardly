@@ -11,6 +11,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/theme_provider.dart';
+import '../../services/video_call_service.dart';
 import '../../services/vitals_ocr_service.dart';
 import '../../utils/app_theme.dart';
 
@@ -33,10 +34,12 @@ class BedsideSenderScreen extends StatefulWidget {
 class _BedsideSenderScreenState extends State<BedsideSenderScreen> with WidgetsBindingObserver {
   CameraController? _cameraCtrl;
   final VitalsOcrService _ocr = VitalsOcrService();
+  final VideoCallService _video = VideoCallService();
   Timer? _ocrTimer;
   Timer? _snapshotTimer;
   bool _isStreaming = false;
   bool _ocrActive = false;
+  bool _videoBroadcasting = false;
   ParsedVitals? _lastParsed;
   String _status = 'Initializing camera...';
   int _frameCount = 0;
@@ -55,6 +58,7 @@ class _BedsideSenderScreenState extends State<BedsideSenderScreen> with WidgetsB
     _snapshotTimer?.cancel();
     _cameraCtrl?.dispose();
     _ocr.dispose();
+    _video.dispose();
     super.dispose();
   }
 
@@ -99,7 +103,7 @@ class _BedsideSenderScreenState extends State<BedsideSenderScreen> with WidgetsB
     }
   }
 
-  void _startStreaming() {
+  void _startStreaming() async {
     if (_cameraCtrl == null || !_cameraCtrl!.value.isInitialized) return;
     setState(() {
       _isStreaming = true;
@@ -109,14 +113,26 @@ class _BedsideSenderScreenState extends State<BedsideSenderScreen> with WidgetsB
 
     _ocrTimer = Timer.periodic(const Duration(seconds: 3), (_) => _runOcrCycle());
     _snapshotTimer = Timer.periodic(const Duration(seconds: 5), (_) => _uploadSnapshot());
+
+    // Also broadcast live video via Agora
+    final ok = await _video.initialize();
+    if (ok) {
+      final channel = VideoCallService.channelForPatient(widget.patientId);
+      await _video.joinAsBroadcaster(channel);
+      if (mounted) setState(() => _videoBroadcasting = true);
+    }
   }
 
-  void _stopStreaming() {
+  void _stopStreaming() async {
     _ocrTimer?.cancel();
     _snapshotTimer?.cancel();
+    if (_videoBroadcasting) {
+      await _video.leaveChannel();
+    }
     setState(() {
       _isStreaming = false;
       _ocrActive = false;
+      _videoBroadcasting = false;
       _status = 'Stopped.';
     });
   }

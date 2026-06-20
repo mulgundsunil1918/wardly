@@ -2,11 +2,32 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+import '../../providers/auth_provider.dart';
 import '../../providers/subscription_provider.dart';
+import '../../services/payment_service.dart';
 import '../../utils/app_theme.dart';
 
-class PaywallScreen extends StatelessWidget {
+class PaywallScreen extends StatefulWidget {
   const PaywallScreen({super.key});
+
+  @override
+  State<PaywallScreen> createState() => _PaywallScreenState();
+}
+
+class _PaywallScreenState extends State<PaywallScreen> {
+  late final PaymentService _payment;
+
+  @override
+  void initState() {
+    super.initState();
+    _payment = PaymentService();
+  }
+
+  @override
+  void dispose() {
+    _payment.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -181,12 +202,38 @@ class PaywallScreen extends StatelessWidget {
   }
 
   void _handleSubscribe(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Payment integration coming soon. Use the free trial for now.',
-          style: GoogleFonts.dmSans()),
-        backgroundColor: AppColors.primary,
-      ),
+    final auth = context.read<AuthProvider>();
+    final sub = context.read<SubscriptionProvider>();
+    final user = auth.currentUser;
+
+    _payment.openCheckout(
+      userName: user?.name ?? 'Doctor',
+      userEmail: user?.email ?? '',
+      userPhone: '',
+      onPaymentSuccess: () {
+        sub.checkSubscription();
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Wardly Pro activated! Thank you.',
+                style: GoogleFonts.dmSans()),
+              backgroundColor: AppColors.accent,
+            ),
+          );
+        }
+      },
+      onPaymentFailure: () {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Payment failed. Please try again.',
+                style: GoogleFonts.dmSans()),
+              backgroundColor: AppColors.danger,
+            ),
+          );
+        }
+      },
     );
   }
 
