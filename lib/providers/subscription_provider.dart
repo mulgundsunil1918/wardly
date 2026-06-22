@@ -7,7 +7,10 @@ class SubscriptionProvider extends ChangeNotifier {
   bool _isLoading = false;
   DateTime? _expiresAt;
 
-  bool get isPro => _isPro;
+  // TODO: set to false before App Store submission
+  static const bool _devUnlocked = true;
+
+  bool get isPro => _devUnlocked || _isPro;
   bool get isLoading => _isLoading;
   DateTime? get expiresAt => _expiresAt;
 
