@@ -7,6 +7,8 @@ import '../models/monitor_alert.dart';
 import '../models/monitor_comment.dart';
 import '../models/monitor_vitals.dart';
 import '../models/monitored_patient.dart';
+import '../models/patient.dart';
+import '../models/ward.dart';
 
 class VitalSnapshot {
   final DateTime time;
@@ -33,11 +35,72 @@ class MonitorProvider extends ChangeNotifier {
 
   List<VitalSnapshot> historyFor(String patientId) => _history[patientId] ?? [];
 
+  bool _usingRealPatients = false;
+
   void init() {
-    _patients = List.from(_demoPatients);
-    _comments = List.from(_seedComments);
-    _seedHistory();
+    if (!_usingRealPatients) {
+      _patients = List.from(_demoPatients);
+      _comments = List.from(_seedComments);
+      _seedHistory();
+    }
     _startSimulation();
+  }
+
+  /// Called by ProxyProvider whenever PatientProvider or WardProvider changes.
+  /// Merges real ward patients into the monitor list, preserving simulation
+  /// state for patients already being tracked.
+  void syncFromPatients(List<Patient> patients, List<Ward> wards) {
+    final wardById = {for (final w in wards) w.id: w.name};
+
+    if (patients.isEmpty) {
+      if (_usingRealPatients) {
+        // All real patients removed — fall back to demo
+        _usingRealPatients = false;
+        _patients = List.from(_demoPatients);
+        _comments = List.from(_seedComments);
+        _seedHistory();
+        notifyListeners();
+      }
+      return;
+    }
+
+    _usingRealPatients = true;
+    final existingById = {for (final p in _patients) p.id: p};
+    final newList = <MonitoredPatient>[];
+
+    for (final p in patients) {
+      if (existingById.containsKey(p.id)) {
+        // Keep live simulation state — just update metadata that may have changed
+        final existing = existingById[p.id]!;
+        newList.add(MonitoredPatient(
+          id: existing.id,
+          name: p.name,
+          gender: p.gender,
+          age: '${p.age}y',
+          diagnosis: p.diagnosis.isNotEmpty ? p.diagnosis : 'Not specified',
+          support: existing.support,
+          bed: p.bedNumber.isNotEmpty ? 'Bed ${p.bedNumber}' : existing.bed,
+          ward: wardById[p.wardId] ?? existing.ward,
+          wardId: p.wardId,
+          dutyPhone: existing.dutyPhone,
+          thresholds: existing.thresholds,
+          vitals: existing.vitals,
+          sim: existing.sim,
+        ));
+      } else {
+        // New patient — initialise with defaults, start simulation from scratch
+        final wardName = wardById[p.wardId] ?? '';
+        newList.add(MonitoredPatient.fromPatient(p, wardName: wardName));
+        _history[p.id] = [];
+      }
+    }
+
+    // Remove history for patients no longer in the list
+    final newIds = {for (final p in newList) p.id};
+    _history.removeWhere((id, _) => !newIds.contains(id));
+
+    _patients = newList;
+    notifyListeners();
   }
 
   @override
