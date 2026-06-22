@@ -18,6 +18,7 @@ import '../../widgets/theme_toggle_button.dart';
 import '../../widgets/wardly_brand.dart';
 import '../shared/filtered_notes_screen.dart';
 import 'add_note_screen.dart';
+import 'add_patient_screen.dart';
 import 'patient_detail_screen.dart';
 import 'patients_list_screen.dart';
 
@@ -154,13 +155,37 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'doctor_home_fab',
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('New Note'),
-        onPressed: () => showAddNoteBottomSheet(context),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton.extended(
+            heroTag: 'doctor_home_add_patient',
+            backgroundColor: AppColors.card,
+            foregroundColor: AppColors.primary,
+            elevation: 2,
+            icon: const Icon(Icons.person_add_outlined),
+            label: Text('Add Patient',
+                style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+            onPressed: () {
+              final wardIds =
+                  context.read<AuthProvider>().currentUser?.wardIds ?? [];
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => AddPatientScreen(
+                    initialWardId: wardIds.isNotEmpty ? wardIds.first : null),
+              ));
+            },
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton.extended(
+            heroTag: 'doctor_home_fab',
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            icon: const Icon(Icons.add),
+            label: const Text('New Note'),
+            onPressed: () => showAddNoteBottomSheet(context),
+          ),
+        ],
       ),
     );
   }
