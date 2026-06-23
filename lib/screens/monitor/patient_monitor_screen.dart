@@ -137,6 +137,8 @@ class PatientMonitorScreen extends StatelessWidget {
                 _vitalsHeader(context, patient),
                 const SizedBox(height: 8),
                 _vitalsGrid(patient),
+                const SizedBox(height: 12),
+                _trendsButton(context, patient),
               ],
             ),
           ),
@@ -182,6 +184,8 @@ class PatientMonitorScreen extends StatelessWidget {
           _vitalsHeader(context, patient),
           const SizedBox(height: 8),
           _vitalsGrid(patient),
+          const SizedBox(height: 12),
+          _trendsButton(context, patient),
           const SizedBox(height: 16),
           AlertLog(alerts: alerts.cast()),
           const SizedBox(height: 12),
@@ -201,24 +205,27 @@ class PatientMonitorScreen extends StatelessWidget {
   }
 
   Widget _vitalsHeader(BuildContext context, patient) {
-    return Row(
-      children: [
-        Text('LIVE VITALS', style: GoogleFonts.dmSans(
-          color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1)),
-        const Spacer(),
-        GestureDetector(
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => VitalTrendsScreen(patientId: patientId, patientName: patient.name),
-          )),
-          child: Row(
-            children: [
-              Icon(Icons.show_chart, size: 14, color: AppColors.primary),
-              const SizedBox(width: 4),
-              Text('Trends', style: GoogleFonts.dmSans(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w700)),
-            ],
-          ),
+    return Text('LIVE VITALS', style: GoogleFonts.dmSans(
+      color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1));
+  }
+
+  Widget _trendsButton(BuildContext context, patient) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: () => Navigator.push(context, MaterialPageRoute(
+          builder: (_) => VitalTrendsScreen(patientId: patientId, patientName: patient.name),
+        )),
+        icon: const Icon(Icons.show_chart, size: 18),
+        label: Text('View Vital Trends',
+            style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700)),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.primary,
+          side: BorderSide(color: AppColors.primary, width: 1.5),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-      ],
+      ),
     );
   }
 
