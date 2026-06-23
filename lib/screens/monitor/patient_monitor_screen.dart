@@ -138,7 +138,7 @@ class PatientMonitorScreen extends StatelessWidget {
                 const SizedBox(height: 8),
                 _vitalsGrid(patient),
                 const SizedBox(height: 12),
-                _trendsButton(context, patient),
+                _actionButtons(context, patient, monitor),
               ],
             ),
           ),
@@ -154,11 +154,6 @@ class PatientMonitorScreen extends StatelessWidget {
                 MonitorCommentPanel(
                   comments: comments.cast(),
                   onAdd: (text, type) => monitor.addComment(patient.id, text, type),
-                ),
-                const SizedBox(height: 12),
-                ThresholdPanel(
-                  patient: patient,
-                  onSet: monitor.setThreshold,
                 ),
                 const SizedBox(height: 80),
               ],
@@ -185,18 +180,13 @@ class PatientMonitorScreen extends StatelessWidget {
           const SizedBox(height: 8),
           _vitalsGrid(patient),
           const SizedBox(height: 12),
-          _trendsButton(context, patient),
+          _actionButtons(context, patient, monitor),
           const SizedBox(height: 16),
           AlertLog(alerts: alerts.cast()),
           const SizedBox(height: 12),
           MonitorCommentPanel(
             comments: comments.cast(),
             onAdd: (text, type) => monitor.addComment(patient.id, text, type),
-          ),
-          const SizedBox(height: 12),
-          ThresholdPanel(
-            patient: patient,
-            onSet: monitor.setThreshold,
           ),
           const SizedBox(height: 80),
         ],
@@ -209,21 +199,96 @@ class PatientMonitorScreen extends StatelessWidget {
       color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1));
   }
 
-  Widget _trendsButton(BuildContext context, patient) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: () => Navigator.push(context, MaterialPageRoute(
-          builder: (_) => VitalTrendsScreen(patientId: patientId, patientName: patient.name),
-        )),
-        icon: const Icon(Icons.show_chart, size: 18),
-        label: Text('View Vital Trends',
-            style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700)),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primary,
-          side: BorderSide(color: AppColors.primary, width: 1.5),
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  Widget _actionButtons(BuildContext context, patient, MonitorProvider monitor) {
+    final btnStyle = OutlinedButton.styleFrom(
+      padding: const EdgeInsets.symmetric(vertical: 13),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    );
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: () => Navigator.push(context, MaterialPageRoute(
+              builder: (_) => VitalTrendsScreen(patientId: patientId, patientName: patient.name),
+            )),
+            icon: const Icon(Icons.show_chart, size: 18),
+            label: Text('Trends', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700)),
+            style: btnStyle.copyWith(
+              foregroundColor: WidgetStatePropertyAll(AppColors.primary),
+              side: WidgetStatePropertyAll(BorderSide(color: AppColors.primary, width: 1.5)),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: () => _openThresholds(context, patient, monitor),
+            icon: const Icon(Icons.tune, size: 18),
+            label: Text('Thresholds', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700)),
+            style: btnStyle.copyWith(
+              foregroundColor: WidgetStatePropertyAll(AppColors.warningColor),
+              side: WidgetStatePropertyAll(BorderSide(color: AppColors.warningColor, width: 1.5)),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _openThresholds(BuildContext context, patient, MonitorProvider monitor) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (ctx, scrollCtrl) => Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              // Drag handle
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 8),
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.divider,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                child: Row(
+                  children: [
+                    const Icon(Icons.tune, color: AppColors.primary, size: 20),
+                    const SizedBox(width: 8),
+                    Text('Alert Thresholds — ${patient.name}',
+                        style: GoogleFonts.dmSans(
+                            color: AppColors.textPrimary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800)),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: scrollCtrl,
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                  child: ThresholdPanel(
+                    patient: patient,
+                    onSet: monitor.setThreshold,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
