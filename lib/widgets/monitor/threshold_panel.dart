@@ -7,9 +7,10 @@ import '../../utils/app_theme.dart';
 
 class ThresholdPanel extends StatefulWidget {
   final MonitoredPatient patient;
-  final void Function(String patientId, VitalType vital, String key, double value) onSet;
+  /// Called with patientId + map of VitalType → changed thresholds when Save is pressed.
+  final void Function(String patientId, Map<VitalType, VitalThreshold> changes) onSave;
 
-  const ThresholdPanel({super.key, required this.patient, required this.onSet});
+  const ThresholdPanel({super.key, required this.patient, required this.onSave});
 
   @override
   State<ThresholdPanel> createState() => _ThresholdPanelState();
@@ -18,12 +19,37 @@ class ThresholdPanel extends StatefulWidget {
 class _ThresholdPanelState extends State<ThresholdPanel> {
   VitalType _tab = VitalType.hr;
 
+  // Local copies — edited freely, only pushed to provider on Save
+  late Map<VitalType, VitalThreshold> _local;
+
   static const _tabs = [
     {'vt': VitalType.hr,   'label': 'Heart Rate'},
     {'vt': VitalType.spo2, 'label': 'SpO₂'},
     {'vt': VitalType.rr,   'label': 'Resp. Rate'},
     {'vt': VitalType.sbp,  'label': 'Blood Pressure'},
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Deep copy so we don't mutate the live provider state
+    _local = {
+      for (final vt in VitalType.values)
+        vt: widget.patient.thresholds[vt] ?? const VitalThreshold(),
+    };
+  }
+
+  void _set(VitalType vt, String key, double value) {
+    setState(() {
+      final old = _local[vt]!;
+      _local[vt] = VitalThreshold(
+        critLow:  key == 'critLow'  ? value : old.critLow,
+        critHigh: key == 'critHigh' ? value : old.critHigh,
+        warnLow:  old.warnLow,
+        warnHigh: old.warnHigh,
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +70,7 @@ class _ThresholdPanelState extends State<ThresholdPanel> {
                   onTap: () => setState(() => _tab = vt),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
                     decoration: BoxDecoration(
                       color: active ? AppColors.primary : AppColors.surface,
                       borderRadius: BorderRadius.circular(10),
@@ -69,21 +95,52 @@ class _ThresholdPanelState extends State<ThresholdPanel> {
 
         const SizedBox(height: 20),
 
+        // Sliders for selected vital(s)
         if (_tab == VitalType.sbp) ...[
-          _vitalBlock(context, VitalType.sbp,  'Systolic (SBP)'),
-          const SizedBox(height: 20),
-          _vitalBlock(context, VitalType.dbp,  'Diastolic (DBP)'),
-          const SizedBox(height: 20),
-          _vitalBlock(context, VitalType.map,  'Mean Arterial (MAP)'),
+          _block(context, VitalType.sbp, 'Systolic (SBP)'),
+          const SizedBox(height: 16),
+          _block(context, VitalType.dbp, 'Diastolic (DBP)'),
+          const SizedBox(height: 16),
+          _block(context, VitalType.map, 'Mean Arterial (MAP)'),
         ] else
-          _vitalBlock(context, _tab, null),
+          _block(context, _tab, null),
+
+        const SizedBox(height: 28),
+
+        // Save button
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () => widget.onSave(widget.patient.id, _local),
+            icon: const Icon(Icons.check_circle_outline, size: 20),
+            label: Text('Save Thresholds',
+                style: GoogleFonts.dmSans(
+                    fontSize: 15, fontWeight: FontWeight.w700)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              elevation: 0,
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        Center(
+          child: Text('Changes are not applied until you tap Save.',
+              style: GoogleFonts.dmSans(
+                  color: AppColors.textSecondary, fontSize: 11)),
+        ),
       ],
     );
   }
 
-  Widget _vitalBlock(BuildContext context, VitalType vt, String? subtitle) {
+  Widget _block(BuildContext context, VitalType vt, String? subtitle) {
     final meta    = vitalMeta[vt]!;
-    final thr     = widget.patient.thresholds[vt] ?? const VitalThreshold();
+    final thr     = _local[vt]!;
     final current = widget.patient.vitals[vt] ?? 0;
     final isSpo2  = vt == VitalType.spo2;
 
@@ -97,7 +154,7 @@ class _ThresholdPanelState extends State<ThresholdPanel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Title + live value
+          // Header
           Row(
             children: [
               if (subtitle != null)
@@ -107,20 +164,18 @@ class _ThresholdPanelState extends State<ThresholdPanel> {
                         fontSize: 13,
                         fontWeight: FontWeight.w700)),
               const Spacer(),
-              Text(
-                '${current.round()} ${meta.unit}',
-                style: GoogleFonts.dmSans(
-                    color: AppColors.primary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700),
-              ),
+              Text('Now: ${current.round()} ${meta.unit}',
+                  style: GoogleFonts.dmSans(
+                      color: AppColors.primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600)),
             ],
           ),
 
-          if (subtitle != null) const SizedBox(height: 14),
+          const SizedBox(height: 14),
 
-          // Critical Low slider
-          _slider(
+          // Critical Low
+          _sliderRow(
             context,
             label: '🔴  Critical Low',
             sublabel: 'Below this → urgent alert',
@@ -128,15 +183,13 @@ class _ThresholdPanelState extends State<ThresholdPanel> {
             min: meta.absMin,
             max: meta.absMax * 0.65,
             unit: meta.unit,
-            color: AppColors.critical,
-            onChanged: (v) => widget.onSet(widget.patient.id, vt, 'critLow', v),
+            onChanged: (v) => _set(vt, 'critLow', v),
           ),
 
-          const SizedBox(height: 16),
-
-          // Critical High slider (hidden for SpO₂)
-          if (!isSpo2)
-            _slider(
+          if (!isSpo2) ...[
+            const SizedBox(height: 18),
+            // Critical High
+            _sliderRow(
               context,
               label: '🔴  Critical High',
               sublabel: 'Above this → urgent alert',
@@ -144,15 +197,15 @@ class _ThresholdPanelState extends State<ThresholdPanel> {
               min: meta.absMax * 0.35,
               max: meta.absMax,
               unit: meta.unit,
-              color: AppColors.critical,
-              onChanged: (v) => widget.onSet(widget.patient.id, vt, 'critHigh', v),
+              onChanged: (v) => _set(vt, 'critHigh', v),
             ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _slider(
+  Widget _sliderRow(
     BuildContext context, {
     required String label,
     required String sublabel,
@@ -160,7 +213,6 @@ class _ThresholdPanelState extends State<ThresholdPanel> {
     required double min,
     required double max,
     required String unit,
-    required Color color,
     required void Function(double) onChanged,
   }) {
     final current = (value ?? min).clamp(min, max);
@@ -175,7 +227,7 @@ class _ThresholdPanelState extends State<ThresholdPanel> {
               children: [
                 Text(label,
                     style: GoogleFonts.dmSans(
-                        color: color,
+                        color: AppColors.critical,
                         fontSize: 13,
                         fontWeight: FontWeight.w700)),
                 Text(sublabel,
@@ -184,30 +236,30 @@ class _ThresholdPanelState extends State<ThresholdPanel> {
               ],
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: AppColors.critical.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 value != null ? '${value.round()} $unit' : 'Off',
                 style: GoogleFonts.dmSans(
-                    color: color,
-                    fontSize: 14,
+                    color: AppColors.critical,
+                    fontSize: 15,
                     fontWeight: FontWeight.w800),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         SliderTheme(
           data: SliderTheme.of(context).copyWith(
-            trackHeight: 4,
-            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 9),
-            activeTrackColor: color,
-            inactiveTrackColor: color.withOpacity(0.15),
-            thumbColor: color,
-            overlayColor: color.withOpacity(0.15),
+            trackHeight: 5,
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 11),
+            activeTrackColor: AppColors.critical,
+            inactiveTrackColor: AppColors.critical.withOpacity(0.15),
+            thumbColor: AppColors.critical,
+            overlayColor: AppColors.critical.withOpacity(0.12),
           ),
           child: Slider(
             value: current,

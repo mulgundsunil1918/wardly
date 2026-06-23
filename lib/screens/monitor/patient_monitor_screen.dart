@@ -240,55 +240,59 @@ class PatientMonitorScreen extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => DraggableScrollableSheet(
-        initialChildSize: 0.75,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        expand: false,
-        builder: (ctx, scrollCtrl) => Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            children: [
-              // Drag handle
-              Center(
-                child: Container(
-                  margin: const EdgeInsets.only(top: 12, bottom: 8),
-                  width: 40, height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.divider,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+      builder: (_) => Container(
+        height: MediaQuery.of(context).size.height * 0.85,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            // Drag handle
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.divider,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                child: Row(
-                  children: [
-                    const Icon(Icons.tune, color: AppColors.primary, size: 20),
-                    const SizedBox(width: 8),
-                    Text('Alert Thresholds — ${patient.name}',
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.tune, color: AppColors.primary, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text('Alert Thresholds — ${patient.name}',
                         style: GoogleFonts.dmSans(
                             color: AppColors.textPrimary,
                             fontSize: 16,
                             fontWeight: FontWeight.w800)),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  controller: scrollCtrl,
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-                  child: ThresholdPanel(
-                    patient: patient,
-                    onSet: monitor.setThreshold,
                   ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: ThresholdPanel(
+                  patient: patient,
+                  onSave: (patientId, changes) {
+                    for (final entry in changes.entries) {
+                      final vt  = entry.key;
+                      final thr = entry.value;
+                      if (thr.critLow  != null) monitor.setThreshold(patientId, vt, 'critLow',  thr.critLow!);
+                      if (thr.critHigh != null) monitor.setThreshold(patientId, vt, 'critHigh', thr.critHigh!);
+                    }
+                    Navigator.pop(context);
+                  },
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
