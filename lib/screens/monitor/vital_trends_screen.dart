@@ -24,294 +24,568 @@ class VitalTrendsScreen extends StatefulWidget {
 }
 
 class _VitalTrendsScreenState extends State<VitalTrendsScreen> {
-  VitalType _selected = VitalType.hr;
-  String _range = '12h';
+  String _range = '1h';
 
   Duration get _duration {
     switch (_range) {
-      case '1h': return const Duration(hours: 1);
-      case '6h': return const Duration(hours: 6);
-      case '12h': return const Duration(hours: 12);
-      default: return const Duration(hours: 12);
+      case '30m': return const Duration(minutes: 30);
+      case '1h':  return const Duration(hours: 1);
+      case '6h':  return const Duration(hours: 6);
+      default:    return const Duration(hours: 1);
     }
   }
+
+  // Vitals to show, in order: HR, SpO₂, RR, then BP as a combined panel
+  static const _vitalOrder = [
+    VitalType.hr,
+    VitalType.spo2,
+    VitalType.rr,
+  ];
 
   @override
   Widget build(BuildContext context) {
     final monitor = context.watch<MonitorProvider>();
     context.watch<ThemeProvider>();
-    final meta = vitalMeta[_selected]!;
+    final patient = monitor.patientById(widget.patientId);
 
     final cutoff = DateTime.now().subtract(_duration);
     final allHistory = monitor.historyFor(widget.patientId);
-    final data = allHistory
-        .where((s) => s.time.isAfter(cutoff) && s.vitals[_selected] != null)
-        .toList();
+    final data = allHistory.where((s) => s.time.isAfter(cutoff)).toList();
 
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
         backgroundColor: AppColors.appBarBg,
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.pop(context)),
-        title: Text('Vital Trends', style: GoogleFonts.dmSans(fontWeight: FontWeight.w800, color: AppColors.primary)),
+        leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pop(context)),
+        title: Text('Vital Trends',
+            style: GoogleFonts.dmSans(
+                fontWeight: FontWeight.w800, color: AppColors.primary)),
       ),
       body: Column(
         children: [
+          // Patient name + range selector
           Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             color: AppColors.card,
-            child: Text(widget.patientName,
-                style: GoogleFonts.dmSans(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w700)),
-          ),
-
-          SizedBox(
-            height: 50,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              children: [VitalType.hr, VitalType.spo2, VitalType.rr, VitalType.sbp].map((vt) {
-                final m = vitalMeta[vt]!;
-                final sel = vt == _selected;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text(m.label, style: GoogleFonts.dmSans(
-                      fontSize: 12, fontWeight: FontWeight.w600,
-                      color: sel ? Colors.white : AppColors.textSecondary,
-                    )),
-                    selected: sel,
-                    selectedColor: AppColors.primary,
-                    backgroundColor: AppColors.card,
-                    onSelected: (_) => setState(() => _selected = vt),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-
-          SizedBox(
-            height: 40,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: ['1h', '6h', '12h'].map((r) {
-                final sel = r == _range;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: GestureDetector(
-                    onTap: () => setState(() => _range = r),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: sel ? AppColors.primary : AppColors.card,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(r, style: GoogleFonts.dmSans(
-                        fontSize: 12, fontWeight: FontWeight.w600,
-                        color: sel ? Colors.white : AppColors.textSecondary,
-                      )),
-                    ),
-                  ),
-                );
-              }).toList(),
+              children: [
+                Expanded(
+                  child: Text(widget.patientName,
+                      style: GoogleFonts.dmSans(
+                          color: AppColors.textPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700)),
+                ),
+                ..._rangeButtons(),
+              ],
             ),
           ),
 
-          const SizedBox(height: 16),
-
+          // All charts stacked
           Expanded(
             child: data.isEmpty
-                ? Center(child: Text('No data for this range',
-                    style: GoogleFonts.dmSans(color: AppColors.textSecondary, fontSize: 14)))
-                : Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 0, 20, 24),
-                    child: _buildChart(data, meta),
+                ? Center(
+                    child: Text('No data yet',
+                        style: GoogleFonts.dmSans(
+                            color: AppColors.textSecondary, fontSize: 14)))
+                : ListView(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    children: [
+                      ..._vitalOrder.map((vt) {
+                        final thr = patient?.thresholds[vt];
+                        final snapshots = data
+                            .where((s) => s.vitals[vt] != null)
+                            .toList();
+                        return _VitalChart(
+                          vt: vt,
+                          data: snapshots,
+                          threshold: thr,
+                        );
+                      }),
+                      // BP: SBP + DBP on one chart
+                      _BPChart(data: data, patient: patient),
+                    ],
                   ),
           ),
-
-          if (data.isNotEmpty) _statsRow(data, meta),
-          const SizedBox(height: 16),
         ],
       ),
     );
   }
 
-  Widget _buildChart(List<VitalSnapshot> data, VitalMeta meta) {
-    final threshold = defaultAdultThresholds[_selected];
-    final spots = <FlSpot>[];
-    for (int i = 0; i < data.length; i++) {
-      spots.add(FlSpot(i.toDouble(), data[i].vitals[_selected]!));
-    }
-
-    final values = spots.map((s) => s.y).toList();
-    final minY = values.reduce((a, b) => a < b ? a : b) - 5;
-    final maxY = values.reduce((a, b) => a > b ? a : b) + 5;
-
-    return LineChart(
-      LineChartData(
-        minY: minY,
-        maxY: maxY,
-        gridData: FlGridData(
-          show: true,
-          drawVerticalLine: false,
-          horizontalInterval: (maxY - minY) / 5,
-          getDrawingHorizontalLine: (val) => FlLine(
-            color: AppColors.textSecondary.withValues(alpha: 0.15),
-            strokeWidth: 1,
-          ),
-        ),
-        titlesData: FlTitlesData(
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 40,
-              getTitlesWidget: (val, _) => Text(
-                val.toInt().toString(),
-                style: GoogleFonts.dmSans(color: AppColors.textSecondary, fontSize: 10),
+  List<Widget> _rangeButtons() {
+    return ['30m', '1h', '6h'].map((r) {
+      final sel = r == _range;
+      return Padding(
+        padding: const EdgeInsets.only(left: 6),
+        child: GestureDetector(
+          onTap: () => setState(() => _range = r),
+          child: Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            decoration: BoxDecoration(
+              color: sel ? AppColors.primary : AppColors.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: sel ? AppColors.primary : AppColors.divider,
               ),
             ),
-          ),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 24,
-              interval: (data.length / 5).ceilToDouble().clamp(1, double.infinity),
-              getTitlesWidget: (val, _) {
-                final idx = val.toInt();
-                if (idx < 0 || idx >= data.length) return const SizedBox.shrink();
-                return Text(
-                  DateFormat('HH:mm').format(data[idx].time),
-                  style: GoogleFonts.dmSans(color: AppColors.textSecondary, fontSize: 9),
-                );
-              },
-            ),
-          ),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        ),
-        borderData: FlBorderData(show: false),
-        extraLinesData: ExtraLinesData(
-          horizontalLines: [
-            if (threshold?.critHigh != null)
-              HorizontalLine(
-                y: threshold!.critHigh!,
-                color: AppColors.critical.withValues(alpha: 0.5),
-                strokeWidth: 1,
-                dashArray: [4, 4],
-                label: HorizontalLineLabel(
-                  show: true,
-                  alignment: Alignment.topRight,
-                  style: GoogleFonts.dmSans(color: AppColors.critical, fontSize: 9),
-                  labelResolver: (_) => 'Crit High',
-                ),
-              ),
-            if (threshold?.critLow != null)
-              HorizontalLine(
-                y: threshold!.critLow!,
-                color: AppColors.critical.withValues(alpha: 0.5),
-                strokeWidth: 1,
-                dashArray: [4, 4],
-                label: HorizontalLineLabel(
-                  show: true,
-                  alignment: Alignment.bottomRight,
-                  style: GoogleFonts.dmSans(color: AppColors.critical, fontSize: 9),
-                  labelResolver: (_) => 'Crit Low',
-                ),
-              ),
-            if (threshold?.warnHigh != null)
-              HorizontalLine(
-                y: threshold!.warnHigh!,
-                color: AppColors.warningColor.withValues(alpha: 0.4),
-                strokeWidth: 1,
-                dashArray: [4, 4],
-              ),
-            if (threshold?.warnLow != null)
-              HorizontalLine(
-                y: threshold!.warnLow!,
-                color: AppColors.warningColor.withValues(alpha: 0.4),
-                strokeWidth: 1,
-                dashArray: [4, 4],
-              ),
-          ],
-        ),
-        lineTouchData: LineTouchData(
-          touchTooltipData: LineTouchTooltipData(
-            getTooltipItems: (touchedSpots) => touchedSpots.map((s) {
-              final idx = s.x.toInt();
-              final time = idx >= 0 && idx < data.length
-                  ? DateFormat('HH:mm:ss').format(data[idx].time)
-                  : '';
-              return LineTooltipItem(
-                '${s.y.toStringAsFixed(1)} ${meta.unit}\n$time',
-                GoogleFonts.dmSans(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
-              );
-            }).toList(),
+            child: Text(r,
+                style: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: sel ? Colors.white : AppColors.textSecondary)),
           ),
         ),
-        lineBarsData: [
-          LineChartBarData(
-            spots: spots,
-            isCurved: true,
-            preventCurveOverShooting: true,
-            color: AppColors.primary,
-            barWidth: 2.5,
-            dotData: FlDotData(
-              show: data.length < 50,
-              getDotPainter: (spot, xPercent, bar, idx) => FlDotCirclePainter(
-                radius: 2.5,
-                color: AppColors.primary,
-                strokeWidth: 0,
-              ),
-            ),
-            belowBarData: BarAreaData(
-              show: true,
-              color: AppColors.primary.withValues(alpha: 0.08),
-            ),
-          ),
-        ],
-      ),
-    );
+      );
+    }).toList();
   }
+}
 
-  Widget _statsRow(List<VitalSnapshot> data, VitalMeta meta) {
-    final values = data.map((s) => s.vitals[_selected]!).toList();
-    final min = values.reduce((a, b) => a < b ? a : b);
-    final max = values.reduce((a, b) => a > b ? a : b);
-    final avg = values.reduce((a, b) => a + b) / values.length;
+// ── Single-vital chart panel ──────────────────────────────────────────────────
+
+class _VitalChart extends StatelessWidget {
+  final VitalType vt;
+  final List<VitalSnapshot> data;
+  final VitalThreshold? threshold;
+
+  const _VitalChart({
+    required this.vt,
+    required this.data,
+    required this.threshold,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final meta = vitalMeta[vt]!;
+    if (data.isEmpty) return const SizedBox.shrink();
+
+    final values = data.map((s) => s.vitals[vt]!).toList();
     final latest = values.last;
+    final minV = values.reduce((a, b) => a < b ? a : b);
+    final maxV = values.reduce((a, b) => a > b ? a : b);
+    final avg   = values.reduce((a, b) => a + b) / values.length;
+
+    final sev = threshold?.severity(latest) ?? 'stable';
+    final color = sev == 'critical'
+        ? AppColors.critical
+        : sev == 'warning'
+            ? AppColors.warningColor
+            : AppColors.primary;
+
+    final spots = data
+        .asMap()
+        .entries
+        .map((e) => FlSpot(e.key.toDouble(), e.value.vitals[vt]!))
+        .toList();
+
+    final chartMin = (minV - (maxV - minV) * 0.15).floorToDouble();
+    final chartMax = (maxV + (maxV - minV) * 0.15).ceilToDouble();
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.divider),
         boxShadow: AppColors.cardShadow,
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _stat('Min', '${min.round()}', meta.unit),
-          Container(width: 1, height: 32, color: AppColors.textSecondary.withValues(alpha: 0.15)),
-          _stat('Max', '${max.round()}', meta.unit),
-          Container(width: 1, height: 32, color: AppColors.textSecondary.withValues(alpha: 0.15)),
-          _stat('Avg', '${avg.round()}', meta.unit),
-          Container(width: 1, height: 32, color: AppColors.textSecondary.withValues(alpha: 0.15)),
-          _stat('Latest', '${latest.round()}', meta.unit),
+          // Header row
+          Row(
+            children: [
+              Text(meta.stringIcon,
+                  style: TextStyle(color: color, fontSize: 14)),
+              const SizedBox(width: 6),
+              Text(meta.label,
+                  style: GoogleFonts.dmSans(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700)),
+              const Spacer(),
+              Text('${latest.round()}',
+                  style: GoogleFonts.dmSans(
+                      color: color,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800)),
+              const SizedBox(width: 4),
+              Text(meta.unit,
+                  style: GoogleFonts.dmSans(
+                      color: AppColors.textSecondary, fontSize: 11)),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Chart
+          SizedBox(
+            height: 90,
+            child: LineChart(
+              LineChartData(
+                minY: chartMin,
+                maxY: chartMax,
+                clipData: const FlClipData.all(),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: (chartMax - chartMin) / 3,
+                  getDrawingHorizontalLine: (_) => FlLine(
+                    color: AppColors.divider.withOpacity(0.6),
+                    strokeWidth: 0.8,
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 32,
+                      interval: (chartMax - chartMin) / 3,
+                      getTitlesWidget: (v, _) => Text(
+                        v.round().toString(),
+                        style: GoogleFonts.dmSans(
+                            color: AppColors.textSecondary, fontSize: 8),
+                      ),
+                    ),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 16,
+                      interval:
+                          (data.length / 4).ceilToDouble().clamp(1, 9999),
+                      getTitlesWidget: (v, _) {
+                        final i = v.toInt();
+                        if (i < 0 || i >= data.length) {
+                          return const SizedBox.shrink();
+                        }
+                        return Text(
+                          DateFormat('HH:mm').format(data[i].time),
+                          style: GoogleFonts.dmSans(
+                              color: AppColors.textSecondary, fontSize: 8),
+                        );
+                      },
+                    ),
+                  ),
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                ),
+                borderData: FlBorderData(show: false),
+                extraLinesData: ExtraLinesData(horizontalLines: [
+                  if (threshold?.critHigh != null)
+                    _thrLine(threshold!.critHigh!, AppColors.critical),
+                  if (threshold?.critLow != null)
+                    _thrLine(threshold!.critLow!, AppColors.critical),
+                  if (threshold?.warnHigh != null)
+                    _thrLine(threshold!.warnHigh!, AppColors.warningColor),
+                  if (threshold?.warnLow != null)
+                    _thrLine(threshold!.warnLow!, AppColors.warningColor),
+                ]),
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipItems: (spots) => spots
+                        .map((s) => LineTooltipItem(
+                              '${s.y.round()} ${meta.unit}',
+                              GoogleFonts.dmSans(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700),
+                            ))
+                        .toList(),
+                  ),
+                ),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: spots,
+                    isCurved: true,
+                    preventCurveOverShooting: true,
+                    color: color,
+                    barWidth: 2,
+                    dotData: FlDotData(show: data.length < 30),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: color.withOpacity(0.07),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // Mini stats
+          Row(
+            children: [
+              _miniStat('Min', minV.round().toString(), meta.unit),
+              _miniStat('Avg', avg.round().toString(), meta.unit),
+              _miniStat('Max', maxV.round().toString(), meta.unit),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _stat(String label, String value, String unit) {
+  HorizontalLine _thrLine(double y, Color c) => HorizontalLine(
+        y: y,
+        color: c.withOpacity(0.5),
+        strokeWidth: 1,
+        dashArray: [4, 4],
+      );
+
+  Widget _miniStat(String label, String val, String unit) {
     return Expanded(
       child: Column(
         children: [
-          Text(label, style: GoogleFonts.dmSans(color: AppColors.textSecondary, fontSize: 10, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 2),
-          Text(value, style: GoogleFonts.dmSans(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w800)),
-          Text(unit, style: GoogleFonts.dmSans(color: AppColors.textSecondary, fontSize: 9)),
+          Text(label,
+              style: GoogleFonts.dmSans(
+                  color: AppColors.textSecondary,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600)),
+          Text('$val $unit',
+              style: GoogleFonts.dmSans(
+                  color: AppColors.textPrimary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700)),
         ],
       ),
     );
   }
+}
+
+// ── BP chart: SBP + DBP on the same panel ────────────────────────────────────
+
+class _BPChart extends StatelessWidget {
+  final List<VitalSnapshot> data;
+  final dynamic patient;
+
+  const _BPChart({required this.data, required this.patient});
+
+  @override
+  Widget build(BuildContext context) {
+    final sbpData =
+        data.where((s) => s.vitals[VitalType.sbp] != null).toList();
+    final dbpData =
+        data.where((s) => s.vitals[VitalType.dbp] != null).toList();
+    if (sbpData.isEmpty) return const SizedBox.shrink();
+
+    final sbpVals = sbpData.map((s) => s.vitals[VitalType.sbp]!).toList();
+    final dbpVals = dbpData.map((s) => s.vitals[VitalType.dbp]!).toList();
+    final allVals = [...sbpVals, ...dbpVals];
+
+    final latestSbp = sbpVals.last;
+    final latestDbp = dbpVals.last;
+    final latestMap =
+        data.last.vitals[VitalType.map]?.round() ?? 0;
+
+    final minV = allVals.reduce((a, b) => a < b ? a : b);
+    final maxV = allVals.reduce((a, b) => a > b ? a : b);
+    final chartMin = (minV - (maxV - minV) * 0.15).floorToDouble();
+    final chartMax = (maxV + (maxV - minV) * 0.15).ceilToDouble();
+
+    final sbpSpots = sbpData
+        .asMap()
+        .entries
+        .map((e) => FlSpot(e.key.toDouble(), e.value.vitals[VitalType.sbp]!))
+        .toList();
+    final dbpSpots = dbpData
+        .asMap()
+        .entries
+        .map((e) => FlSpot(e.key.toDouble(), e.value.vitals[VitalType.dbp]!))
+        .toList();
+
+    final sbpThr = patient?.thresholds[VitalType.sbp] as VitalThreshold?;
+    final dbpThr = patient?.thresholds[VitalType.dbp] as VitalThreshold?;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.divider),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('↕',
+                  style: TextStyle(color: AppColors.primary, fontSize: 14)),
+              const SizedBox(width: 6),
+              Text('Blood Pressure',
+                  style: GoogleFonts.dmSans(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700)),
+              const Spacer(),
+              Text('${latestSbp.round()}/${latestDbp.round()}',
+                  style: GoogleFonts.dmSans(
+                      color: AppColors.primary,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800)),
+              const SizedBox(width: 4),
+              Text('mmHg',
+                  style: GoogleFonts.dmSans(
+                      color: AppColors.textSecondary, fontSize: 11)),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text('MAP: $latestMap mmHg',
+                style: GoogleFonts.dmSans(
+                    color: AppColors.textSecondary, fontSize: 10)),
+          ),
+          const SizedBox(height: 10),
+
+          // Legend
+          Row(
+            children: [
+              _dot(AppColors.primary),
+              const SizedBox(width: 4),
+              Text('SBP',
+                  style: GoogleFonts.dmSans(
+                      color: AppColors.textSecondary,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600)),
+              const SizedBox(width: 12),
+              _dot(AppColors.accent),
+              const SizedBox(width: 4),
+              Text('DBP',
+                  style: GoogleFonts.dmSans(
+                      color: AppColors.textSecondary,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600)),
+            ],
+          ),
+          const SizedBox(height: 6),
+
+          SizedBox(
+            height: 90,
+            child: LineChart(
+              LineChartData(
+                minY: chartMin,
+                maxY: chartMax,
+                clipData: const FlClipData.all(),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: (chartMax - chartMin) / 3,
+                  getDrawingHorizontalLine: (_) => FlLine(
+                    color: AppColors.divider.withOpacity(0.6),
+                    strokeWidth: 0.8,
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 32,
+                      interval: (chartMax - chartMin) / 3,
+                      getTitlesWidget: (v, _) => Text(
+                        v.round().toString(),
+                        style: GoogleFonts.dmSans(
+                            color: AppColors.textSecondary, fontSize: 8),
+                      ),
+                    ),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 16,
+                      interval: (sbpData.length / 4)
+                          .ceilToDouble()
+                          .clamp(1, 9999),
+                      getTitlesWidget: (v, _) {
+                        final i = v.toInt();
+                        if (i < 0 || i >= sbpData.length) {
+                          return const SizedBox.shrink();
+                        }
+                        return Text(
+                          DateFormat('HH:mm').format(sbpData[i].time),
+                          style: GoogleFonts.dmSans(
+                              color: AppColors.textSecondary, fontSize: 8),
+                        );
+                      },
+                    ),
+                  ),
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                ),
+                borderData: FlBorderData(show: false),
+                extraLinesData: ExtraLinesData(horizontalLines: [
+                  if (sbpThr?.critHigh != null)
+                    _thrLine(sbpThr!.critHigh!, AppColors.critical),
+                  if (sbpThr?.critLow != null)
+                    _thrLine(sbpThr!.critLow!, AppColors.critical),
+                  if (dbpThr?.critLow != null)
+                    _thrLine(dbpThr!.critLow!, AppColors.critical),
+                ]),
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipItems: (spots) => spots
+                        .map((s) => LineTooltipItem(
+                              '${s.y.round()} mmHg',
+                              GoogleFonts.dmSans(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700),
+                            ))
+                        .toList(),
+                  ),
+                ),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: sbpSpots,
+                    isCurved: true,
+                    preventCurveOverShooting: true,
+                    color: AppColors.primary,
+                    barWidth: 2,
+                    dotData: FlDotData(show: sbpData.length < 30),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: AppColors.primary.withOpacity(0.05),
+                    ),
+                  ),
+                  LineChartBarData(
+                    spots: dbpSpots,
+                    isCurved: true,
+                    preventCurveOverShooting: true,
+                    color: AppColors.accent,
+                    barWidth: 2,
+                    dotData: FlDotData(show: dbpData.length < 30),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: AppColors.accent.withOpacity(0.05),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  HorizontalLine _thrLine(double y, Color c) => HorizontalLine(
+        y: y,
+        color: c.withOpacity(0.5),
+        strokeWidth: 1,
+        dashArray: [4, 4],
+      );
+
+  Widget _dot(Color c) => Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(color: c, shape: BoxShape.circle));
 }
