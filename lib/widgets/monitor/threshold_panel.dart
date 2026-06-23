@@ -17,216 +17,211 @@ class ThresholdPanel extends StatefulWidget {
 }
 
 class _ThresholdPanelState extends State<ThresholdPanel> {
-  String _tab = 'hr';
+  VitalType _tab = VitalType.hr;
 
   static const _tabs = [
-    {'key': 'hr',   'label': 'HR'},
-    {'key': 'spo2', 'label': 'SpO₂'},
-    {'key': 'rr',   'label': 'RR'},
-    {'key': 'bp',   'label': 'BP'},
+    {'vt': VitalType.hr,   'label': 'Heart Rate',  'unit': 'bpm'},
+    {'vt': VitalType.spo2, 'label': 'SpO₂',        'unit': '%'},
+    {'vt': VitalType.rr,   'label': 'Resp. Rate',  'unit': 'br/min'},
+    {'vt': VitalType.sbp,  'label': 'Blood Pressure', 'unit': 'mmHg'},
   ];
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-            child: Row(
-              children: [
-                const Icon(Icons.tune, size: 16, color: AppColors.primary),
-                const SizedBox(width: 6),
-                Text('Alert Thresholds',
-                    style: GoogleFonts.dmSans(
-                        color: AppColors.textPrimary,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700)),
-                const Spacer(),
-                Text('changes apply instantly',
-                    style: GoogleFonts.dmSans(
-                        color: AppColors.textSecondary, fontSize: 10)),
-              ],
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Zone legend
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Row(
+            children: [
+              _chip('🔴', 'Critical', AppColors.critical),
+              const SizedBox(width: 12),
+              _chip('🟡', 'Watch', AppColors.warningColor),
+              const SizedBox(width: 12),
+              _chip('🟢', 'Stable', AppColors.stable),
+            ],
           ),
+        ),
 
-          // Zone legend
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-            child: Row(
-              children: [
-                _legendChip('🔴 Critical', AppColors.critical),
-                const SizedBox(width: 8),
-                _legendChip('🟡 Watch', AppColors.warningColor),
-                const SizedBox(width: 8),
-                _legendChip('🟢 Stable', AppColors.stable),
-              ],
-            ),
-          ),
-
-          // Vital tabs
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: Row(
-              children: _tabs.map((t) {
-                final active = _tab == t['key'];
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _tab = t['key']!),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(
-                        color: active
-                            ? AppColors.primary.withOpacity(0.1)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: active
-                              ? AppColors.primary
-                              : Colors.transparent,
-                        ),
+        // Vital selector
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: _tabs.map((t) {
+              final vt = t['vt'] as VitalType;
+              final active = _tab == vt;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: GestureDetector(
+                  onTap: () => setState(() => _tab = vt),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: active ? AppColors.primary : AppColors.surface,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: active ? AppColors.primary : AppColors.divider,
                       ),
-                      child: Text(
-                        t['label']!,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.dmSans(
-                          color: active
-                              ? AppColors.primary
-                              : AppColors.textSecondary,
-                          fontSize: 13,
-                          fontWeight:
-                              active ? FontWeight.w700 : FontWeight.w500,
-                        ),
+                    ),
+                    child: Text(
+                      t['label'] as String,
+                      style: GoogleFonts.dmSans(
+                        color: active ? Colors.white : AppColors.textSecondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
-                );
-              }).toList(),
-            ),
+                ),
+              );
+            }).toList(),
           ),
+        ),
 
-          const SizedBox(height: 16),
+        const SizedBox(height: 20),
 
-          // Threshold content
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: _tab == 'bp'
-                ? Column(
-                    children: [
-                      _vitalSection('SBP — Systolic', VitalType.sbp),
-                      const SizedBox(height: 20),
-                      _vitalSection('DBP — Diastolic', VitalType.dbp),
-                      const SizedBox(height: 20),
-                      _vitalSection('MAP — Mean Arterial', VitalType.map),
-                    ],
-                  )
-                : _vitalSection(
-                    null, _vitalTypeFromTab(_tab)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _legendChip(String label, Color color) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(width: 10, height: 10,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-        const SizedBox(width: 4),
-        Text(label,
-            style: GoogleFonts.dmSans(
-                color: AppColors.textSecondary,
-                fontSize: 10,
-                fontWeight: FontWeight.w500)),
+        // Content for selected vital
+        if (_tab == VitalType.sbp) ...[
+          _vitalBlock(VitalType.sbp,  'Systolic (SBP)'),
+          const SizedBox(height: 20),
+          _vitalBlock(VitalType.dbp,  'Diastolic (DBP)'),
+          const SizedBox(height: 20),
+          _vitalBlock(VitalType.map,  'Mean Arterial (MAP)'),
+        ] else
+          _vitalBlock(_tab, null),
       ],
     );
   }
 
-  Widget _vitalSection(String? title, VitalType vt) {
-    final meta = vitalMeta[vt]!;
-    final thr = widget.patient.thresholds[vt] ?? const VitalThreshold();
+  Widget _chip(String emoji, String label, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(emoji, style: const TextStyle(fontSize: 13)),
+        const SizedBox(width: 4),
+        Text(label,
+            style: GoogleFonts.dmSans(
+                color: color, fontSize: 12, fontWeight: FontWeight.w700)),
+      ],
+    );
+  }
+
+  Widget _vitalBlock(VitalType vt, String? subtitle) {
+    final meta   = vitalMeta[vt]!;
+    final thr    = widget.patient.thresholds[vt] ?? const VitalThreshold();
     final current = widget.patient.vitals[vt] ?? 0;
-    final isSpo2 = vt == VitalType.spo2;
+    final isSpo2  = vt == VitalType.spo2;
+    final sev     = thr.severity(current);
+    final sevColor = sev == 'critical'
+        ? AppColors.critical
+        : sev == 'warning'
+            ? AppColors.warningColor
+            : AppColors.stable;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (title != null) ...[
-          Text(title,
-              style: GoogleFonts.dmSans(
-                  color: AppColors.textSecondary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.3)),
-          const SizedBox(height: 10),
-        ],
+        // Title row with live value
+        Row(
+          children: [
+            if (subtitle != null) ...[
+              Text(subtitle,
+                  style: GoogleFonts.dmSans(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600)),
+              const Spacer(),
+            ],
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                color: sevColor.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'Now: ${current.round()} ${meta.unit}',
+                style: GoogleFonts.dmSans(
+                    color: sevColor, fontSize: 11, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
 
-        // Visual zone bar
+        const SizedBox(height: 10),
+
+        // Zone bar
         _ZoneBar(thr: thr, current: current, meta: meta, isSpo2: isSpo2),
 
         const SizedBox(height: 16),
 
-        // Editable threshold fields in a grid
+        // Threshold inputs — 2 columns
         Row(
           children: [
-            _ThresholdField(
-              label: 'Critical Low',
-              color: AppColors.critical,
-              value: thr.critLow,
-              unit: meta.unit,
-              onChanged: (v) =>
-                  widget.onSet(widget.patient.id, vt, 'critLow', v),
-            ),
-            const SizedBox(width: 8),
-            _ThresholdField(
-              label: 'Watch Low',
-              color: AppColors.warningColor,
-              value: thr.warnLow,
-              unit: meta.unit,
-              onChanged: (v) =>
-                  widget.onSet(widget.patient.id, vt, 'warnLow', v),
-            ),
-            if (!isSpo2) ...[
-              const SizedBox(width: 8),
-              _ThresholdField(
-                label: 'Watch High',
-                color: AppColors.warningColor,
-                value: thr.warnHigh,
-                unit: meta.unit,
-                onChanged: (v) =>
-                    widget.onSet(widget.patient.id, vt, 'warnHigh', v),
-              ),
-              const SizedBox(width: 8),
-              _ThresholdField(
-                label: 'Critical High',
+            Expanded(
+              child: _Field(
+                label: 'Critical Low',
+                sublabel: 'Alert me urgently',
                 color: AppColors.critical,
-                value: thr.critHigh,
+                icon: Icons.arrow_downward,
+                value: thr.critLow,
                 unit: meta.unit,
-                onChanged: (v) =>
-                    widget.onSet(widget.patient.id, vt, 'critHigh', v),
+                onSave: (v) => widget.onSet(widget.patient.id, vt, 'critLow', v),
               ),
-            ],
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: isSpo2
+                  ? const SizedBox.shrink()
+                  : _Field(
+                      label: 'Critical High',
+                      sublabel: 'Alert me urgently',
+                      color: AppColors.critical,
+                      icon: Icons.arrow_upward,
+                      value: thr.critHigh,
+                      unit: meta.unit,
+                      onSave: (v) => widget.onSet(widget.patient.id, vt, 'critHigh', v),
+                    ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 10),
+
+        Row(
+          children: [
+            Expanded(
+              child: _Field(
+                label: 'Watch Low',
+                sublabel: 'Needs monitoring',
+                color: AppColors.warningColor,
+                icon: Icons.arrow_downward,
+                value: thr.warnLow,
+                unit: meta.unit,
+                onSave: (v) => widget.onSet(widget.patient.id, vt, 'warnLow', v),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: isSpo2
+                  ? const SizedBox.shrink()
+                  : _Field(
+                      label: 'Watch High',
+                      sublabel: 'Needs monitoring',
+                      color: AppColors.warningColor,
+                      icon: Icons.arrow_upward,
+                      value: thr.warnHigh,
+                      unit: meta.unit,
+                      onSave: (v) => widget.onSet(widget.patient.id, vt, 'warnHigh', v),
+                    ),
+            ),
           ],
         ),
       ],
     );
-  }
-
-  VitalType _vitalTypeFromTab(String tab) {
-    switch (tab) {
-      case 'spo2': return VitalType.spo2;
-      case 'rr':   return VitalType.rr;
-      default:     return VitalType.hr;
-    }
   }
 }
 
@@ -247,8 +242,8 @@ class _ZoneBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final min = meta.absMin;
-    final max = meta.absMax;
+    final min   = meta.absMin;
+    final max   = meta.absMax;
     final range = max - min;
 
     double frac(double? v) =>
@@ -267,49 +262,33 @@ class _ZoneBar extends StatelessWidget {
             ? AppColors.warningColor
             : AppColors.stable;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Zone bar
-        LayoutBuilder(builder: (context, bc) {
-          final w = bc.maxWidth;
-          return Stack(
+    return LayoutBuilder(builder: (context, bc) {
+      final w = bc.maxWidth;
+      return Column(
+        children: [
+          Stack(
             children: [
-              // Background zones
               ClipRRect(
                 borderRadius: BorderRadius.circular(6),
                 child: SizedBox(
-                  height: 18,
+                  height: 20,
                   width: w,
-                  child: Row(
-                    children: [
-                      // Critical low zone
-                      if (thr.critLow != null)
-                        _zone(w * critLow, AppColors.critical),
-                      // Warning low zone
-                      if (thr.warnLow != null)
-                        _zone(w * (warnLow - critLow), AppColors.warningColor),
-                      // Stable zone
-                      _zone(
-                        w * ((isSpo2 ? 1.0 : warnHigh) - warnLow),
-                        AppColors.stable,
-                      ),
-                      // Warning high zone
-                      if (!isSpo2 && thr.warnHigh != null)
-                        _zone(
-                          w * (critHigh - warnHigh),
-                          AppColors.warningColor,
-                        ),
-                      // Critical high zone
-                      if (!isSpo2 && thr.critHigh != null)
-                        _zone(w * (1.0 - critHigh), AppColors.critical),
-                    ],
-                  ),
+                  child: Row(children: [
+                    if (thr.critLow != null)
+                      _seg(w * critLow, AppColors.critical),
+                    if (thr.warnLow != null)
+                      _seg(w * (warnLow - critLow), AppColors.warningColor),
+                    _seg(w * ((isSpo2 ? 1.0 : warnHigh) - warnLow), AppColors.stable),
+                    if (!isSpo2 && thr.warnHigh != null)
+                      _seg(w * (critHigh - warnHigh), AppColors.warningColor),
+                    if (!isSpo2 && thr.critHigh != null)
+                      _seg(w * (1.0 - critHigh), AppColors.critical),
+                  ]),
                 ),
               ),
-              // Current value indicator
+              // Current value needle
               Positioned(
-                left: (w * cur - 1).clamp(0.0, w - 2),
+                left: (w * cur - 1.5).clamp(0.0, w - 3),
                 top: 0,
                 bottom: 0,
                 child: Container(
@@ -319,165 +298,187 @@ class _ZoneBar extends StatelessWidget {
                     borderRadius: BorderRadius.circular(2),
                     boxShadow: [
                       BoxShadow(
-                          color: curColor.withOpacity(0.6),
-                          blurRadius: 4,
+                          color: curColor.withOpacity(0.7),
+                          blurRadius: 5,
                           spreadRadius: 1),
                     ],
                   ),
                 ),
               ),
             ],
-          );
-        }),
-        const SizedBox(height: 4),
-        // Min / current / max labels
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('${min.round()} ${meta.unit}',
-                style: GoogleFonts.dmSans(
-                    color: AppColors.textSecondary, fontSize: 9)),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: curColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                '${current.round()} ${meta.unit}',
-                style: GoogleFonts.dmSans(
-                    color: curColor,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700),
-              ),
-            ),
-            Text('${max.round()} ${meta.unit}',
-                style: GoogleFonts.dmSans(
-                    color: AppColors.textSecondary, fontSize: 9)),
-          ],
-        ),
-      ],
-    );
+          ),
+          const SizedBox(height: 5),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('${min.round()} ${meta.unit}',
+                  style: GoogleFonts.dmSans(
+                      color: AppColors.textSecondary, fontSize: 9)),
+              Row(children: [
+                Icon(Icons.circle, size: 7, color: curColor),
+                const SizedBox(width: 3),
+                Text('${current.round()} ${meta.unit}',
+                    style: GoogleFonts.dmSans(
+                        color: curColor,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700)),
+              ]),
+              Text('${max.round()} ${meta.unit}',
+                  style: GoogleFonts.dmSans(
+                      color: AppColors.textSecondary, fontSize: 9)),
+            ],
+          ),
+        ],
+      );
+    });
   }
 
-  Widget _zone(double width, Color color) {
+  Widget _seg(double width, Color color) {
     if (width <= 0) return const SizedBox.shrink();
-    return Container(width: width, color: color.withOpacity(0.25));
+    return Container(width: width, color: color.withOpacity(0.28));
   }
 }
 
-// ── Editable threshold field ──────────────────────────────────────────────────
+// ── Single threshold input field ──────────────────────────────────────────────
 
-class _ThresholdField extends StatefulWidget {
+class _Field extends StatefulWidget {
   final String label;
+  final String sublabel;
   final Color color;
+  final IconData icon;
   final double? value;
   final String unit;
-  final void Function(double) onChanged;
+  final void Function(double) onSave;
 
-  const _ThresholdField({
+  const _Field({
     required this.label,
+    required this.sublabel,
     required this.color,
+    required this.icon,
     required this.value,
     required this.unit,
-    required this.onChanged,
+    required this.onSave,
   });
 
   @override
-  State<_ThresholdField> createState() => _ThresholdFieldState();
+  State<_Field> createState() => _FieldState();
 }
 
-class _ThresholdFieldState extends State<_ThresholdField> {
-  late TextEditingController _ctrl;
+class _FieldState extends State<_Field> {
+  late final TextEditingController _ctrl;
+  late final FocusNode _focus;
+  bool _hasFocus = false;
 
   @override
   void initState() {
     super.initState();
     _ctrl = TextEditingController(
         text: widget.value != null ? widget.value!.round().toString() : '');
+    _focus = FocusNode()
+      ..addListener(() {
+        final focused = _focus.hasFocus;
+        if (focused != _hasFocus) {
+          setState(() => _hasFocus = focused);
+          if (!focused) _submit();
+        }
+      });
   }
 
   @override
-  void didUpdateWidget(_ThresholdField old) {
+  void didUpdateWidget(_Field old) {
     super.didUpdateWidget(old);
-    final newText =
-        widget.value != null ? widget.value!.round().toString() : '';
-    if (_ctrl.text != newText && !_ctrl.selection.isValid) {
-      _ctrl.text = newText;
+    // Only update from outside when the field is NOT being edited
+    if (!_hasFocus) {
+      final newText =
+          widget.value != null ? widget.value!.round().toString() : '';
+      if (_ctrl.text != newText) _ctrl.text = newText;
     }
   }
 
   @override
   void dispose() {
     _ctrl.dispose();
+    _focus.dispose();
     super.dispose();
+  }
+
+  void _submit() {
+    final v = double.tryParse(_ctrl.text);
+    if (v != null) widget.onSave(v);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: widget.color.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _hasFocus
+              ? widget.color
+              : widget.color.withOpacity(0.25),
+          width: _hasFocus ? 1.5 : 1,
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Container(
-                width: 8, height: 8,
-                decoration: BoxDecoration(
-                    color: widget.color, shape: BoxShape.circle),
-              ),
+              Icon(widget.icon, size: 12, color: widget.color),
               const SizedBox(width: 4),
               Flexible(
                 child: Text(
                   widget.label,
                   style: GoogleFonts.dmSans(
-                      color: AppColors.textSecondary,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w600),
-                  overflow: TextOverflow.ellipsis,
+                      color: widget.color,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          TextField(
-            controller: _ctrl,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            textAlign: TextAlign.center,
+          const SizedBox(height: 2),
+          Text(
+            widget.sublabel,
             style: GoogleFonts.dmSans(
-                color: widget.color,
-                fontSize: 16,
-                fontWeight: FontWeight.w800),
-            decoration: InputDecoration(
-              isDense: true,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-              filled: true,
-              fillColor: widget.color.withOpacity(0.07),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide:
-                    BorderSide(color: widget.color.withOpacity(0.3)),
+                color: AppColors.textSecondary, fontSize: 9),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _ctrl,
+                  focusNode: _focus,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.dmSans(
+                      color: widget.color,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                  ),
+                  onSubmitted: (_) => _submit(),
+                ),
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: widget.color, width: 1.5),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: Text(
+                  widget.unit,
+                  style: GoogleFonts.dmSans(
+                      color: AppColors.textSecondary, fontSize: 10),
+                ),
               ),
-              suffixText: widget.unit,
-              suffixStyle: GoogleFonts.dmSans(
-                  color: AppColors.textSecondary, fontSize: 9),
-            ),
-            onSubmitted: (v) {
-              final parsed = double.tryParse(v);
-              if (parsed != null) widget.onChanged(parsed);
-            },
-            onEditingComplete: () {
-              final parsed = double.tryParse(_ctrl.text);
-              if (parsed != null) widget.onChanged(parsed);
-              FocusScope.of(context).unfocus();
-            },
+            ],
           ),
         ],
       ),
