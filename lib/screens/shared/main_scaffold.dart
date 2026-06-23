@@ -391,16 +391,9 @@ class _MainScaffoldState extends State<MainScaffold>
 
   Widget _scaffold(BuildContext context) {
     return Scaffold(
-      body: Column(
-        children: [
-          _DevBanner(),
-          Expanded(
-            child: IndexedStack(
-              index: _index,
-              children: _screensForRole,
-            ),
-          ),
-        ],
+      body: IndexedStack(
+        index: _index,
+        children: _screensForRole,
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -537,66 +530,4 @@ class _DoctorNotesList extends StatelessWidget {
   }
 }
 
-class _DevBanner extends StatefulWidget {
-  @override
-  State<_DevBanner> createState() => _DevBannerState();
-}
-
-class _DevBannerState extends State<_DevBanner> {
-  bool _dismissed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    if (_dismissed) return const SizedBox.shrink();
-    return Material(
-      color: const Color(0xFFB71C1C),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.warning_amber_rounded,
-                  color: Colors.white, size: 20),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '⚠️ DEMO / DEVELOPMENT MODE',
-                      style: GoogleFonts.dmSans(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.4,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      'This app is under active development. All data is for testing only. Do NOT enter real patient information.',
-                      style: GoogleFonts.dmSans(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 12,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              GestureDetector(
-                onTap: () => setState(() => _dismissed = true),
-                child: const Padding(
-                  padding: EdgeInsets.only(left: 8),
-                  child: Icon(Icons.close, color: Colors.white, size: 18),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 

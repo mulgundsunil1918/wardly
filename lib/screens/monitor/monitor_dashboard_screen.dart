@@ -148,6 +148,9 @@ class MonitorDashboardScreen extends StatelessWidget {
             ],
           ),
 
+          // Demo / dev mode disclaimer
+          const SliverToBoxAdapter(child: _MonitorDevBanner()),
+
           // Stats row
           SliverToBoxAdapter(
             child: Container(
@@ -361,6 +364,60 @@ class MonitorDashboardScreen extends StatelessWidget {
           Text('$sbp/$dbp', style: GoogleFonts.dmSans(color: color, fontSize: 15, fontWeight: FontWeight.w800)),
           Text('MAP $map', style: GoogleFonts.dmSans(color: AppColors.textSecondary, fontSize: 9)),
         ],
+      ),
+    );
+  }
+}
+
+class _MonitorDevBanner extends StatefulWidget {
+  const _MonitorDevBanner();
+
+  @override
+  State<_MonitorDevBanner> createState() => _MonitorDevBannerState();
+}
+
+class _MonitorDevBannerState extends State<_MonitorDevBanner> {
+  bool _dismissed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_dismissed) return const SizedBox.shrink();
+    return Material(
+      color: const Color(0xFFB71C1C),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 18),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('DEMO / DEVELOPMENT MODE',
+                      style: GoogleFonts.dmSans(
+                          color: Colors.white, fontSize: 12,
+                          fontWeight: FontWeight.w800, letterSpacing: 0.4)),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Vitals shown are simulated. Do NOT use for real clinical decisions.',
+                    style: GoogleFonts.dmSans(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 11, height: 1.4),
+                  ),
+                ],
+              ),
+            ),
+            GestureDetector(
+              onTap: () => setState(() => _dismissed = true),
+              child: const Padding(
+                padding: EdgeInsets.only(left: 8),
+                child: Icon(Icons.close, color: Colors.white, size: 16),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
