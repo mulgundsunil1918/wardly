@@ -5,6 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
+import 'services/vlm_server_manager.dart';
 import 'utils/app_theme.dart';
 import 'utils/app_routes.dart';
 import 'providers/providers.dart';
@@ -35,6 +36,9 @@ void main() async {
   );
   FirebaseMessaging.onBackgroundMessage(_bgHandler);
   runApp(const WardlyApp());
+  // Desktop (Wardly Edge station): boot the embedded vitals AI engine with
+  // the app. No-op on mobile/web; never blocks startup.
+  VlmServerManager.instance.ensureRunning();
 }
 
 class WardlyApp extends StatelessWidget {

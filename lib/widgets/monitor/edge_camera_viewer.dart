@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -11,6 +12,8 @@ import '../../providers/camera_provider.dart';
 import '../../providers/monitor_provider.dart';
 import '../../services/frame_capture_service.dart';
 import '../../services/vitals_ocr_service.dart';
+import '../../services/vlm_server_manager.dart';
+import '../../services/vlm_vitals_service.dart';
 import '../../utils/app_theme.dart';
 
 class EdgeCameraViewer extends StatefulWidget {
@@ -38,7 +41,10 @@ class _EdgeCameraViewerState extends State<EdgeCameraViewer> {
 
   final _frameCapture = FrameCaptureService();
   final _ocr = VitalsOcrService();
-  String? _ocrStatus; // last OCR result line shown in overlay
+  final _vlm = VlmVitalsService();
+  bool _vlmOnline = false;
+  Timer? _vlmHealthTimer;
+  String? _ocrStatus; // last reader result line shown in overlay
 
   @override
   void initState() {
@@ -76,6 +82,18 @@ class _EdgeCameraViewerState extends State<EdgeCameraViewer> {
       interval: const Duration(seconds: 8),
     );
     _frameCapture.frameNotifier.addListener(_onNewFrame);
+
+    // Boot the embedded AI engine if it isn't up yet, then prefer it over
+    // regex OCR; re-probe periodically so engine restarts just work.
+    VlmServerManager.instance.ensureRunning();
+    _checkVlmHealth();
+    _vlmHealthTimer = Timer.periodic(
+        const Duration(seconds: 45), (_) => _checkVlmHealth());
+  }
+
+  Future<void> _checkVlmHealth() async {
+    final ok = await _vlm.isAvailable();
+    if (mounted && ok != _vlmOnline) setState(() => _vlmOnline = ok);
   }
 
   Future<void> _onNewFrame() async {
@@ -85,12 +103,32 @@ class _EdgeCameraViewerState extends State<EdgeCameraViewer> {
     final file = File(path);
     if (!file.existsSync()) return;
 
+    // ── Primary: local VLM (reads any monitor brand, alarm-limit aware).
+    // One read can take minutes on CPU — skip frames while it works.
+    if (_vlmOnline) {
+      if (_vlm.isBusy) return;
+      setState(() => _ocrStatus = 'AI reading frame…');
+      final vlm = await _vlm.processFile(file);
+      if (!mounted) return;
+      if (vlm != null && vlm.hasAnyVital) {
+        context
+            .read<MonitorProvider>()
+            .injectOcrVitals(widget.patientId, vlm.toVitalMap());
+        setState(() => _ocrStatus = 'AI  $vlm');
+        return;
+      }
+      // Read failed (server gone? unreadable frame?) — re-probe and fall
+      // through to the regex OCR so vitals keep flowing.
+      unawaited(_checkVlmHealth());
+    }
+
+    // ── Fallback: on-device text recognition + regex parsing.
     final parsed = await _ocr.processFile(file);
     if (parsed == null || !parsed.hasAnyVital) return;
 
     if (!mounted) return;
     context.read<MonitorProvider>().injectOcrVitals(widget.patientId, parsed.toVitalMap());
-    setState(() => _ocrStatus = parsed.toString());
+    setState(() => _ocrStatus = 'OCR  $parsed');
   }
 
   void _scheduleTimeout() {
@@ -109,6 +147,7 @@ class _EdgeCameraViewerState extends State<EdgeCameraViewer> {
 
   @override
   void dispose() {
+    _vlmHealthTimer?.cancel();
     _frameCapture.frameNotifier.removeListener(_onNewFrame);
     _frameCapture.dispose();
     _ocr.dispose();
@@ -181,6 +220,24 @@ class _EdgeCameraViewerState extends State<EdgeCameraViewer> {
               ),
             ),
 
+            // AI badge — shown while the local VLM server is reachable
+            if (_vlmOnline)
+              Positioned(
+                top: 12, left: 72,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF00C896).withValues(alpha: 0.85),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.auto_awesome, color: Colors.white, size: 11),
+                    const SizedBox(width: 4),
+                    Text('AI', style: GoogleFonts.dmSans(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+                  ]),
+                ),
+              ),
+
             // Patient info + OCR status
             Positioned(
               bottom: 12, left: 12,
@@ -192,7 +249,7 @@ class _EdgeCameraViewerState extends State<EdgeCameraViewer> {
                   Text('${_camera!.brand} · ${_camera!.ip}', style: GoogleFonts.dmSans(color: Colors.white38, fontSize: 10)),
                   if (_ocrStatus != null) ...[
                     const SizedBox(height: 2),
-                    Text('OCR: $_ocrStatus', style: GoogleFonts.dmSans(color: Colors.tealAccent.withValues(alpha: 0.7), fontSize: 9)),
+                    Text(_ocrStatus!, style: GoogleFonts.dmSans(color: Colors.tealAccent.withValues(alpha: 0.7), fontSize: 9)),
                   ],
                 ],
               ),

@@ -8,6 +8,7 @@ import '../../models/monitor_vitals.dart';
 import '../../providers/camera_provider.dart';
 import '../../providers/monitor_provider.dart';
 import '../../services/patient_service.dart';
+import '../../services/vlm_server_manager.dart';
 import '../../utils/app_theme.dart';
 import 'edge_setup_screen.dart';
 import 'patient_monitor_screen.dart';
@@ -42,6 +43,13 @@ class WardlyEdgeScreen extends StatefulWidget {
 
 class _WardlyEdgeScreenState extends State<WardlyEdgeScreen> {
   bool _dashboard = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Boot the embedded AI engine with the app — no separate server.
+    VlmServerManager.instance.ensureRunning();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -283,6 +291,8 @@ class _EdgeDashboard extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.3)),
               ),
+              const _AiEngineChip(),
+              const SizedBox(width: 8),
               _LiveCamerasChip(activeCount: cameras.activeCount),
             ],
           ),
@@ -319,6 +329,67 @@ class _EdgeDashboard extends StatelessWidget {
                 ),
         ),
       ],
+    );
+  }
+}
+
+class _AiEngineChip extends StatelessWidget {
+  const _AiEngineChip();
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<VlmEngineStatus>(
+      valueListenable: VlmServerManager.instance.status,
+      builder: (context, status, _) {
+        final (label, color, pulsing) = switch (status) {
+          VlmEngineStatus.running ||
+          VlmEngineStatus.external =>
+            ('AI ONLINE', _EdgeColors.accent, false),
+          VlmEngineStatus.starting =>
+            ('AI STARTING…', _EdgeColors.warning, true),
+          VlmEngineStatus.error => ('AI ERROR', _EdgeColors.danger, false),
+          VlmEngineStatus.off => ('AI OFF', _EdgeColors.text2, false),
+        };
+        return Tooltip(
+          message: status == VlmEngineStatus.error
+              ? (VlmServerManager.instance.errorDetail ?? 'AI engine error')
+              : 'Vitals read by the built-in Wardly Vision AI',
+          child: InkWell(
+            onTap: status == VlmEngineStatus.error ||
+                    status == VlmEngineStatus.off
+                ? () => VlmServerManager.instance.ensureRunning()
+                : null,
+            borderRadius: BorderRadius.circular(999),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.14),
+                border: Border.all(color: color.withValues(alpha: 0.4)),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (pulsing) ...[
+                    _PulsingDot(color: color),
+                    const SizedBox(width: 6),
+                  ] else ...[
+                    Icon(Icons.auto_awesome, size: 10, color: color),
+                    const SizedBox(width: 5),
+                  ],
+                  Text(label,
+                      style: GoogleFonts.dmSans(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1,
+                          color: color)),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
