@@ -3,57 +3,88 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/camera_config.dart';
+import '../../models/monitored_patient.dart';
 import '../../models/monitor_vitals.dart';
 import '../../providers/camera_provider.dart';
+import '../../providers/monitor_provider.dart';
 import '../../services/patient_service.dart';
 import '../../utils/app_theme.dart';
 import 'edge_setup_screen.dart';
+import 'patient_monitor_screen.dart';
 import 'roi_editor_screen.dart';
 
 // ─────────────────────────────────────────────
 //  Wardly Edge Hub
-//  Manage all configured cameras — add, edit,
-//  toggle, define ROI, delete.
+//  Ward dashboard (live bed tiles) + camera
+//  management — add, edit, toggle, ROI, delete.
 // ─────────────────────────────────────────────
 
-class WardlyEdgeScreen extends StatelessWidget {
+/// Fixed dark palette for the station dashboard — Edge is an always-on
+/// wall/desk display, so it stays dark regardless of the app theme.
+class _EdgeColors {
+  static const bg = Color(0xFF0A0F1C);
+  static const bg2 = Color(0xFF0D1526);
+  static const card = Color(0xFF121E33);
+  static const divider = Color(0xFF1E2C46);
+  static const text = Color(0xFFE5EEF9);
+  static const text2 = Color(0xFF93A7BF);
+  static const accent = Color(0xFF00C896);
+  static const danger = Color(0xFFFF6464);
+  static const warning = Color(0xFFF5A623);
+}
+
+class WardlyEdgeScreen extends StatefulWidget {
   const WardlyEdgeScreen({super.key});
+
+  @override
+  State<WardlyEdgeScreen> createState() => _WardlyEdgeScreenState();
+}
+
+class _WardlyEdgeScreenState extends State<WardlyEdgeScreen> {
+  bool _dashboard = true;
 
   @override
   Widget build(BuildContext context) {
     final cameras = context.watch<CameraProvider>();
 
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: _dashboard ? _EdgeColors.bg : AppColors.surface,
       appBar: AppBar(
-        backgroundColor: AppColors.appBarBg,
+        backgroundColor: _dashboard ? _EdgeColors.bg2 : AppColors.appBarBg,
         title: Row(
           children: [
-            const Icon(Icons.settings_input_antenna, color: AppColors.primary, size: 20),
+            Icon(Icons.settings_input_antenna,
+                color: _dashboard ? _EdgeColors.accent : AppColors.primary,
+                size: 20),
             const SizedBox(width: 8),
             Text('Wardly Edge',
                 style: GoogleFonts.dmSans(
                     fontWeight: FontWeight.w800,
-                    color: AppColors.primary,
+                    color: _dashboard ? _EdgeColors.text : AppColors.primary,
                     fontSize: 18)),
           ],
         ),
         actions: [
+          _viewToggle(),
+          const SizedBox(width: 8),
           TextButton.icon(
             onPressed: () => _openSetup(context),
             icon: const Icon(Icons.add, size: 18),
             label: const Text('Add Camera'),
             style: TextButton.styleFrom(
-              foregroundColor: AppColors.primary,
+              foregroundColor:
+                  _dashboard ? _EdgeColors.accent : AppColors.primary,
               textStyle: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 13),
             ),
           ),
         ],
       ),
-      body: cameras.cameras.isEmpty
-          ? _emptyState(context)
-          : _cameraList(context, cameras),
-      floatingActionButton: cameras.cameras.isNotEmpty
+      body: _dashboard
+          ? _EdgeDashboard(onAddCamera: () => _openSetup(context))
+          : (cameras.cameras.isEmpty
+              ? _emptyState(context)
+              : _cameraList(context, cameras)),
+      floatingActionButton: !_dashboard && cameras.cameras.isNotEmpty
           ? FloatingActionButton.extended(
               heroTag: 'edge_add_camera',
               backgroundColor: AppColors.primary,
@@ -63,6 +94,54 @@ class WardlyEdgeScreen extends StatelessWidget {
               onPressed: () => _openSetup(context),
             )
           : null,
+    );
+  }
+
+  Widget _viewToggle() {
+    return Container(
+      decoration: BoxDecoration(
+        color: _dashboard
+            ? Colors.white.withValues(alpha: 0.06)
+            : AppColors.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      padding: const EdgeInsets.all(3),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _toggleChip('Dashboard', Icons.grid_view_rounded, true),
+          _toggleChip('Cameras', Icons.videocam_outlined, false),
+        ],
+      ),
+    );
+  }
+
+  Widget _toggleChip(String label, IconData icon, bool forDashboard) {
+    final selected = _dashboard == forDashboard;
+    final selBg = _dashboard ? _EdgeColors.card : Colors.white;
+    final selFg = _dashboard ? _EdgeColors.text : AppColors.primary;
+    final unselFg = _dashboard ? _EdgeColors.text2 : AppColors.textSecondary;
+    return InkWell(
+      onTap: () => setState(() => _dashboard = forDashboard),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: selected ? selBg : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 14, color: selected ? selFg : unselFg),
+            const SizedBox(width: 5),
+            Text(label,
+                style: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    color: selected ? selFg : unselFg)),
+          ],
+        ),
+      ),
     );
   }
 
@@ -160,6 +239,405 @@ class WardlyEdgeScreen extends StatelessWidget {
   }
 }
 
+// ─── Ward Dashboard (station view) ────────────
+
+class _EdgeDashboard extends StatelessWidget {
+  final VoidCallback onAddCamera;
+  const _EdgeDashboard({required this.onAddCamera});
+
+  @override
+  Widget build(BuildContext context) {
+    final monitor = context.watch<MonitorProvider>();
+    final cameras = context.watch<CameraProvider>();
+    final patients = monitor.patients;
+
+    // Most common ward name among monitored patients, for the header.
+    String wardName = 'Ward Dashboard';
+    if (patients.isNotEmpty) {
+      final counts = <String, int>{};
+      for (final p in patients) {
+        if (p.ward.isEmpty) continue;
+        counts[p.ward] = (counts[p.ward] ?? 0) + 1;
+      }
+      if (counts.isNotEmpty) {
+        wardName = (counts.entries.toList()
+              ..sort((a, b) => b.value.compareTo(a.value)))
+            .first
+            .key;
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text('Wardly Edge · $wardName',
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.dmSans(
+                        color: _EdgeColors.text,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.3)),
+              ),
+              _LiveCamerasChip(activeCount: cameras.activeCount),
+            ],
+          ),
+        ),
+        Expanded(
+          child: patients.isEmpty
+              ? Center(
+                  child: Text(
+                    'No monitored patients yet.\nAdd patients in the Monitor tab of the Wardly app.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.dmSans(
+                        color: _EdgeColors.text2, fontSize: 13, height: 1.6),
+                  ),
+                )
+              : GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 340,
+                    mainAxisExtent: 130,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                  ),
+                  itemCount: patients.length + 1,
+                  itemBuilder: (context, i) {
+                    if (i == patients.length) {
+                      return _AddCameraTile(onTap: onAddCamera);
+                    }
+                    final p = patients[i];
+                    final hasCamera = cameras.cameras.any((c) =>
+                        c.patientId == p.id ||
+                        (c.patientName.isNotEmpty && c.patientName == p.name));
+                    return _BedTile(patient: p, hasCamera: hasCamera);
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LiveCamerasChip extends StatelessWidget {
+  final int activeCount;
+  const _LiveCamerasChip({required this.activeCount});
+
+  @override
+  Widget build(BuildContext context) {
+    final live = activeCount > 0;
+    final color = live ? _EdgeColors.danger : _EdgeColors.text2;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (live) const _PulsingDot(color: _EdgeColors.danger),
+          if (live) const SizedBox(width: 6),
+          Text(
+            live
+                ? '$activeCount CAMERA${activeCount == 1 ? '' : 'S'} LIVE'
+                : 'NO CAMERAS',
+            style: GoogleFonts.dmSans(
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1,
+                color: live ? const Color(0xFFFFD7D7) : _EdgeColors.text2),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PulsingDot extends StatefulWidget {
+  final Color color;
+  const _PulsingDot({required this.color});
+
+  @override
+  State<_PulsingDot> createState() => _PulsingDotState();
+}
+
+class _PulsingDotState extends State<_PulsingDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c;
+
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1600))
+      ..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: Tween(begin: 0.35, end: 1.0)
+          .animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut)),
+      child: Container(
+        width: 6,
+        height: 6,
+        decoration:
+            BoxDecoration(color: widget.color, shape: BoxShape.circle),
+      ),
+    );
+  }
+}
+
+class _BedTile extends StatelessWidget {
+  final MonitoredPatient patient;
+  final bool hasCamera;
+  const _BedTile({required this.patient, required this.hasCamera});
+
+  @override
+  Widget build(BuildContext context) {
+    final sev = patient.worstSeverity;
+    final isCrit = sev == 'critical';
+    final isWarn = sev == 'warning';
+    final borderColor = isCrit
+        ? _EdgeColors.danger.withValues(alpha: 0.55)
+        : isWarn
+            ? _EdgeColors.warning.withValues(alpha: 0.45)
+            : _EdgeColors.divider;
+
+    return InkWell(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => PatientMonitorScreen(patientId: patient.id)),
+      ),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: _EdgeColors.card,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: borderColor),
+          boxShadow: isCrit
+              ? [
+                  BoxShadow(
+                    color: _EdgeColors.danger.withValues(alpha: 0.18),
+                    blurRadius: 20,
+                  ),
+                ]
+              : null,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                if (patient.bed.isNotEmpty) ...[
+                  Text(patient.bed,
+                      style: GoogleFonts.dmSans(
+                          color: _EdgeColors.text,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800)),
+                  const SizedBox(width: 6),
+                ],
+                Expanded(
+                  child: Text(patient.name,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.dmSans(
+                          color: _EdgeColors.text2, fontSize: 11)),
+                ),
+                if (hasCamera)
+                  const Padding(
+                    padding: EdgeInsets.only(right: 6),
+                    child: Icon(Icons.videocam,
+                        size: 12, color: _EdgeColors.accent),
+                  ),
+                _sevChip(sev),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                _vital('HR', patient.vitals[VitalType.hr],
+                    _vitalColor(VitalType.hr)),
+                _vital('SpO₂', patient.vitals[VitalType.spo2],
+                    _vitalColor(VitalType.spo2)),
+                _vital('RR', patient.vitals[VitalType.rr],
+                    _vitalColor(VitalType.rr)),
+                _bpVital(),
+              ],
+            ),
+            if (isCrit) ...[
+              const SizedBox(height: 8),
+              Text('⚠ ${_critLabel()}',
+                  style: GoogleFonts.dmSans(
+                      color: _EdgeColors.danger,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.8)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _vitalColor(VitalType vt) {
+    final t = patient.thresholds[vt];
+    final v = patient.vitals[vt];
+    if (t == null || v == null) return _EdgeColors.text;
+    switch (t.severity(v)) {
+      case 'critical':
+        return _EdgeColors.danger;
+      case 'warning':
+        return _EdgeColors.warning;
+      default:
+        return _EdgeColors.text;
+    }
+  }
+
+  String _critLabel() {
+    const labels = {
+      VitalType.hr: 'HR',
+      VitalType.spo2: 'SpO₂',
+      VitalType.rr: 'RR',
+      VitalType.sbp: 'BP',
+      VitalType.dbp: 'BP',
+      VitalType.map: 'MAP',
+    };
+    for (final vt in labels.keys) {
+      final t = patient.thresholds[vt];
+      final v = patient.vitals[vt];
+      if (t != null && v != null && t.severity(v) == 'critical') {
+        return '${labels[vt]} CRITICAL';
+      }
+    }
+    return 'ALERT';
+  }
+
+  Widget _sevChip(String sev) {
+    final label = sev == 'critical'
+        ? 'CRIT'
+        : sev == 'warning'
+            ? 'WARN'
+            : 'STABLE';
+    final color = sev == 'critical'
+        ? _EdgeColors.danger
+        : sev == 'warning'
+            ? _EdgeColors.warning
+            : _EdgeColors.accent;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(label,
+          style: GoogleFonts.dmSans(
+              fontSize: 8,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.5,
+              color: color)),
+    );
+  }
+
+  Widget _vital(String label, double? value, Color color) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: GoogleFonts.dmSans(
+                  color: _EdgeColors.text2,
+                  fontSize: 8.5,
+                  fontWeight: FontWeight.w600)),
+          Text(value == null ? '--' : '${value.round()}',
+              style: GoogleFonts.dmSans(
+                  color: color, fontSize: 15, fontWeight: FontWeight.w800)),
+        ],
+      ),
+    );
+  }
+
+  Widget _bpVital() {
+    final sbp = patient.vitals[VitalType.sbp];
+    final dbp = patient.vitals[VitalType.dbp];
+    final sbpColor = _vitalColor(VitalType.sbp);
+    final dbpColor = _vitalColor(VitalType.dbp);
+    final worst = sbpColor == _EdgeColors.danger || dbpColor == _EdgeColors.danger
+        ? _EdgeColors.danger
+        : sbpColor == _EdgeColors.warning || dbpColor == _EdgeColors.warning
+            ? _EdgeColors.warning
+            : _EdgeColors.text;
+    final text = (sbp == null || dbp == null)
+        ? '--'
+        : '${sbp.round()}/${dbp.round()}';
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('BP',
+              style: GoogleFonts.dmSans(
+                  color: _EdgeColors.text2,
+                  fontSize: 8.5,
+                  fontWeight: FontWeight.w600)),
+          Text(text,
+              style: GoogleFonts.dmSans(
+                  color: worst, fontSize: 15, fontWeight: FontWeight.w800)),
+        ],
+      ),
+    );
+  }
+}
+
+class _AddCameraTile extends StatelessWidget {
+  final VoidCallback onTap;
+  const _AddCameraTile({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _EdgeColors.divider,
+            width: 1.4,
+            strokeAlign: BorderSide.strokeAlignInside,
+          ),
+        ),
+        child: Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.add, size: 16, color: _EdgeColors.text2),
+              const SizedBox(width: 6),
+              Text('Add camera',
+                  style: GoogleFonts.dmSans(
+                      color: _EdgeColors.text2,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ─── Stats Header ─────────────────────────────
 
 class _StatsHeader extends StatelessWidget {
@@ -217,7 +695,6 @@ class _CameraCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cp = context.read<CameraProvider>();
-    final color = camera.isEnabled ? AppColors.stable : AppColors.textSecondary;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
