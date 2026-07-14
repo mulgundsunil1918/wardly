@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Wardly — Ward, connected</title>
-  <meta name="description" content="One live feed for the whole ward team. Real-time clinical notes, replies and acknowledgements — built so a hospital ward never loses an update again." />
-  <meta property="og:title" content="Wardly — Ward, connected" />
-  <meta property="og:description" content="One live feed for the whole ward team. No more lost updates." />
+  <title>Wardly — AI-Powered Patient Monitoring for Indian Hospitals</title>
+  <meta name="description" content="A custom-trained Vision AI reads vital signs from any patient monitor through your existing hospital cameras. Real-time dashboard, auto-alerts, clinical notes — all on your phone." />
+  <meta property="og:title" content="Wardly — AI-Powered Patient Monitoring" />
+  <meta property="og:description" content="Custom Vision AI reads any patient monitor. Live vitals, auto-alerts, ward-wide notes — built for Indian hospitals." />
   <meta property="og:type" content="website" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,15 +15,16 @@
 </head>
 <body>
 
-  <!-- ═══════════ LAUNCH ANNOUNCEMENT BANNER ═══════════ -->
+  <!-- ═══════════ BANNER ═══════════ -->
   <div class="launch-banner">
     <div class="launch-banner-inner">
-      <span class="launch-confetti">🎉</span>
-      <span class="launch-text">Wardly is now <strong>live on the App Store &amp; Google Play</strong></span>
-      <a href="#download" class="launch-download-btn">Download ↓</a>
+      <span class="pulse-dot"></span>
+      <span class="launch-text">Wardly Pro: <strong>AI-Powered Vital Sign Monitoring</strong> — Built &amp; in active testing</span>
+      <a href="#ai" class="launch-download-btn">Learn more ↓</a>
     </div>
   </div>
 
+  <!-- ═══════════ NAV ═══════════ -->
   <header class="nav">
     <div class="container nav-inner">
       <div class="brand">
@@ -31,211 +32,444 @@
         <span class="brand-text">WARDLY</span>
       </div>
       <nav class="nav-links">
-        <a href="#problem">Problem</a>
-        <a href="#solution">Wardly</a>
-        <a href="#how">How it works</a>
-        <a href="#stats">Live stats</a>
+        <a href="#ai">AI Monitor</a>
+        <a href="#dashboard">Dashboard</a>
+        <a href="#features">Features</a>
+        <a href="#stats">Live Stats</a>
         <a href="./privacy.html">Privacy</a>
       </nav>
     </div>
   </header>
 
-  <!-- ─────────── HERO — The problem ─────────── -->
+  <!-- ═══════════ HERO ═══════════ -->
   <section class="hero">
-    <div class="container">
-      <div class="hero-badge danger">⚠ The problem</div>
-      <h1 class="hero-title">Ward updates<br/><span class="accent">get lost in the chaos.</span></h1>
-      <p class="hero-sub">
-        Every shift, critical patient information slips through the cracks. Notes get scribbled on paper, plans get verbal-only, and the next team comes in blind.
-      </p>
-      <div class="store-badges img-badges" style="margin-top:32px;">
-        <a href="https://apps.apple.com/us/app/wardly-ward-connected/id6769839332" target="_blank" rel="noopener">
-          <img src="badge-appstore-white.png" alt="Download on the App Store" height="58">
-        </a>
-        <a href="https://play.google.com/store/apps/details?id=com.wardly.app" target="_blank" rel="noopener">
-          <img src="badge-google-white.png" alt="Get it on Google Play" height="58">
-        </a>
+    <div class="container hero-container">
+      <div class="hero-content">
+        <div class="hero-badge">AI-POWERED MONITORING</div>
+        <h1 class="hero-title">Your ICU,<br/><span class="accent">watched by AI.</span><br/>24/7.</h1>
+        <p class="hero-sub">
+          A custom-trained Vision AI reads vital signs from <em>any</em> patient monitor
+          through your existing hospital cameras. Auto-alerts, live dashboard, clinical
+          orders — all on your phone. Built for Indian hospitals.
+        </p>
+        <div class="store-badges img-badges">
+          <a href="https://apps.apple.com/us/app/wardly-ward-connected/id6769839332" target="_blank" rel="noopener">
+            <img src="badge-appstore-white.png" alt="Download on the App Store" height="52">
+          </a>
+          <a href="https://play.google.com/store/apps/details?id=com.wardly.app" target="_blank" rel="noopener">
+            <img src="badge-google-white.png" alt="Get it on Google Play" height="52">
+          </a>
+        </div>
+        <p class="hero-web-link"><a href="https://wardlyapp.bridgr.co.in" target="_blank" rel="noopener">Or use the web app →</a></p>
       </div>
-      <p class="hero-web-link"><a href="https://wardlyapp.bridgr.co.in" target="_blank" rel="noopener">Or use the web app →</a></p>
-      <div class="hero-ctas" style="margin-top:28px; justify-content:center;">
-        <a class="btn btn-ghost-sm" href="#solution">See how it works ↓</a>
+      <div class="hero-mock">
+        <!-- CSS-only mock of the monitoring dashboard -->
+        <div class="mock-dashboard">
+          <div class="mock-header">
+            <div class="mock-title-row">
+              <span class="mock-w">W</span>
+              <span class="mock-app-title">Monitor</span>
+              <span class="mock-pro-badge">PRO</span>
+            </div>
+          </div>
+          <div class="mock-stats-bar">
+            <div class="mock-stat"><span class="mock-stat-num">4</span><span class="mock-stat-label">Patients</span></div>
+            <div class="mock-stat"><span class="mock-stat-num mock-crit">1</span><span class="mock-stat-label">Critical</span></div>
+            <div class="mock-stat"><span class="mock-stat-num mock-stable">3</span><span class="mock-stat-label">Stable</span></div>
+          </div>
+          <div class="mock-patient critical">
+            <div class="mock-p-header">
+              <span class="mock-p-name">Baby Kiran</span>
+              <span class="mock-sev mock-sev-crit">Critical</span>
+            </div>
+            <div class="mock-p-meta">M · 2 days · NICU · PPHN</div>
+            <div class="mock-vitals-row">
+              <div class="mock-vital"><span class="mvl">HR</span><span class="mvv mock-crit">88</span></div>
+              <div class="mock-vital"><span class="mvl">SpO2</span><span class="mvv mock-crit">87%</span></div>
+              <div class="mock-vital"><span class="mvl">RR</span><span class="mvv">48</span></div>
+              <div class="mock-vital"><span class="mvl">BP</span><span class="mvv">52/32</span></div>
+            </div>
+            <div class="mock-alert-line">SpO2 below critical: 87%</div>
+          </div>
+          <div class="mock-patient stable">
+            <div class="mock-p-header">
+              <span class="mock-p-name">Mr. Arjun Kumar</span>
+              <span class="mock-sev mock-sev-ok">Stable</span>
+            </div>
+            <div class="mock-p-meta">M · 58y · ICU · Post CABG</div>
+            <div class="mock-vitals-row">
+              <div class="mock-vital"><span class="mvl">HR</span><span class="mvv">82</span></div>
+              <div class="mock-vital"><span class="mvl">SpO2</span><span class="mvv">97%</span></div>
+              <div class="mock-vital"><span class="mvl">RR</span><span class="mvv">16</span></div>
+              <div class="mock-vital"><span class="mvl">BP</span><span class="mvv">118/72</span></div>
+            </div>
+          </div>
+          <div class="mock-patient stable">
+            <div class="mock-p-header">
+              <span class="mock-p-name">Mrs. Sunita Devi</span>
+              <span class="mock-sev mock-sev-ok">Stable</span>
+            </div>
+            <div class="mock-p-meta">F · 28y · Labor Room · Pre-eclampsia</div>
+            <div class="mock-vitals-row">
+              <div class="mock-vital"><span class="mvl">HR</span><span class="mvv">96</span></div>
+              <div class="mock-vital"><span class="mvl">SpO2</span><span class="mvv">98%</span></div>
+              <div class="mock-vital"><span class="mvl">RR</span><span class="mvv">20</span></div>
+              <div class="mock-vital"><span class="mvl">BP</span><span class="mvv">158/104</span></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="hero-bg"></div>
   </section>
 
-
-  <!-- ─────────── PROBLEM details ─────────── -->
-  <section id="problem" class="section section-alt">
+  <!-- ═══════════ AI PIPELINE ═══════════ -->
+  <section id="ai" class="section section-alt">
     <div class="container">
       <div class="section-head">
-        <h2>What goes wrong on a real ward</h2>
-        <p>Every team has lived through these. Wardly was built around fixing each one.</p>
+        <div class="eyebrow">THE AI ENGINE</div>
+        <h2>A Vision AI that reads any monitor</h2>
+        <p>No proprietary hardware. No brand lock-in. Point your existing hospital camera at the bedside monitor — Wardly's custom-trained AI does the rest.</p>
       </div>
-      <div class="grid grid-3 pain-grid">
-        <div class="pain-card">
-          <div class="pain-icon">💬</div>
-          <h3>WhatsApp burial</h3>
-          <p>Urgent updates buried under hundreds of unrelated messages in the ward group.</p>
+
+      <div class="pipeline">
+        <div class="pipe-step">
+          <div class="pipe-icon">📹</div>
+          <div class="pipe-num">1</div>
+          <h3>Camera captures</h3>
+          <p>Your existing IP/CCTV camera points at the bedside patient monitor. One camera covers 2-3 beds.</p>
         </div>
-        <div class="pain-card">
-          <div class="pain-icon">📝</div>
-          <h3>Lost paper notes</h3>
-          <p>Plans scribbled on a chart that nobody can find — or read — by handover.</p>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step highlight">
+          <div class="pipe-icon">🧠</div>
+          <div class="pipe-num">2</div>
+          <h3>AI reads vitals</h3>
+          <p>Our custom Vision Language Model extracts HR, SpO2, RR, BP from the screen — any brand, any layout.</p>
         </div>
-        <div class="pain-card">
-          <div class="pain-icon">❓</div>
-          <h3>No ack trail</h3>
-          <p>"Did you see the new plan?" "Did anyone act on it?" Nobody can prove it.</p>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step">
+          <div class="pipe-icon">📊</div>
+          <div class="pipe-num">3</div>
+          <h3>Live dashboard</h3>
+          <p>Every patient's vitals update on your phone in real time. One screen, whole ward.</p>
         </div>
-        <div class="pain-card">
-          <div class="pain-icon">⏱</div>
-          <h3>Phone tag</h3>
-          <p>Nurse calls doctor, doctor calls back, patient waits. Minutes you don't have.</p>
-        </div>
-        <div class="pain-card">
-          <div class="pain-icon">🔄</div>
-          <h3>Broken handover</h3>
-          <p>Outgoing team carries the context home in their head. Incoming team starts from zero.</p>
-        </div>
-        <div class="pain-card">
-          <div class="pain-icon">📵</div>
-          <h3>No record</h3>
-          <p>When something goes wrong, no clean audit of who knew what and when.</p>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step">
+          <div class="pipe-icon">🚨</div>
+          <div class="pipe-num">4</div>
+          <h3>Auto-alerts</h3>
+          <p>Thresholds breached? Push notification fires to the entire ward team instantly.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ─────────── SOLUTION ─────────── -->
-  <section id="solution" class="section">
+  <!-- ═══════════ VLM TECHNOLOGY ═══════════ -->
+  <section class="section">
     <div class="container">
       <div class="section-head">
-        <div class="eyebrow">💡 The fix</div>
-        <h2>One live feed for the whole ward team</h2>
-        <p>
-          Wardly puts every patient note, plan and alert in one shared timeline.
-          Anyone on your ward — senior or junior, doctor or nurse — sees the same
-          updates the moment they happen.
-        </p>
+        <div class="eyebrow">CUSTOM VISION LANGUAGE MODEL</div>
+        <h2>Built different. Trained on real hospital data.</h2>
+        <p>Not off-the-shelf OCR. A purpose-built Vision Language Model, fine-tuned on hundreds of real Indian hospital monitor photos across multiple brands and clinical scenarios.</p>
       </div>
-      <div class="grid grid-2 benefits">
-        <div class="benefit">
-          <div class="benefit-icon">⚡</div>
-          <div>
-            <h3>Real-time, every device</h3>
-            <p>Post once — the whole team gets it instantly with a push notification.</p>
+
+      <div class="grid grid-3">
+        <div class="tech-card">
+          <div class="tech-icon">🔌</div>
+          <h3>Any monitor brand</h3>
+          <p>Philips, GE, Mindray, Drager, BPL, Schiller — the AI reads them all. Different colors, layouts, label styles. No integration needed.</p>
+        </div>
+        <div class="tech-card">
+          <div class="tech-icon">📷</div>
+          <h3>Uses existing cameras</h3>
+          <p>Works with your hospital's existing CCTV/IP cameras. No new hardware, no monitor-specific adapters, no HL7 gateway. Just point and read.</p>
+        </div>
+        <div class="tech-card">
+          <div class="tech-icon">🫀</div>
+          <h3>HR + PR independently</h3>
+          <p>Reads Heart Rate (ECG) and Pulse Rate (SpO2 probe) as separate values — catches pulse-deficit, a real clinical finding most systems miss entirely.</p>
+        </div>
+        <div class="tech-card">
+          <div class="tech-icon">🛡️</div>
+          <h3>Safety-first design</h3>
+          <p>The model is trained to say "I don't know" rather than guess. Blurry digits, disconnected sensors, alarm limits — all handled correctly. Wrong numbers don't reach the doctor.</p>
+        </div>
+        <div class="tech-card">
+          <div class="tech-icon">🇮🇳</div>
+          <h3>Made for Indian hospitals</h3>
+          <p>Trained on photos from real Indian ICU/NICU wards. Handles the glare, angles, and mixed monitor brands that actually exist in Indian hospitals — not lab-perfect conditions.</p>
+        </div>
+        <div class="tech-card">
+          <div class="tech-icon">⚡</div>
+          <h3>Runs locally</h3>
+          <p>The AI runs on a small box at the hospital — a Mac Mini or a refurbished PC with a GPU. No cloud dependency for vitals. Your patient data stays inside your hospital.</p>
+        </div>
+      </div>
+
+      <div class="ai-status-card">
+        <div class="ai-status-left">
+          <div class="ai-status-badge">STATUS</div>
+          <h3>Built &amp; in active testing</h3>
+          <p>The Vision Language Model is fully trained, exported, and running on local hardware. Currently being validated against real hospital monitor photos from multiple brands before clinical deployment.</p>
+        </div>
+        <div class="ai-status-right">
+          <div class="ai-milestone done">
+            <span class="ai-check">&#10003;</span>
+            <span>Model architecture &amp; training pipeline</span>
+          </div>
+          <div class="ai-milestone done">
+            <span class="ai-check">&#10003;</span>
+            <span>Trained on real hospital monitor photos</span>
+          </div>
+          <div class="ai-milestone done">
+            <span class="ai-check">&#10003;</span>
+            <span>Exported to local deployment format</span>
+          </div>
+          <div class="ai-milestone done">
+            <span class="ai-check">&#10003;</span>
+            <span>Running on local hardware (Mac / GPU)</span>
+          </div>
+          <div class="ai-milestone active">
+            <span class="ai-dot"></span>
+            <span>Real-photo validation &amp; accuracy testing</span>
+          </div>
+          <div class="ai-milestone pending">
+            <span class="ai-circle"></span>
+            <span>Shadow-mode hospital pilot</span>
+          </div>
+          <div class="ai-milestone pending">
+            <span class="ai-circle"></span>
+            <span>Production deployment</span>
           </div>
         </div>
-        <div class="benefit">
-          <div class="benefit-icon">✅</div>
-          <div>
-            <h3>Acknowledged, on the record</h3>
-            <p>See exactly who has seen and acted on every note. No more guessing.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ MOCK DASHBOARD (detailed) ═══════════ -->
+  <section id="dashboard" class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <div class="eyebrow">LIVE WARD DASHBOARD</div>
+        <h2>Every patient. One screen. Real-time.</h2>
+        <p>The Monitor tab gives you a command-center view of your entire ward — vitals, alerts, orders, and notes all in one place.</p>
+      </div>
+
+      <div class="dashboard-showcase">
+        <div class="dash-col dash-col-main">
+          <div class="dash-section-label">Patient Monitor</div>
+          <div class="dash-patient-detail">
+            <div class="dash-detail-header">
+              <div>
+                <div class="dash-pname">Baby Kiran · M · 2 days</div>
+                <div class="dash-pmeta">PPHN · HFO Ventilator · Bed 3 · NICU</div>
+              </div>
+              <span class="mock-sev mock-sev-crit">Critical</span>
+            </div>
+            <div class="dash-camera-area">
+              <div class="dash-camera-icon">📹</div>
+              <span>Live camera feed</span>
+            </div>
+            <div class="dash-label">LIVE VITALS</div>
+            <div class="dash-vitals-grid">
+              <div class="dash-vital-card">
+                <div class="dv-icon" style="color:#e74c3c;">&#9829;</div>
+                <div class="dv-label">Heart Rate</div>
+                <div class="dv-value dv-crit">88</div>
+                <div class="dv-unit">bpm</div>
+                <div class="dv-status dv-status-crit">Critical</div>
+              </div>
+              <div class="dash-vital-card">
+                <div class="dv-icon" style="color:#2ecc71;">&#9679;</div>
+                <div class="dv-label">SpO<sub>2</sub></div>
+                <div class="dv-value dv-crit">87</div>
+                <div class="dv-unit">%</div>
+                <div class="dv-status dv-status-crit">Critical</div>
+              </div>
+              <div class="dash-vital-card">
+                <div class="dv-icon" style="color:#f39c12;">&#8776;</div>
+                <div class="dv-label">Resp. Rate</div>
+                <div class="dv-value">48</div>
+                <div class="dv-unit">br/min</div>
+                <div class="dv-status dv-status-ok">Normal</div>
+              </div>
+              <div class="dash-vital-card">
+                <div class="dv-icon" style="color:#3498db;">&#8593;</div>
+                <div class="dv-label">Blood Pressure</div>
+                <div class="dv-value dv-warn">52<span class="dv-slash">/</span>32</div>
+                <div class="dv-unit">MAP 39 mmHg</div>
+                <div class="dv-status dv-status-warn">Low</div>
+              </div>
+            </div>
+            <div class="dash-actions">
+              <div class="dash-action-btn primary-btn">&#9650; Trends</div>
+              <div class="dash-action-btn warn-btn">&#9881; Thresholds</div>
+            </div>
           </div>
         </div>
-        <div class="benefit">
-          <div class="benefit-icon">🔒</div>
+        <div class="dash-col dash-col-side">
+          <div class="dash-section-label">Alert Log</div>
+          <div class="dash-alerts">
+            <div class="dash-alert crit">
+              <span class="da-icon">&#9888;</span>
+              <span class="da-text">SpO2 below critical: 87%</span>
+              <span class="da-time">2m ago</span>
+            </div>
+            <div class="dash-alert crit">
+              <span class="da-icon">&#9888;</span>
+              <span class="da-text">HR below critical: 88 bpm</span>
+              <span class="da-time">5m ago</span>
+            </div>
+            <div class="dash-alert warn">
+              <span class="da-icon">&#9888;</span>
+              <span class="da-text">BP MAP below warning: 39</span>
+              <span class="da-time">8m ago</span>
+            </div>
+          </div>
+
+          <div class="dash-section-label" style="margin-top:16px;">Orders &amp; Notes</div>
+          <div class="dash-orders">
+            <div class="dash-order">
+              <span class="do-type do-order">Order</span>
+              <span class="do-text">iNO started at 20 ppm, wean by 5 ppm q4h if SpO2 &gt; 90%</span>
+              <span class="do-author">Dr. Sunil · 2h ago</span>
+            </div>
+            <div class="dash-order">
+              <span class="do-type do-note">Note</span>
+              <span class="do-text">Parents counselled about PPHN prognosis. Echo tomorrow.</span>
+              <span class="do-author">Dr. Sunil · 3h ago</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ FEATURES ═══════════ -->
+  <section id="features" class="section">
+    <div class="container">
+      <div class="section-head">
+        <div class="eyebrow">COMPLETE WARD PLATFORM</div>
+        <h2>Not just monitoring — a connected ward</h2>
+        <p>Wardly combines AI-powered vitals monitoring with real-time clinical notes, orders, and team communication. One app replaces the chaos of WhatsApp groups, paper notes, and phone tag.</p>
+      </div>
+
+      <div class="grid grid-2 feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon">📊</div>
+          <div>
+            <h3>Live vitals dashboard</h3>
+            <p>Every patient's HR, SpO2, RR, BP on one screen. Color-coded severity. Tap any patient for full detail view with trends and thresholds.</p>
+          </div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🚨</div>
+          <div>
+            <h3>Auto-alerts with thresholds</h3>
+            <p>Set custom alert thresholds per patient. Breach triggers push notifications to the whole ward team instantly. Critical vs. warning severity.</p>
+          </div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📝</div>
+          <div>
+            <h3>Clinical orders &amp; notes</h3>
+            <p>Post orders and notes against specific patients. Visible on the bedside display. Normal, Urgent, or Low priority. Threaded replies with full audit trail.</p>
+          </div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">✅</div>
+          <div>
+            <h3>Acknowledgement system</h3>
+            <p>See exactly who has seen and acted on every note. No more "did you get my message?" — timestamped, on the record.</p>
+          </div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📈</div>
+          <div>
+            <h3>Vital trends over time</h3>
+            <p>Interactive charts showing how each vital has changed over hours. Spot deterioration before it becomes an emergency.</p>
+          </div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔒</div>
           <div>
             <h3>Ward-private by design</h3>
-            <p>Members of your ward see your ward — nothing more, nothing else.</p>
-          </div>
-        </div>
-        <div class="benefit">
-          <div class="benefit-icon">🗂</div>
-          <div>
-            <h3>Permanent patient history</h3>
-            <p>Every note is filed against the patient, ready when handover hits.</p>
+            <p>Members of your ward see your ward — nothing else. No cross-ward data leakage. Built on Firebase with strict security rules.</p>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ─────────── HOW IT WORKS — with real UI mocks ─────────── -->
-  <section id="how" class="section section-alt">
+  <!-- ═══════════ HOW IT WORKS ═══════════ -->
+  <section class="section section-alt">
     <div class="container">
       <div class="section-head">
-        <div class="eyebrow">🛠 How it works</div>
-        <h2>Four taps from chaos to coordinated</h2>
-        <p>The whole loop, with the real UI elements you'll use in the app.</p>
+        <div class="eyebrow">GET STARTED</div>
+        <h2>Up and running in minutes</h2>
+        <p>No IT department needed. Any doctor or nurse can set up Wardly for their ward.</p>
       </div>
       <ol class="how-steps">
-
         <li>
           <div class="how-num">1</div>
           <div class="how-body">
-            <h3>Create or join your ward</h3>
-            <p>One person creates the ward — Wardly hands them a 5-digit code. Share it with the team and they're in.</p>
-            <div class="mock ward-mock">
-              <div class="ward-icon">🏥</div>
-              <div>
-                <div class="ward-name">ICU Ward A</div>
-                <div class="ward-code">Code: <strong>47291</strong> · tap to copy</div>
-              </div>
-              <div class="ward-copy">📋</div>
-            </div>
+            <h3>Create your ward</h3>
+            <p>One person creates the ward — Wardly generates a 5-digit code. Share it with your team and they're in.</p>
           </div>
         </li>
-
         <li>
           <div class="how-num">2</div>
           <div class="how-body">
-            <h3>Add the patients</h3>
-            <p>Add patients on your ward once. Notes get filed against the right person automatically.</p>
-            <div class="mock patient-row">
-              <div class="patient-chip"><span class="bed">Bed 12</span> Mr. R. Kumar</div>
-              <div class="patient-chip"><span class="bed">Bed 18</span> Ms. A. Shah</div>
-              <div class="patient-chip"><span class="bed">Bed 24</span> Mr. S. Iyer</div>
-            </div>
+            <h3>Add your patients</h3>
+            <p>Add patients to the ward with bed number, diagnosis, and support details. Notes and vitals get filed against the right person.</p>
           </div>
         </li>
-
         <li>
           <div class="how-num">3</div>
           <div class="how-body">
-            <h3>Post a note</h3>
-            <p>Write the update, set Normal, Urgent or Low priority, hit post. Done.</p>
-            <div class="mock note-mock">
-              <div class="note-head">
-                <span class="priority-pill urgent">● Urgent</span>
-                <span class="note-meta">Bed 12 · Mr. R. Kumar</span>
-              </div>
-              <div class="note-body">BP dropping — please review. Started fluids, awaiting cardiology callback.</div>
-              <div class="note-foot">Dr. Pew Pew · 2 min ago</div>
-            </div>
+            <h3>Connect a camera</h3>
+            <p>Point a phone or IP camera at the bedside monitor. The AI starts reading vitals immediately. Set alert thresholds per patient.</p>
           </div>
         </li>
-
         <li>
           <div class="how-num">4</div>
           <div class="how-body">
-            <h3>Team sees it & acknowledges</h3>
-            <p>Push notifications fire across the ward. A teammate taps Acknowledge — the whole team sees who, when, and what they replied.</p>
-            <div class="mock ack-mock">
-              <div class="ack-head">
-                <span class="avatar">SM</span>
-                <span class="ack-name">Sunil Mulgund</span>
-                <span class="role-pill doctor">Doctor</span>
-                <span class="ack-time">now</span>
-              </div>
-              <div class="ack-banner">✓ Acknowledged by Sunil Mulgund</div>
-              <div class="ack-text">On it — calling cardiology now.</div>
-            </div>
+            <h3>Monitor from anywhere</h3>
+            <p>Live vitals on your phone, auto-alerts on breaches, post orders that appear at the bedside. The whole ward team stays in sync.</p>
           </div>
         </li>
-
       </ol>
     </div>
   </section>
 
-  <!-- ─────────── LIVE STATS — pulled from Firestore /metrics/totals ─────────── -->
+  <!-- ═══════════ PRICING HINT ═══════════ -->
+  <section class="section">
+    <div class="container">
+      <div class="pricing-card">
+        <div class="pricing-left">
+          <div class="eyebrow">WARDLY PRO</div>
+          <div class="pricing-amount">&#8377;2,999<span class="pricing-period">/ward/month</span></div>
+          <p>Unlimited team members per ward. Notes, alerts, monitoring, orders — everything included. No per-user fees.</p>
+        </div>
+        <div class="pricing-right">
+          <div class="pricing-feature"><span class="pf-check">&#10003;</span> Unlimited team members</div>
+          <div class="pricing-feature"><span class="pf-check">&#10003;</span> AI-powered vital monitoring</div>
+          <div class="pricing-feature"><span class="pf-check">&#10003;</span> Real-time alerts &amp; thresholds</div>
+          <div class="pricing-feature"><span class="pf-check">&#10003;</span> Clinical orders &amp; notes</div>
+          <div class="pricing-feature"><span class="pf-check">&#10003;</span> Vital trends &amp; history</div>
+          <div class="pricing-feature"><span class="pf-check">&#10003;</span> Bedside display for orders</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ LIVE STATS ═══════════ -->
   <section id="stats" class="section section-alt">
     <div class="container">
       <div class="section-head">
-        <div class="eyebrow">📊 Live numbers</div>
-        <h2>Wardly, by the numbers — right now</h2>
-        <p>Pulled live from the production Firestore. These tick up as teams use the app.</p>
+        <div class="eyebrow">TRACTION</div>
+        <h2>Wardly, by the numbers — live</h2>
+        <p>Pulled live from the production database. These tick up as teams use the app.</p>
       </div>
       <div class="stats-grid">
         <div class="stat-card"><div class="stat-num" data-stat="users">—</div><div class="stat-label">Total users</div></div>
@@ -243,29 +477,31 @@
         <div class="stat-card"><div class="stat-num" data-stat="patients">—</div><div class="stat-label">Patients</div></div>
         <div class="stat-card"><div class="stat-num" data-stat="notes">—</div><div class="stat-label">Notes posted</div></div>
         <div class="stat-card"><div class="stat-num" data-stat="acks">—</div><div class="stat-label">Acknowledgements</div></div>
-        <div class="stat-card"><div class="stat-num" data-stat="comments">—</div><div class="stat-label">Replies in threads</div></div>
+        <div class="stat-card"><div class="stat-num" data-stat="comments">—</div><div class="stat-label">Replies</div></div>
       </div>
-      <p class="stats-note">Last updated <span data-stat="updated">just now</span> · counts are cumulative since the app went live.</p>
+      <p class="stats-note">Last updated <span data-stat="updated">just now</span> · cumulative since launch.</p>
     </div>
   </section>
 
-  <!-- ─────────── CTA ─────────── -->
+  <!-- ═══════════ CTA ═══════════ -->
   <section class="cta-section" id="download">
     <div class="container cta-inner">
       <h2>Ready to connect your ward?</h2>
-      <p>Download the app or use Wardly instantly in your browser — no extra setup needed.</p>
+      <p>Download the app, create your ward, and your team is connected in under 5 minutes.</p>
       <div class="store-badges img-badges" style="justify-content:center; margin-bottom:16px;">
         <a href="https://apps.apple.com/us/app/wardly-ward-connected/id6769839332" target="_blank" rel="noopener">
-          <img src="badge-appstore-white.png" alt="Download on the App Store" height="44">
+          <img src="badge-appstore-white.png" alt="Download on the App Store" height="48">
         </a>
         <a href="https://play.google.com/store/apps/details?id=com.wardly.app" target="_blank" rel="noopener">
-          <img src="badge-google-white.png" alt="Get it on Google Play" height="44">
+          <img src="badge-google-white.png" alt="Get it on Google Play" height="48">
         </a>
       </div>
       <a class="btn btn-ghost" href="https://wardlyapp.bridgr.co.in" target="_blank" rel="noopener">Or launch in browser →</a>
+      <p class="cta-contact">Want a demo or partnership discussion? <a href="mailto:mulgundsunil@gmail.com">mulgundsunil@gmail.com</a></p>
     </div>
   </section>
 
+  <!-- ═══════════ FOOTER ═══════════ -->
   <footer class="footer">
     <div class="container footer-inner">
       <div class="brand">
@@ -278,13 +514,13 @@
         <a href="https://play.google.com/store/apps/details?id=com.wardly.app" target="_blank" rel="noopener">Play Store</a>
         <a href="./privacy.html">Privacy</a>
         <a href="/status/">Status</a>
-        <a href="https://bridgr.co.in/support?from=wardly" target="_blank" rel="noopener">Report issue</a>
+        <a href="mailto:mulgundsunil@gmail.com">Contact</a>
       </div>
-      <div class="footer-note">Built with Flutter &amp; Firebase. Ward-private by design.</div>
+      <div class="footer-note">Built with Flutter &amp; Firebase. AI powered by a custom Vision Language Model. Ward-private by design.</div>
     </div>
   </footer>
 
-  <!-- ─── Live stats: pull /metrics/totals from Firestore via the JS SDK. ─── -->
+  <!-- ═══════════ LIVE STATS SCRIPT ═══════════ -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
     import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
@@ -308,27 +544,18 @@
     };
 
     const animate = (el, target) => {
-      const start = 0;
       const dur = 700;
       const t0 = performance.now();
       const step = (t) => {
         const p = Math.min(1, (t - t0) / dur);
-        const v = Math.round(start + (target - start) * (1 - Math.pow(1 - p, 3)));
-        el.textContent = fmt(v);
+        el.textContent = fmt(Math.round(target * (1 - Math.pow(1 - p, 3))));
         if (p < 1) requestAnimationFrame(step);
       };
       requestAnimationFrame(step);
     };
 
-    // Reuse a cached result for 5 minutes per browser. A page reload or a
-    // second tab within that window costs zero Firestore reads. The full
-    // cumulative tally barely changes minute-to-minute anyway.
     const CACHE_KEY = "wardly_stats_v1";
     const CACHE_TTL_MS = 5 * 60 * 1000;
-
-    // Always render every expected stat — if a counter is missing (e.g.
-    // the field was never bumped on the metrics doc) we still want the
-    // card to read '0' instead of leaving the placeholder em-dash up.
     const STAT_KEYS = ["users", "wards", "patients", "notes", "acks", "comments"];
 
     function paint(map, lastActivityIso) {
@@ -336,55 +563,37 @@
       for (const key of STAT_KEYS) {
         const el = document.querySelector(`[data-stat="${key}"]`);
         if (!el) continue;
-        const val = m[key];
-        if (typeof val === "number") animate(el, val);
+        if (typeof m[key] === "number") animate(el, m[key]);
         else el.textContent = "0";
       }
       const u = document.querySelector('[data-stat="updated"]');
-      if (u && lastActivityIso) {
-        u.textContent = new Date(lastActivityIso).toLocaleString();
-      }
+      if (u && lastActivityIso) u.textContent = new Date(lastActivityIso).toLocaleString();
     }
 
     async function loadStats() {
-      // 1. Try cache.
       try {
         const raw = localStorage.getItem(CACHE_KEY);
         if (raw) {
           const cached = JSON.parse(raw);
           if (cached?.savedAt && Date.now() - cached.savedAt < CACHE_TTL_MS) {
             paint(cached.map, cached.lastActivityIso);
-            return; // No Firestore read at all this visit.
+            return;
           }
         }
       } catch (_) {}
 
-      // 2. Fall through to a one-shot Firestore read.
       try {
         const snap = await getDoc(doc(db, "metrics", "totals"));
         const data = snap.exists() ? snap.data() : {};
         const map = {
-          users: data.userCount,
-          wards: data.wardCount,
-          patients: data.patientCount,
-          notes: data.noteCount,
-          acks: data.ackCount,
-          comments: data.commentCount,
+          users: data.userCount, wards: data.wardCount, patients: data.patientCount,
+          notes: data.noteCount, acks: data.ackCount, comments: data.commentCount,
         };
-        const t = data.lastActivityAt?.toDate
-          ? data.lastActivityAt.toDate()
-          : null;
+        const t = data.lastActivityAt?.toDate ? data.lastActivityAt.toDate() : null;
         const lastActivityIso = t ? t.toISOString() : null;
         paint(map, lastActivityIso);
-        try {
-          localStorage.setItem(
-            CACHE_KEY,
-            JSON.stringify({ savedAt: Date.now(), map, lastActivityIso }),
-          );
-        } catch (_) {}
-      } catch (e) {
-        console.warn("Wardly stats load failed:", e);
-      }
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify({ savedAt: Date.now(), map, lastActivityIso })); } catch (_) {}
+      } catch (e) { console.warn("Wardly stats load failed:", e); }
     }
 
     loadStats();
