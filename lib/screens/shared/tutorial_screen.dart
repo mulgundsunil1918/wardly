@@ -9,7 +9,9 @@ import '../../providers/theme_provider.dart';
 class TutorialScreen extends StatefulWidget {
   const TutorialScreen({super.key});
 
-  static const String prefKey = 'tutorial_done';
+  // Versioned: bumping re-shows the tour once for existing users after an
+  // update that changes the app's layout (same pattern as onboarding).
+  static const String prefKey = 'tutorial_done_v2';
 
   static Future<bool> isDone() async {
     final prefs = await SharedPreferences.getInstance();
@@ -109,12 +111,13 @@ class _TutorialScreenState extends State<TutorialScreen> {
       icon: Icons.menu,
       iconColor: AppColors.adminColor,
       title: 'Bottom navigation',
-      body: "Five tabs:",
+      body: "Up to six tabs, depending on your role:",
       points: [
         ('Home', 'Stats + active patients + recent notes'),
+        ('Wards', 'Your wards · share codes · join · create · view members'),
         ('Patients', 'Tabs per ward, full active patient list'),
         ('Notes', 'Every ward note — full feed'),
-        ('Wards', 'Your wards · share IDs · join · create · view members'),
+        ('Monitor', 'Live ward dashboard — vitals, alerts, orders (Wardly Pro)'),
         ('Profile', 'Your account, theme, daily chai toggle, sign out'),
       ],
     ),
@@ -123,11 +126,24 @@ class _TutorialScreenState extends State<TutorialScreen> {
       iconColor: AppColors.accent,
       title: 'Wards — share & join',
       body:
-          "In the Wards tab, every ward has an 8-character ID. Tap the ID to copy it; tap Share to send it through WhatsApp / SMS / email.\n\nTeammates use Join Ward (top right) and paste the ID — they're in.",
+          "In the Wards tab, every ward has a 5-digit code. Tap the code to copy it; tap Share to send it through WhatsApp / SMS / email.\n\nTeammates use Join Ward (top right) and enter the code — they're in.",
       points: [
         ('Members', 'Who else is in this ward'),
         ('Share', 'Send the join code'),
         ('Delete', 'Only the ward creator can delete it (cascades patients + notes)'),
+      ],
+    ),
+    _TutorialSlide(
+      icon: Icons.monitor_heart_outlined,
+      iconColor: AppColors.accent,
+      title: 'Monitor — your ward dashboard',
+      body:
+          "The Monitor tab is the Wardly Pro live dashboard: every monitored patient's vitals in one place, read from the bedside monitor by AI.",
+      points: [
+        ('Patient cards', 'Live HR, SpO₂, RR and BP per bed — tap a card for the full detail view'),
+        ('Recent alerts', 'Threshold breaches across the ward, newest first'),
+        ('Orders & notes', 'Latest team activity, right under the vitals'),
+        ('Thresholds', 'Set per-patient alarm limits from the patient detail page'),
       ],
     ),
     _TutorialSlide(
