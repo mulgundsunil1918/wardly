@@ -72,6 +72,10 @@ dependencies:
   agora_rtc_engine: ^6.5.0
   # Vital trend charts
   fl_chart: ^0.70.2
+  # True live RTSP streaming on macOS desktop (libmpv-backed)
+  media_kit: ^1.1.11
+  media_kit_video: ^1.2.5
+  media_kit_libs_video: ^1.0.5
 
 dev_dependencies:
   flutter_test:

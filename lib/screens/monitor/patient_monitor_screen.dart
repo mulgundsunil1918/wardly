@@ -1,18 +1,21 @@
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/monitor_vitals.dart';
+import '../../providers/camera_provider.dart';
 import '../../providers/monitor_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/monitor/alert_log.dart';
 import '../../widgets/monitor/bp_card.dart';
 import '../../widgets/monitor/comment_panel.dart';
-import '../../widgets/monitor/remote_video_viewer.dart';
+import '../../widgets/monitor/edge_camera_viewer.dart';
 import '../../widgets/monitor/threshold_panel.dart';
 import '../../widgets/monitor/vital_card.dart';
+import 'bedside_sender_screen.dart';
 import 'vital_trends_screen.dart';
 
 class PatientMonitorScreen extends StatelessWidget {
@@ -117,6 +120,77 @@ class PatientMonitorScreen extends StatelessWidget {
     );
   }
 
+  bool get _isDesktop =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.macOS ||
+       defaultTargetPlatform == TargetPlatform.windows ||
+       defaultTargetPlatform == TargetPlatform.linux);
+
+  bool get _isMobile =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.iOS ||
+       defaultTargetPlatform == TargetPlatform.android);
+
+  Widget _videoViewer(BuildContext context, patient) {
+    if (_isDesktop) {
+      // IP camera takes priority; fall back to Agora phone stream viewer
+      final cameras = context.read<CameraProvider>().cameras;
+      final hasCamera = cameras.any((c) =>
+          (c.patientId == patientId || c.patientName == patient.name) &&
+          c.isEnabled);
+      if (hasCamera) {
+        return EdgeCameraViewer(patientId: patientId, patientName: patient.name);
+      }
+    }
+    return Container(
+      height: 200,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.black87,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Center(
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          const Icon(Icons.videocam_off, color: Colors.white30, size: 32),
+          const SizedBox(height: 8),
+          Text('No camera configured',
+              style: GoogleFonts.dmSans(color: Colors.white38, fontSize: 12)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _streamFromPhoneButton(BuildContext context, patient) {
+    if (!_isMobile) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: SizedBox(
+        width: double.infinity,
+        height: 48,
+        child: ElevatedButton.icon(
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => BedsideSenderScreen(
+                patientId: patientId,
+                patientName: patient.name,
+                wardId: patient.ward,
+              ),
+            ),
+          ),
+          icon: const Icon(Icons.videocam, size: 18),
+          label: Text('Stream from Phone',
+              style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _wideLayout(BuildContext context, patient, List alerts, List comments, MonitorProvider monitor) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -127,18 +201,14 @@ class PatientMonitorScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                RemoteVideoViewer(
-                  patientId: patientId,
-                  patientName: patient.name,
-                  ward: patient.ward,
-                  bed: patient.bed,
-                ),
+                _videoViewer(context, patient),
                 const SizedBox(height: 16),
                 _vitalsHeader(context, patient),
                 const SizedBox(height: 8),
                 _vitalsGrid(patient),
                 const SizedBox(height: 12),
                 _actionButtons(context, patient, monitor),
+                _streamFromPhoneButton(context, patient),
               ],
             ),
           ),
@@ -169,18 +239,14 @@ class PatientMonitorScreen extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          RemoteVideoViewer(
-            patientId: patientId,
-            patientName: patient.name,
-            ward: patient.ward,
-            bed: patient.bed,
-          ),
+          _videoViewer(context, patient),
           const SizedBox(height: 16),
           _vitalsHeader(context, patient),
           const SizedBox(height: 8),
           _vitalsGrid(patient),
           const SizedBox(height: 12),
           _actionButtons(context, patient, monitor),
+          _streamFromPhoneButton(context, patient),
           const SizedBox(height: 16),
           AlertLog(alerts: alerts.cast()),
           const SizedBox(height: 12),

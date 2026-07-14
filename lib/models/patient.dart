@@ -11,6 +11,7 @@ class Patient {
   final String? bloodGroup;
   final DateTime admittedAt;
   final bool isActive;
+  final String hlsStreamUrl;
 
   const Patient({
     required this.id,
@@ -23,6 +24,7 @@ class Patient {
     this.bloodGroup,
     required this.admittedAt,
     this.isActive = true,
+    this.hlsStreamUrl = '',
   });
 
   factory Patient.fromFirestore(DocumentSnapshot doc) {
@@ -39,6 +41,7 @@ class Patient {
       admittedAt:
           (data['admittedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isActive: data['isActive'] as bool? ?? true,
+      hlsStreamUrl: data['hlsStreamUrl'] as String? ?? '',
     );
   }
 

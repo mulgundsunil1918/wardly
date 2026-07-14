@@ -56,6 +56,10 @@ class PatientService {
     await _patients.doc(patient.id).update(patient.toMap());
   }
 
+  Future<void> saveHlsUrl(String patientId, String url) async {
+    await _patients.doc(patientId).update({'hlsStreamUrl': url.trim()});
+  }
+
   Future<void> deletePatient(String patientId) async {
     await _deleteNotesFor(patientId);
     await _patients.doc(patientId).delete();

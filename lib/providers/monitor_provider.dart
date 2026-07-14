@@ -37,6 +37,30 @@ class MonitorProvider extends ChangeNotifier {
 
   bool _usingRealPatients = false;
 
+  // Patients with live OCR data skip simulation so real readings show
+  final _ocrActive = <String>{};
+  final Map<String, Timer> _ocrExpiry = {};
+
+  /// Called by EdgeCameraViewer when OCR detects vitals from the RTSP frame.
+  /// Suppresses simulation for this patient for 15s after last OCR push.
+  void injectOcrVitals(String patientId, Map<VitalType, double> vitals) {
+    final idx = _patients.indexWhere((p) => p.id == patientId);
+    if (idx < 0) return;
+    _ocrActive.add(patientId);
+    _ocrExpiry[patientId]?.cancel();
+    _ocrExpiry[patientId] = Timer(const Duration(seconds: 15), () {
+      _ocrActive.remove(patientId);
+      _ocrExpiry.remove(patientId);
+    });
+    final merged = Map<VitalType, double>.from(_patients[idx].vitals)..addAll(vitals);
+    _patients[idx] = _patients[idx].copyWith(vitals: merged);
+    _checkAlerts(patientId, merged, _patients[idx].thresholds);
+    _history.putIfAbsent(patientId, () => []);
+    _history[patientId]!.add(VitalSnapshot(DateTime.now(), Map.from(merged)));
+    if (_history[patientId]!.length > _maxHistory) _history[patientId]!.removeAt(0);
+    notifyListeners();
+  }
+
   void init() {
     if (!_usingRealPatients) {
       _patients = List.from(_demoPatients);
@@ -197,6 +221,7 @@ class MonitorProvider extends ChangeNotifier {
   void _simTick() {
     for (int i = 0; i < _patients.length; i++) {
       final p = _patients[i];
+      if (_ocrActive.contains(p.id)) continue; // live OCR — skip simulation
       final newVitals = <VitalType, double>{};
 
       for (final vt in VitalType.values) {

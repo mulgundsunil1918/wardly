@@ -71,12 +71,12 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyCsDq-DyqblvWILn7W3h4YrFLd-27ztodc',
-    appId: '1:525482754887:ios:06b2cd4f7c31de578a8262',
+    appId: '1:525482754887:ios:834e98bc75e07fea8a8262',
     messagingSenderId: '525482754887',
     projectId: 'wardly-24081996',
     storageBucket: 'wardly-24081996.firebasestorage.app',
-    iosClientId: '525482754887-ajnml4mjhqdbsl2mk5pvst9i9c2lidg4.apps.googleusercontent.com',
-    iosBundleId: 'com.example.wardly',
+    iosClientId: '525482754887-739hr7jh8oc0ojdqcvso2u26lqev9q84.apps.googleusercontent.com',
+    iosBundleId: 'com.wardlyapple.app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(

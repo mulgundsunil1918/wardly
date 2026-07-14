@@ -1,4 +1,5 @@
 export 'auth_provider.dart';
+export 'camera_provider.dart';
 export 'monitor_provider.dart';
 export 'note_provider.dart';
 export 'notification_provider.dart';

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -9,6 +10,9 @@ import '../../providers/auth_provider.dart';
 import '../../providers/note_provider.dart';
 import '../../providers/patient_provider.dart';
 import '../../utils/app_theme.dart';
+import '../../services/patient_service.dart';
+import '../../widgets/monitor/remote_video_viewer.dart';
+import '../../widgets/monitor/web_stream_card.dart';
 import '../../widgets/note_card.dart';
 import 'add_note_screen.dart';
 import '../../providers/theme_provider.dart';
@@ -72,6 +76,20 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: patient.hlsStreamUrl.isNotEmpty
+                      ? (kIsWeb
+                          ? WebStreamCard(
+                              patientName: patient.name,
+                              hlsUrl: patient.hlsStreamUrl,
+                            )
+                          : RemoteVideoViewer(
+                              patientName: patient.name,
+                              hlsUrl: patient.hlsStreamUrl,
+                            ))
+                      : _SetStreamUrlCard(onTap: () => _setStreamUrl(patient)),
+                ),
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: _infoCard(patient),
@@ -257,6 +275,64 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
     );
   }
 
+  Future<void> _setStreamUrl(Patient patient) async {
+    final ctrl = TextEditingController();
+    final url = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('Set Live Stream URL',
+            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Paste the HLS URL from your Cloudflare tunnel.',
+                style: GoogleFonts.dmSans(
+                    color: AppColors.textSecondary, fontSize: 12)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              autofocus: true,
+              style: GoogleFonts.dmSans(fontSize: 13),
+              decoration: InputDecoration(
+                hintText: 'https://…/nicu/index.m3u8',
+                hintStyle: GoogleFonts.dmSans(color: AppColors.textSecondary),
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary),
+            onPressed: () => Navigator.pop(context, ctrl.text.trim()),
+            child: const Text('Save',
+                style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    if (url == null || url.isEmpty) return;
+    try {
+      await PatientService().saveHlsUrl(patient.id, url);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Stream URL saved.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
+  }
+
   String _dateHeader(DateTime d) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -308,6 +384,58 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
           ],
         );
       },
+    );
+  }
+}
+
+class _SetStreamUrlCard extends StatelessWidget {
+  final VoidCallback onTap;
+  const _SetStreamUrlCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.videocam_outlined,
+                  color: AppColors.primary, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Set Live Stream URL',
+                      style: GoogleFonts.dmSans(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                          fontSize: 14)),
+                  Text('Tap to connect a remote camera feed',
+                      style: GoogleFonts.dmSans(
+                          color: AppColors.textSecondary, fontSize: 12)),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios,
+                size: 14, color: AppColors.textSecondary),
+          ],
+        ),
+      ),
     );
   }
 }

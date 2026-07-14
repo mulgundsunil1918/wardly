@@ -15,6 +15,12 @@ import '../models/app_user.dart';
 import '../utils/app_constants.dart';
 import 'metrics_service.dart';
 
+bool get _isDesktop =>
+    !kIsWeb &&
+    (defaultTargetPlatform == TargetPlatform.macOS ||
+     defaultTargetPlatform == TargetPlatform.windows ||
+     defaultTargetPlatform == TargetPlatform.linux);
+
 class AuthService {
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
@@ -138,10 +144,10 @@ class AuthService {
   /// on iOS. Android raises a runtime error if called there.
   Future<AppUser?> signInWithApple() async {
     if (kIsWeb) {
-      throw UnsupportedError('Sign in with Apple is iOS-only.');
+      throw UnsupportedError('Sign in with Apple is not available on web.');
     }
-    if (!Platform.isIOS) {
-      throw UnsupportedError('Sign in with Apple is iOS-only.');
+    if (!Platform.isIOS && !Platform.isMacOS) {
+      throw UnsupportedError('Sign in with Apple requires iOS or macOS.');
     }
     // Firebase verifies Apple Sign-In with a nonce to block replay attacks:
     //  1. generate a random rawNonce
@@ -235,11 +241,13 @@ class AuthService {
   }
 
   Future<void> signOut() async {
-    try {
-      await GoogleSignIn(
-        clientId: DefaultFirebaseOptions.currentPlatform.iosClientId,
-      ).signOut();
-    } catch (_) {}
+    if (!_isDesktop) {
+      try {
+        await GoogleSignIn(
+          clientId: DefaultFirebaseOptions.currentPlatform.iosClientId,
+        ).signOut();
+      } catch (_) {}
+    }
     await _auth.signOut();
   }
 

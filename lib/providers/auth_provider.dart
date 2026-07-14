@@ -11,11 +11,11 @@ class AuthProvider extends ChangeNotifier {
 
   AppUser? _currentUser;
   bool _isLoading = false;
-  String? _error;
+  Object? _error;
 
   AppUser? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
-  String? get error => _error;
+  Object? get error => _error;
   bool get isLoggedIn => _currentUser != null;
   bool get isDoctor => _currentUser?.role == UserRole.doctor;
   bool get isNurse => _currentUser?.role == UserRole.nurse;
@@ -35,7 +35,9 @@ class AuthProvider extends ChangeNotifier {
       _setLoading(false);
       return user != null;
     } catch (e) {
-      _error = _friendly(e);
+      debugPrint('AUTH ERROR FULL: $e');
+      debugPrint('AUTH ERROR TYPE: ${e.runtimeType}');
+      _error = e;
       _setLoading(false);
       return false;
     }
@@ -62,7 +64,8 @@ class AuthProvider extends ChangeNotifier {
       _setLoading(false);
       return user != null;
     } catch (e) {
-      _error = _friendly(e);
+      debugPrint('AUTH ERROR: $e (${e.runtimeType})');
+      _error = e;
       _setLoading(false);
       return false;
     }
@@ -77,7 +80,8 @@ class AuthProvider extends ChangeNotifier {
       _setLoading(false);
       return user != null;
     } catch (e) {
-      _error = _friendly(e);
+      debugPrint('AUTH ERROR: $e (${e.runtimeType})');
+      _error = e;
       _setLoading(false);
       return false;
     }
@@ -94,7 +98,8 @@ class AuthProvider extends ChangeNotifier {
       _setLoading(false);
       return user != null;
     } catch (e) {
-      _error = _friendly(e);
+      debugPrint('AUTH ERROR: $e (${e.runtimeType})');
+      _error = e;
       _setLoading(false);
       return false;
     }
@@ -106,7 +111,8 @@ class AuthProvider extends ChangeNotifier {
       await _authService.sendPasswordReset(email);
       return true;
     } catch (e) {
-      _error = _friendly(e);
+      debugPrint('AUTH ERROR: $e (${e.runtimeType})');
+      _error = e;
       notifyListeners();
       return false;
     }
@@ -123,7 +129,8 @@ class AuthProvider extends ChangeNotifier {
     try {
       _currentUser = await _authService.getCurrentUser();
     } catch (e) {
-      _error = _friendly(e);
+      debugPrint('AUTH ERROR: $e (${e.runtimeType})');
+      _error = e;
     }
     _setLoading(false);
   }

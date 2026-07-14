@@ -3,7 +3,11 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:camera/camera.dart';
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:flutter/services.dart';
+
+// ML Kit only available on iOS/Android — guarded below
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart'
+    if (dart.library.html) 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
 import '../models/monitor_vitals.dart';
 
@@ -45,26 +49,34 @@ class ParsedVitals {
   bool get hasAnyVital => hr != null || spo2 != null || rr != null || sbp != null;
 
   @override
-  String toString() => 'HR:$hr SpO2:$spo2 RR:$rr BP:$sbp/$dbp MAP:$map (conf:$confidence)';
+  String toString() => 'HR:$hr SpO2:$spo2 RR:$rr BP:$sbp/$dbp (conf:$confidence)';
 }
 
 class VitalsOcrService {
-  final TextRecognizer _recognizer = TextRecognizer();
+  // ML Kit recognizer — only created on iOS/Android
+  TextRecognizer? _recognizer;
   bool _isProcessing = false;
+
+  // macOS uses Apple Vision via a method channel
+  static const _channel = MethodChannel('com.wardly.app/vision_ocr');
+
+  VitalsOcrService() {
+    if (Platform.isIOS || Platform.isAndroid) {
+      _recognizer = TextRecognizer();
+    }
+  }
 
   bool get isProcessing => _isProcessing;
 
   Future<ParsedVitals?> processFrame(CameraImage image, CameraDescription camera) async {
+    if (!Platform.isIOS && !Platform.isAndroid) return null;
     if (_isProcessing) return null;
     _isProcessing = true;
-
     try {
       final inputImage = _buildInputImage(image, camera);
       if (inputImage == null) return null;
-
-      final result = await _recognizer.processImage(inputImage);
-      final parsed = _parseVitals(result);
-      return parsed;
+      final result = await _recognizer!.processImage(inputImage);
+      return _parseVitalsFromText(result.text);
     } catch (_) {
       return null;
     } finally {
@@ -75,11 +87,13 @@ class VitalsOcrService {
   Future<ParsedVitals?> processFile(File imageFile) async {
     if (_isProcessing) return null;
     _isProcessing = true;
-
     try {
+      if (Platform.isMacOS) {
+        return await _processFileMacOS(imageFile);
+      }
       final inputImage = InputImage.fromFile(imageFile);
-      final result = await _recognizer.processImage(inputImage);
-      return _parseVitals(result);
+      final result = await _recognizer!.processImage(inputImage);
+      return _parseVitalsFromText(result.text);
     } catch (_) {
       return null;
     } finally {
@@ -87,12 +101,41 @@ class VitalsOcrService {
     }
   }
 
+  /// macOS: call Apple Vision text recognition via Swift method channel.
+  Future<ParsedVitals?> _processFileMacOS(File imageFile) async {
+    try {
+      final text = await _channel.invokeMethod<String>(
+        'recognizeText',
+        {'path': imageFile.path},
+      );
+      if (text == null || text.isEmpty) return null;
+      return _parseVitalsFromText(text);
+    } on PlatformException {
+      // Channel not yet wired — fall back to tesseract if installed
+      return _processFileTesseract(imageFile);
+    }
+  }
+
+  Future<ParsedVitals?> _processFileTesseract(File imageFile) async {
+    try {
+      const paths = ['/usr/local/bin/tesseract', '/opt/homebrew/bin/tesseract'];
+      String? tesseract;
+      for (final p in paths) {
+        if (File(p).existsSync()) { tesseract = p; break; }
+      }
+      if (tesseract == null) return null;
+      final result = await Process.run(tesseract, [imageFile.path, 'stdout', '--psm', '6']);
+      if (result.exitCode != 0) return null;
+      return _parseVitalsFromText(result.stdout as String);
+    } catch (_) {
+      return null;
+    }
+  }
+
   InputImage? _buildInputImage(CameraImage image, CameraDescription camera) {
     final format = InputImageFormatValue.fromRawValue(image.format.raw as int);
     if (format == null) return null;
-
     final rotation = _rotationFromCamera(camera);
-
     return InputImage.fromBytes(
       bytes: image.planes.first.bytes,
       metadata: InputImageMetadata(
@@ -106,135 +149,83 @@ class VitalsOcrService {
 
   InputImageRotation _rotationFromCamera(CameraDescription camera) {
     switch (camera.sensorOrientation) {
-      case 0: return InputImageRotation.rotation0deg;
-      case 90: return InputImageRotation.rotation90deg;
+      case 90:  return InputImageRotation.rotation90deg;
       case 180: return InputImageRotation.rotation180deg;
       case 270: return InputImageRotation.rotation270deg;
-      default: return InputImageRotation.rotation0deg;
+      default:  return InputImageRotation.rotation0deg;
     }
   }
 
-  /// Parse OCR text to extract vital signs.
-  ///
-  /// Strategy: scan all recognized text blocks for patterns that match
-  /// vital sign readings. Common patterns on bedside monitors:
-  ///
-  /// - HR / heart rate: a number near "HR", "♥", or green colored, typically 40-220
-  /// - SpO2: a number near "SpO2", "SPO2", "O2", typically 50-100, often with %
-  /// - RR / resp rate: a number near "RR", "RESP", typically 4-60
-  /// - BP: pattern like "120/80" or numbers near "SYS", "DIA", "NIBP"
-  ParsedVitals _parseVitals(RecognizedText result) {
+  ParsedVitals _parseVitalsFromText(String rawText) {
     double? hr, spo2, rr, sbp, dbp;
     int confidence = 0;
+    final text = rawText.toUpperCase();
+    final lines = text.split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
 
-    final allText = result.text.toUpperCase();
-    final blocks = result.blocks;
-
-    for (final block in blocks) {
-      final text = block.text.toUpperCase().trim();
-
-      // Try BP pattern: "120/80" or "120 / 80"
-      final bpMatch = RegExp(r'(\d{2,3})\s*/\s*(\d{2,3})').firstMatch(text);
-      if (bpMatch != null) {
-        final sys = double.tryParse(bpMatch.group(1)!);
-        final dia = double.tryParse(bpMatch.group(2)!);
-        if (sys != null && dia != null && sys > 30 && sys < 260 && dia > 15 && dia < 160 && sys > dia) {
-          sbp = sys;
-          dbp = dia;
-          confidence += 25;
+    for (final line in lines) {
+      // BP: "120/80"
+      if (sbp == null) {
+        final bp = RegExp(r'(\d{2,3})\s*/\s*(\d{2,3})').firstMatch(line);
+        if (bp != null) {
+          final s = double.tryParse(bp.group(1)!);
+          final d = double.tryParse(bp.group(2)!);
+          if (s != null && d != null && s > 30 && s < 260 && d > 15 && d < 160 && s > d) {
+            sbp = s; dbp = d; confidence += 25;
+          }
         }
       }
 
-      // Scan each line in the block
-      for (final line in block.lines) {
-        final lineText = line.text.toUpperCase().trim();
-
-        // HR detection
-        if (hr == null && _containsLabel(lineText, ['HR', 'HEART', 'PULSE', 'BPM'])) {
-          final val = _extractNumber(lineText, min: 30, max: 220);
-          if (val != null) { hr = val; confidence += 25; }
-        }
-
-        // SpO2 detection
-        if (spo2 == null && _containsLabel(lineText, ['SPO2', 'SP02', 'O2', 'SAT', 'SPO'])) {
-          final val = _extractNumber(lineText, min: 50, max: 100);
-          if (val != null) { spo2 = val; confidence += 25; }
-        }
-
-        // RR detection
-        if (rr == null && _containsLabel(lineText, ['RR', 'RESP', 'BREATHS'])) {
-          final val = _extractNumber(lineText, min: 4, max: 60);
-          if (val != null) { rr = val; confidence += 25; }
-        }
-
-        // SBP/DBP from labeled lines
-        if (sbp == null && _containsLabel(lineText, ['SYS', 'NIBP', 'ART'])) {
-          final val = _extractNumber(lineText, min: 40, max: 260);
-          if (val != null) { sbp = val; confidence += 15; }
-        }
-        if (dbp == null && _containsLabel(lineText, ['DIA'])) {
-          final val = _extractNumber(lineText, min: 15, max: 160);
-          if (val != null) { dbp = val; confidence += 10; }
-        }
+      if (hr == null && _hasLabel(line, ['HR', 'HEART', 'PULSE'])) {
+        final v = _extractNum(line, 30, 220);
+        if (v != null) { hr = v; confidence += 25; }
+      }
+      if (spo2 == null && _hasLabel(line, ['SPO2', 'SP02', 'SPO', 'O2', 'SAT'])) {
+        final v = _extractNum(line, 50, 100);
+        if (v != null) { spo2 = v; confidence += 25; }
+      }
+      if (rr == null && _hasLabel(line, ['RR', 'RESP', 'BREATH'])) {
+        final v = _extractNum(line, 4, 80);
+        if (v != null) { rr = v; confidence += 25; }
+      }
+      if (sbp == null && _hasLabel(line, ['SYS', 'NIBP', 'ART'])) {
+        final v = _extractNum(line, 40, 260);
+        if (v != null) { sbp = v; confidence += 15; }
+      }
+      if (dbp == null && _hasLabel(line, ['DIA'])) {
+        final v = _extractNum(line, 15, 160);
+        if (v != null) { dbp = v; confidence += 10; }
       }
     }
 
-    // Fallback: if no labeled matches, try positional heuristic.
-    // On most monitors, the largest/most prominent numbers are HR and SpO2.
+    // Positional fallback
     if (hr == null || spo2 == null) {
-      final numbers = _extractAllNumbers(allText);
-      for (final n in numbers) {
-        if (hr == null && n >= 40 && n <= 220) {
-          hr = n;
-          confidence += 10;
-        } else if (spo2 == null && n >= 70 && n <= 100) {
-          spo2 = n;
-          confidence += 10;
-        } else if (rr == null && n >= 6 && n <= 50) {
-          rr = n;
-          confidence += 5;
-        }
+      final nums = RegExp(r'\b(\d{2,3})\b').allMatches(text)
+          .map((m) => double.tryParse(m.group(1)!))
+          .whereType<double>()
+          .toList();
+      for (final n in nums) {
+        if (hr == null && n >= 40 && n <= 220) { hr = n; confidence += 8; }
+        else if (spo2 == null && n >= 70 && n <= 100) { spo2 = n; confidence += 8; }
+        else if (rr == null && n >= 6 && n <= 80) { rr = n; confidence += 5; }
       }
     }
 
-    return ParsedVitals(
-      hr: hr,
-      spo2: spo2,
-      rr: rr,
-      sbp: sbp,
-      dbp: dbp,
-      timestamp: DateTime.now(),
-      confidence: confidence.clamp(0, 100),
-    );
+    return ParsedVitals(hr: hr, spo2: spo2, rr: rr, sbp: sbp, dbp: dbp,
+        timestamp: DateTime.now(), confidence: confidence.clamp(0, 100));
   }
 
-  bool _containsLabel(String text, List<String> labels) {
-    for (final label in labels) {
-      if (text.contains(label)) return true;
-    }
-    return false;
-  }
+  bool _hasLabel(String text, List<String> labels) =>
+      labels.any((l) => text.contains(l));
 
-  double? _extractNumber(String text, {required double min, required double max}) {
-    final matches = RegExp(r'\d+\.?\d*').allMatches(text);
-    for (final m in matches) {
-      final val = double.tryParse(m.group(0)!);
-      if (val != null && val >= min && val <= max) return val;
+  double? _extractNum(String text, double min, double max) {
+    for (final m in RegExp(r'\d+\.?\d*').allMatches(text)) {
+      final v = double.tryParse(m.group(0)!);
+      if (v != null && v >= min && v <= max) return v;
     }
     return null;
   }
 
-  List<double> _extractAllNumbers(String text) {
-    final nums = <double>[];
-    final matches = RegExp(r'\b\d{2,3}\b').allMatches(text);
-    for (final m in matches) {
-      final val = double.tryParse(m.group(0)!);
-      if (val != null) nums.add(val);
-    }
-    return nums;
-  }
-
   void dispose() {
-    _recognizer.close();
+    _recognizer?.close();
   }
 }

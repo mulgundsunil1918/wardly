@@ -1,4 +1,5 @@
 export 'auth_service.dart';
+export 'frame_capture_service.dart';
 export 'note_service.dart';
 export 'patient_service.dart';
 export 'payment_service.dart';

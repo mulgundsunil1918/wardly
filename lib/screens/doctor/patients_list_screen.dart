@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../models/patient.dart';
 import '../../models/ward.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/camera_provider.dart';
 import '../../providers/patient_provider.dart';
 import '../../utils/app_constants.dart';
 import '../../utils/app_theme.dart';
@@ -469,6 +470,37 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
                             ),
                           ),
                         ),
+                      Builder(builder: (_) {
+                        final hasEdge = context.watch<CameraProvider>().cameras
+                            .any((c) => c.patientId == p.id && c.isEnabled);
+                        if (!hasEdge) return const SizedBox.shrink();
+                        return Padding(
+                          padding: const EdgeInsets.only(left: 6),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.teal.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.teal.withOpacity(0.4)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.videocam, size: 10, color: Colors.teal.shade600),
+                                const SizedBox(width: 3),
+                                Text(
+                                  'EDGE',
+                                  style: GoogleFonts.dmSans(
+                                    color: Colors.teal.shade600,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
                     ],
                   ),
                   if (p.diagnosis.isNotEmpty) ...[

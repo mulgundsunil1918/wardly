@@ -107,7 +107,8 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppColors.danger,
-          content: Text(friendlyError(authProvider.error!)),
+          duration: const Duration(seconds: 10),
+          content: Text(friendlyError(authProvider.error!), maxLines: 10, overflow: TextOverflow.visible),
         ),
       );
     }
@@ -145,7 +146,8 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppColors.danger,
-          content: Text(friendlyError(authProvider.error!)),
+          duration: const Duration(seconds: 10),
+          content: Text(friendlyError(authProvider.error!), maxLines: 10, overflow: TextOverflow.visible),
         ),
       );
     }
@@ -170,7 +172,8 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppColors.danger,
-          content: Text(friendlyError(authProvider.error!)),
+          duration: const Duration(seconds: 10),
+          content: Text(friendlyError(authProvider.error!), maxLines: 10, overflow: TextOverflow.visible),
         ),
       );
     }
@@ -266,10 +269,11 @@ class _LoginScreenState extends State<LoginScreen> {
             "If you signed up with Google, go back and tap 'Continue with Google' — there's no password to reset.",
       );
     } else {
-      final err = context.read<AuthProvider>().error ?? '';
-      final isNotFound = err.toLowerCase().contains('not found') ||
-          err.toLowerCase().contains('no account') ||
-          err.toLowerCase().contains('user-not-found');
+      final err = (context.read<AuthProvider>().error ?? '').toString();
+      final errLower = err.toLowerCase();
+      final isNotFound = errLower.contains('not found') ||
+          errLower.contains('no account') ||
+          errLower.contains('user-not-found');
 
       if (isNotFound) {
         // Most likely a Google-only account — no password to reset.
@@ -510,51 +514,66 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 14),
-                      Row(
-                        children: [
-                          const Expanded(child: Divider()),
-                          Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 12),
-                            child: Text(
-                              'OR',
-                              style: GoogleFonts.dmSans(
-                                color: AppColors.textSecondary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                      if (!kIsWeb) ...[
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            const Expanded(child: Divider()),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 12),
+                              child: Text(
+                                'OR',
+                                style: GoogleFonts.dmSans(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            const Expanded(child: Divider()),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        if (Platform.isIOS)
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: authProvider.isLoading ? null : _signInGoogle,
+                                  icon: const Icon(Icons.g_mobiledata, size: 24),
+                                  label: const Text('Google'),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: authProvider.isLoading ? null : _signInApple,
+                                  icon: const Icon(Icons.apple, size: 22),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.black,
+                                    side: const BorderSide(color: Colors.black),
+                                  ),
+                                  label: const Text('Apple'),
+                                ),
+                              ),
+                            ],
+                          )
+                        else
+                          OutlinedButton.icon(
+                            onPressed: authProvider.isLoading ? null : _signInGoogle,
+                            icon: const Icon(Icons.g_mobiledata, size: 28),
+                            label: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Text(
+                                _mode == _Mode.signIn
+                                    ? 'Continue with Google'
+                                    : 'Sign up with Google',
                               ),
                             ),
                           ),
-                          const Expanded(child: Divider()),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      if (!kIsWeb && Platform.isIOS)
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: authProvider.isLoading ? null : _signInGoogle,
-                                icon: const Icon(Icons.g_mobiledata, size: 24),
-                                label: const Text('Google'),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: authProvider.isLoading ? null : _signInApple,
-                                icon: const Icon(Icons.apple, size: 22),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.black,
-                                  side: const BorderSide(color: Colors.black),
-                                ),
-                                label: const Text('Apple'),
-                              ),
-                            ),
-                          ],
-                        )
-                      else
+                      ] else ...[
+                        const SizedBox(height: 14),
                         OutlinedButton.icon(
                           onPressed: authProvider.isLoading ? null : _signInGoogle,
                           icon: const Icon(Icons.g_mobiledata, size: 28),
@@ -567,6 +586,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ),
+                      ],
                     ],
                   ),
                 ),

@@ -6,6 +6,11 @@ String friendlyError(Object e) {
   final raw = e.toString();
   final lower = raw.toLowerCase();
 
+  // ── Keychain (macOS) ──
+  if (lower.contains('keychain') || lower.contains('keychainerror') || lower.contains('-34018')) {
+    return 'macOS Keychain error. Please quit the app completely (Cmd+Q) and relaunch — a one-time keychain reset will run on next start.';
+  }
+
   // ── Permission / auth ──
   if (lower.contains('permission-denied') ||
       lower.contains('insufficient permissions')) {
@@ -81,6 +86,5 @@ String friendlyError(Object e) {
   if (cleaned.isEmpty) {
     return 'Something went wrong. Please try again.';
   }
-  if (cleaned.length > 140) cleaned = '${cleaned.substring(0, 140)}…';
   return cleaned;
 }
