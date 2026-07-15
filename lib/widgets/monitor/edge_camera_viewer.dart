@@ -77,8 +77,12 @@ class _EdgeCameraViewerState extends State<EdgeCameraViewer> {
     }
     if (match.isNotEmpty) {
       _camera = match.first;
-      _player.open(Media(_camera!.rtspUrl));
-      _scheduleTimeout();
+      // Webcam test mode has no RTSP stream — the preview is the captured
+      // frames themselves (exactly what the AI sees), so skip the player.
+      if (!_camera!.isWebcam) {
+        _player.open(Media(_camera!.rtspUrl));
+        _scheduleTimeout();
+      }
       _startOcr();
     }
   }
@@ -86,7 +90,7 @@ class _EdgeCameraViewerState extends State<EdgeCameraViewer> {
   void _startOcr() {
     _frameCapture.startPeriodicCapture(
       _camera!,
-      interval: const Duration(seconds: 8),
+      interval: Duration(seconds: _camera!.isWebcam ? 4 : 8),
     );
     _frameCapture.frameNotifier.addListener(_onNewFrame);
 
@@ -223,13 +227,17 @@ class _EdgeCameraViewerState extends State<EdgeCameraViewer> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Live video — always in the stack; hidden by overlays when not ready
-            Video(controller: _controller, controls: NoVideoControls),
+            // Live video (RTSP) or captured-frame preview (webcam test)
+            if (_camera!.isWebcam)
+              Positioned.fill(child: _webcamPreview())
+            else
+              Video(controller: _controller, controls: NoVideoControls),
 
             // ROI rectangles over the live feed
             if (_camera!.hasRoi) CustomPaint(painter: _RoiOverlayPainter(_camera!.roi)),
 
             // Mute button
+            if (!_camera!.isWebcam)
             Positioned(
               top: 8, right: 8,
               child: GestureDetector(
@@ -267,7 +275,8 @@ class _EdgeCameraViewerState extends State<EdgeCameraViewer> {
                     decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
                   ),
                   const SizedBox(width: 6),
-                  Text('LIVE', style: GoogleFonts.dmSans(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+                  Text(_camera!.isWebcam ? 'WEBCAM TEST' : 'LIVE',
+                      style: GoogleFonts.dmSans(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
                 ]),
               ),
             ),
@@ -308,7 +317,7 @@ class _EdgeCameraViewerState extends State<EdgeCameraViewer> {
             ),
 
             // Error overlay (covers video)
-            if (_error != null)
+            if (!_camera!.isWebcam && _error != null)
               _errorOverlay(
                 icon: Icons.videocam_off,
                 title: 'Stream error',
@@ -316,7 +325,7 @@ class _EdgeCameraViewerState extends State<EdgeCameraViewer> {
               ),
 
             // Timeout overlay
-            if (_timedOut && !_playing && _error == null)
+            if (!_camera!.isWebcam && _timedOut && !_playing && _error == null)
               _errorOverlay(
                 icon: Icons.wifi_off,
                 title: 'Cannot reach camera',
@@ -324,7 +333,7 @@ class _EdgeCameraViewerState extends State<EdgeCameraViewer> {
               ),
 
             // Loading overlay (waiting for first frame)
-            if (!_playing && _error == null && !_timedOut)
+            if (!_camera!.isWebcam && !_playing && _error == null && !_timedOut)
               Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -343,6 +352,62 @@ class _EdgeCameraViewerState extends State<EdgeCameraViewer> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Webcam test preview: shows the latest captured frame — the exact
+  /// image the AI reads — refreshing with each capture (~4s).
+  Widget _webcamPreview() {
+    return ValueListenableBuilder<String?>(
+      valueListenable: _frameCapture.frameNotifier,
+      builder: (context, raw, _) {
+        if (raw == null) {
+          return ValueListenableBuilder<String?>(
+            valueListenable: _frameCapture.errorNotifier,
+            builder: (context, err, _) => Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (err == null) ...[
+                    const SizedBox(
+                      width: 24, height: 24,
+                      child: CircularProgressIndicator(color: Colors.white30, strokeWidth: 2),
+                    ),
+                    const SizedBox(height: 10),
+                    Text('Starting webcam…',
+                        style: GoogleFonts.dmSans(color: Colors.white54, fontSize: 12)),
+                    const SizedBox(height: 4),
+                    Text('macOS may ask for camera permission',
+                        style: GoogleFonts.dmSans(color: Colors.white24, fontSize: 11)),
+                  ] else ...[
+                    Icon(Icons.no_photography_outlined,
+                        color: Colors.orange.shade300, size: 32),
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Text(
+                        err.length > 140 ? '${err.substring(0, 140)}…' : err,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.dmSans(color: Colors.white38, fontSize: 11),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text('Check System Settings → Privacy → Camera → wardly',
+                        style: GoogleFonts.dmSans(color: Colors.white24, fontSize: 10)),
+                  ],
+                ],
+              ),
+            ),
+          );
+        }
+        final file = File(raw.split('?').first);
+        if (!file.existsSync()) return const SizedBox.shrink();
+        return Image.memory(
+          file.readAsBytesSync(),
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+        );
+      },
     );
   }
 
