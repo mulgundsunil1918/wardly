@@ -96,6 +96,15 @@ class VlmVitalsService {
   bool _busy = false;
   bool get isBusy => _busy;
 
+  http.Client? _activeClient;
+
+  /// Abort the in-flight read. Closing the connection also makes
+  /// llama-server cancel the inference slot, freeing the CPU immediately.
+  void cancelActive() {
+    _activeClient?.close();
+    _activeClient = null;
+  }
+
   Future<String> _baseUrl() async {
     // The embedded engine (spawned and supervised by VlmServerManager)
     // takes precedence; the pref is an override for a remote/shared box.
@@ -170,13 +179,21 @@ class VlmVitalsService {
         ],
       });
 
-      final res = await http
-          .post(
-            Uri.parse('$base/v1/chat/completions'),
-            headers: {'Content-Type': 'application/json'},
-            body: body,
-          )
-          .timeout(_readTimeout);
+      final client = http.Client();
+      _activeClient = client;
+      final http.Response res;
+      try {
+        res = await client
+            .post(
+              Uri.parse('$base/v1/chat/completions'),
+              headers: {'Content-Type': 'application/json'},
+              body: body,
+            )
+            .timeout(_readTimeout);
+      } finally {
+        if (identical(_activeClient, client)) _activeClient = null;
+        client.close();
+      }
       if (res.statusCode != 200) return null;
 
       final decoded = jsonDecode(res.body) as Map<String, dynamic>;

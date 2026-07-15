@@ -43,6 +43,7 @@ class _EdgeCameraViewerState extends State<EdgeCameraViewer> {
   final _ocr = VitalsOcrService();
   final _vlm = VlmVitalsService();
   bool _vlmOnline = false;
+  bool _aiPaused = false; // user-stopped analysis; camera keeps running
   Timer? _vlmHealthTimer;
   String? _ocrStatus; // last reader result line shown in overlay
 
@@ -116,7 +117,7 @@ class _EdgeCameraViewerState extends State<EdgeCameraViewer> {
 
     // ── Primary: local VLM (reads any monitor brand, alarm-limit aware).
     // One read can take minutes on CPU — skip frames while it works.
-    if (_vlmOnline) {
+    if (_vlmOnline && !_aiPaused) {
       if (_vlm.isBusy) return;
       final crop = _monitorCropRegion();
       setState(() => _ocrStatus =
@@ -299,6 +300,60 @@ class _EdgeCameraViewerState extends State<EdgeCameraViewer> {
                 ),
               ),
 
+            // AI analysis control — stop a slow in-flight read (frees the
+            // CPU immediately), pause/resume analysis; camera keeps running.
+            if (_vlmOnline)
+              Positioned(
+                bottom: 12, right: 12,
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      if (_aiPaused) {
+                        _aiPaused = false;
+                        _ocrStatus = 'AI resumed — waiting for next frame…';
+                      } else {
+                        _vlm.cancelActive();
+                        _aiPaused = true;
+                        _ocrStatus = 'AI stopped — camera still live';
+                      }
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: _aiPaused
+                          ? const Color(0xFF00C896).withValues(alpha: 0.9)
+                          : _vlm.isBusy
+                              ? AppColors.danger.withValues(alpha: 0.9)
+                              : Colors.black54,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(
+                        _aiPaused
+                            ? Icons.play_arrow_rounded
+                            : _vlm.isBusy
+                                ? Icons.stop_rounded
+                                : Icons.pause_rounded,
+                        color: Colors.white, size: 15,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        _aiPaused
+                            ? 'Resume AI'
+                            : _vlm.isBusy
+                                ? 'Stop AI read'
+                                : 'Pause AI',
+                        style: GoogleFonts.dmSans(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700),
+                      ),
+                    ]),
+                  ),
+                ),
+              ),
+
             // Patient info + OCR status
             Positioned(
               bottom: 12, left: 12,
@@ -408,7 +463,7 @@ class _EdgeCameraViewerState extends State<EdgeCameraViewer> {
           gaplessPlayback: true,
           // A frame mid-write can be a truncated JPEG — keep the last
           // good frame instead of flashing an error.
-          errorBuilder: (_, __, ___) => const SizedBox.expand(),
+          errorBuilder: (_, e, s) => const SizedBox.expand(),
         );
       },
     );
