@@ -31,14 +31,28 @@ class FrameCaptureService {
       final outPath = '$dir/${camera.id}.jpg';
       final ffmpeg = Platform.isMacOS ? '/usr/local/bin/ffmpeg' : 'ffmpeg';
 
-      final process = await Process.start(ffmpeg, [
-        '-rtsp_transport', 'tcp',
-        '-i', camera.rtspUrl,
-        '-frames:v', '1',
-        '-update', '1',
-        '-y',
-        outPath,
-      ]);
+      // Webcam test phase: grab from the built-in camera (avfoundation
+      // device 0) instead of an RTSP stream.
+      final args = camera.isWebcam
+          ? [
+              '-f', 'avfoundation',
+              '-framerate', '30',
+              '-i', '0',
+              '-frames:v', '1',
+              '-update', '1',
+              '-y',
+              outPath,
+            ]
+          : [
+              '-rtsp_transport', 'tcp',
+              '-i', camera.rtspUrl,
+              '-frames:v', '1',
+              '-update', '1',
+              '-y',
+              outPath,
+            ];
+
+      final process = await Process.start(ffmpeg, args);
 
       final stderrBuf = StringBuffer();
       process.stderr.transform(utf8.decoder).listen((s) => stderrBuf.write(s));

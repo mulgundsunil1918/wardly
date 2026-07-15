@@ -119,7 +119,15 @@ class CameraConfig {
     this.monitors = const [],
   });
 
+  /// Webcam test phase: use the laptop's built-in camera instead of an IP
+  /// camera — for trying the capture → AI pipeline without ward hardware.
+  static const String webcamBrand = 'Webcam Test';
+
+  bool get isWebcam => brand == webcamBrand;
+
   String get rtspUrl {
+    // libmpv can open the default macOS camera via avfoundation.
+    if (isWebcam) return 'av://avfoundation:0';
     if (customRtsp.isNotEmpty) return customRtsp;
     final cred = '${Uri.encodeComponent(username)}:${Uri.encodeComponent(password)}';
     final base = 'rtsp://$cred@$ip:$port';

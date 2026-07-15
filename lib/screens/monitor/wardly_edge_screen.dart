@@ -1,3 +1,6 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -64,6 +67,17 @@ class _WardlyEdgeScreenState extends State<WardlyEdgeScreen> {
         actions: [
           _viewToggle(),
           const SizedBox(width: 8),
+          if (!kIsWeb && Platform.isMacOS)
+            TextButton.icon(
+              onPressed: () => _setupWebcamTest(context),
+              icon: const Icon(Icons.photo_camera_front_outlined, size: 18),
+              label: const Text('Webcam Test'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.accent,
+                textStyle: GoogleFonts.dmSans(
+                    fontWeight: FontWeight.w700, fontSize: 13),
+              ),
+            ),
           TextButton.icon(
             onPressed: () => _openSetup(context),
             icon: const Icon(Icons.add, size: 18),
@@ -140,6 +154,118 @@ class _WardlyEdgeScreenState extends State<WardlyEdgeScreen> {
   void _openSetup(BuildContext context) {
     Navigator.push(context,
         MaterialPageRoute(builder: (_) => const EdgeSetupScreen()));
+  }
+
+  /// Webcam test phase — point the laptop's camera at a monitor (or a
+  /// monitor photo) and run the full capture → AI pipeline without any
+  /// IP-camera hardware.
+  Future<void> _setupWebcamTest(BuildContext context) async {
+    final monitor = context.read<MonitorProvider>();
+    final cp = context.read<CameraProvider>();
+    final patients = monitor.patients;
+
+    if (patients.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('No monitored patients yet — add a patient first.')));
+      return;
+    }
+
+    final selected = await showDialog<MonitoredPatient>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: Row(
+          children: [
+            Icon(Icons.photo_camera_front_outlined,
+                color: AppColors.accent, size: 20),
+            const SizedBox(width: 8),
+            Text('Webcam Test',
+                style: GoogleFonts.dmSans(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: AppColors.textPrimary)),
+          ],
+        ),
+        content: SizedBox(
+          width: 360,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Uses this laptop\'s camera as a test bedside camera. Point '
+                'it at a patient monitor (or a monitor photo on your phone) '
+                'and the AI will read the vitals.\n\nWhich patient should '
+                'the readings go to?',
+                style: GoogleFonts.dmSans(
+                    color: AppColors.textSecondary, fontSize: 12.5, height: 1.5),
+              ),
+              const SizedBox(height: 12),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 260),
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    for (final p in patients)
+                      ListTile(
+                        dense: true,
+                        leading: Icon(Icons.person_outline,
+                            color: AppColors.primary, size: 20),
+                        title: Text(p.name,
+                            style: GoogleFonts.dmSans(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary)),
+                        subtitle: p.bed.isEmpty
+                            ? null
+                            : Text(p.bed,
+                                style: GoogleFonts.dmSans(
+                                    fontSize: 11,
+                                    color: AppColors.textSecondary)),
+                        onTap: () => Navigator.pop(ctx, p),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+        ],
+      ),
+    );
+    if (selected == null || !context.mounted) return;
+
+    const camId = 'webcam_test';
+    final existing = cp.cameras.where((c) => c.id == camId).toList();
+    if (existing.isEmpty) {
+      cp.add(CameraConfig(
+        id: camId,
+        label: 'Laptop Webcam (test)',
+        brand: CameraConfig.webcamBrand,
+        ip: 'built-in',
+        password: '',
+        patientId: selected.id,
+        patientName: selected.name,
+        bedLabel: selected.bed,
+      ));
+    } else {
+      cp.update(existing.first.copyWith(
+        patientId: selected.id,
+        patientName: selected.name,
+        bedLabel: selected.bed,
+      ));
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(
+          'Webcam test ready — open ${selected.name} in the Monitor tab. '
+          'macOS will ask for camera permission on first use.'),
+      duration: const Duration(seconds: 5),
+    ));
   }
 
   Widget _emptyState(BuildContext context) {
