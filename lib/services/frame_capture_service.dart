@@ -100,6 +100,23 @@ class FrameCaptureService {
   Future<void> _startWebcamContinuous(CameraConfig camera) async {
     final dir = _framesDir();
     final outPath = '$dir/${camera.id}.jpg';
+    await _spawnWebcamProc(outPath);
+
+    // Watch the frame file and publish each update.
+    DateTime? lastMod;
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      final f = File(outPath);
+      if (!f.existsSync()) return;
+      final m = f.lastModifiedSync();
+      if (lastMod == null || m.isAfter(lastMod!)) {
+        lastMod = m;
+        _lastFramePath = outPath;
+        frameNotifier.value = '$outPath?t=${m.millisecondsSinceEpoch}';
+      }
+    });
+  }
+
+  Future<void> _spawnWebcamProc(String outPath) async {
     final ffmpeg = Platform.isMacOS ? '/usr/local/bin/ffmpeg' : 'ffmpeg';
     try {
       final proc = await Process.start(ffmpeg, [
@@ -131,24 +148,17 @@ class FrameCaptureService {
           (l) => l.trim().isNotEmpty,
           orElse: () => 'webcam capture ended (exit $code)',
         );
+        // Unexpected death (CPU starvation, device hiccup) — respawn as
+        // long as the capture session is still supposed to be running.
+        Future.delayed(const Duration(seconds: 3), () {
+          if (_timer != null && _webcamProc == null) {
+            _spawnWebcamProc(outPath);
+          }
+        });
       });
     } catch (e) {
       errorNotifier.value = e.toString();
-      return;
     }
-
-    // Watch the frame file and publish each update.
-    DateTime? lastMod;
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      final f = File(outPath);
-      if (!f.existsSync()) return;
-      final m = f.lastModifiedSync();
-      if (lastMod == null || m.isAfter(lastMod!)) {
-        lastMod = m;
-        _lastFramePath = outPath;
-        frameNotifier.value = '$outPath?t=${m.millisecondsSinceEpoch}';
-      }
-    });
   }
 
   void stop() {

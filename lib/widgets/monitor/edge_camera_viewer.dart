@@ -202,6 +202,27 @@ class _EdgeCameraViewerState extends State<EdgeCameraViewer> {
     _scheduleTimeout();
   }
 
+  /// Full camera restart: kills and respawns the frame capture (and the
+  /// RTSP stream when applicable). Fixes a frozen preview in one tap.
+  void _restartCamera() {
+    if (_camera == null) return;
+    setState(() {
+      _error = null;
+      _timedOut = false;
+      _playing = false;
+      _ocrStatus = 'Camera restarting…';
+    });
+    _frameCapture.stop();
+    if (!_camera!.isWebcam) {
+      _player.open(Media(_camera!.rtspUrl));
+      _scheduleTimeout();
+    }
+    _frameCapture.startPeriodicCapture(
+      _camera!,
+      interval: Duration(seconds: _camera!.isWebcam ? 4 : 8),
+    );
+  }
+
   @override
   void dispose() {
     _vlmHealthTimer?.cancel();
@@ -236,6 +257,22 @@ class _EdgeCameraViewerState extends State<EdgeCameraViewer> {
 
             // ROI rectangles over the live feed
             if (_camera!.hasRoi) CustomPaint(painter: _RoiOverlayPainter(_camera!.roi)),
+
+            // Restart camera — one tap fixes a frozen preview
+            Positioned(
+              top: 8, right: _camera!.isWebcam ? 8 : 44,
+              child: GestureDetector(
+                onTap: _restartCamera,
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Icon(Icons.refresh, color: Colors.white70, size: 18),
+                ),
+              ),
+            ),
 
             // Mute button
             if (!_camera!.isWebcam)
