@@ -365,6 +365,39 @@ class PatientMonitorScreen extends StatelessWidget {
   }
 
   Widget _vitalsGrid(patient) {
+    // Camera-assigned patient with no reading yet — don't show fake numbers.
+    if (patient.vitals.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Column(
+          children: [
+            SizedBox(
+              width: 22, height: 22,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: AppColors.primary.withValues(alpha: 0.6)),
+            ),
+            const SizedBox(height: 14),
+            Text('Waiting for monitor readings…',
+                style: GoogleFonts.dmSans(
+                    color: AppColors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            Text(
+              'The camera is watching this bed. Vitals appear here after the AI reads the monitor — keep the monitor screen visible in the frame.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.dmSans(
+                  color: AppColors.textSecondary, fontSize: 12, height: 1.5),
+            ),
+          ],
+        ),
+      );
+    }
     return LayoutBuilder(builder: (context, constraints) {
       final crossCount = constraints.maxWidth > 500 ? 4 : 2;
       return GridView.count(

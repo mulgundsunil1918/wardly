@@ -41,6 +41,48 @@ class MonitorProvider extends ChangeNotifier {
   final _ocrActive = <String>{};
   final Map<String, Timer> _ocrExpiry = {};
 
+  // Patients with an assigned camera show ONLY real readings — no demo
+  // simulation, ever. Their vitals stay empty ("waiting for monitor")
+  // until the first camera/AI reading arrives.
+  final _liveOnly = <String>{};
+
+  bool isLiveOnly(String patientId) => _liveOnly.contains(patientId);
+
+  /// Called from the UI with the ids of every patient watched by a camera
+  /// (directly or via a monitor zone). Newly camera-assigned patients get
+  /// their simulated vitals and history wiped so only real readings show;
+  /// patients whose camera was removed fall back to simulation.
+  void syncLiveOnly(Set<String> patientIds) {
+    final added = patientIds.difference(_liveOnly);
+    final removed = _liveOnly.difference(patientIds);
+    if (added.isEmpty && removed.isEmpty) return;
+
+    for (final id in added) {
+      final idx = _patients.indexWhere((p) => p.id == id);
+      if (idx < 0) continue;
+      _patients[idx] = _patients[idx].copyWith(vitals: {});
+      _history[id] = [];
+    }
+    for (final id in removed) {
+      final idx = _patients.indexWhere((p) => p.id == id);
+      if (idx < 0) continue;
+      // Resume simulation from each vital's baseline.
+      final p = _patients[idx];
+      final vitals = <VitalType, double>{
+        for (final e in p.sim.entries) e.key: e.value.base,
+      };
+      final sbp = vitals[VitalType.sbp] ?? 0;
+      final dbp = vitals[VitalType.dbp] ?? 0;
+      vitals[VitalType.map] = ((sbp + 2 * dbp) / 3).roundToDouble();
+      _patients[idx] = p.copyWith(vitals: vitals);
+    }
+    _liveOnly
+      ..clear()
+      ..addAll(patientIds);
+    // Callers may invoke this during build — defer the notification.
+    Future.microtask(notifyListeners);
+  }
+
   /// Called by EdgeCameraViewer when OCR detects vitals from the RTSP frame.
   /// Suppresses simulation for this patient for 15s after last OCR push.
   void injectOcrVitals(String patientId, Map<VitalType, double> vitals) {
@@ -222,6 +264,7 @@ class MonitorProvider extends ChangeNotifier {
     for (int i = 0; i < _patients.length; i++) {
       final p = _patients[i];
       if (_ocrActive.contains(p.id)) continue; // live OCR — skip simulation
+      if (_liveOnly.contains(p.id)) continue; // camera-assigned — real data only
       final newVitals = <VitalType, double>{};
 
       for (final vt in VitalType.values) {

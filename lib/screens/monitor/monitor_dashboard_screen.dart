@@ -98,8 +98,15 @@ class MonitorDashboardScreen extends StatelessWidget {
 
   Widget _dashboard(BuildContext context) {
     final monitor = context.watch<MonitorProvider>();
+    final cameraProv = context.watch<CameraProvider>();
     context.watch<ThemeProvider>();
     final patients = monitor.patients;
+    // Camera-assigned patients show real readings only — no simulation.
+    monitor.syncLiveOnly({
+      for (final p in patients)
+        if (cameraProv.cameras.any((c) => c.watchesPatient(p.id, p.name)))
+          p.id,
+    });
     final wardActivity = _buildWardActivity(monitor, patients);
     final critCount = patients.where((p) => p.worstSeverity == 'critical').length;
     final warnCount = patients.where((p) => p.worstSeverity == 'warning').length;
@@ -278,8 +285,11 @@ class MonitorDashboardScreen extends StatelessWidget {
   }
 
   Widget _patientCard(BuildContext context, MonitoredPatient p, MonitorProvider monitor) {
+    final waiting = p.vitals.isEmpty;
     final sev = p.worstSeverity;
-    final sevColor = sev == 'critical' ? AppColors.danger : sev == 'warning' ? AppColors.warning : AppColors.accent;
+    final sevColor = waiting
+        ? AppColors.textSecondary
+        : sev == 'critical' ? AppColors.danger : sev == 'warning' ? AppColors.warning : AppColors.accent;
     final alerts = monitor.alertsFor(p.id);
     final lastAlert = alerts.isNotEmpty ? alerts.first : null;
 
@@ -312,7 +322,9 @@ class MonitorDashboardScreen extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(color: sevColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
                   child: Text(
-                    sev == 'critical' ? 'Critical' : sev == 'warning' ? 'Watch' : 'Stable',
+                    waiting
+                        ? 'Waiting'
+                        : sev == 'critical' ? 'Critical' : sev == 'warning' ? 'Watch' : 'Stable',
                     style: GoogleFonts.dmSans(color: sevColor, fontSize: 11, fontWeight: FontWeight.w700),
                   ),
                 ),
@@ -321,14 +333,34 @@ class MonitorDashboardScreen extends StatelessWidget {
             const SizedBox(height: 4),
             Text('${p.diagnosis} · ${p.support} · ${p.bed}', style: GoogleFonts.dmSans(color: AppColors.textSecondary, fontSize: 11)),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                _miniVital('HR', p.vitals[VitalType.hr]?.round().toString() ?? '-', p.thresholds[VitalType.hr]?.severity(p.vitals[VitalType.hr] ?? 0) ?? 'stable'),
-                _miniVital('SpO₂', '${p.vitals[VitalType.spo2]?.round() ?? '-'}%', p.thresholds[VitalType.spo2]?.severity(p.vitals[VitalType.spo2] ?? 0) ?? 'stable'),
-                _miniVital('RR', p.vitals[VitalType.rr]?.round().toString() ?? '-', p.thresholds[VitalType.rr]?.severity(p.vitals[VitalType.rr] ?? 0) ?? 'stable'),
-                _miniVitalBP(p),
-              ],
-            ),
+            if (waiting)
+              Row(
+                children: [
+                  SizedBox(
+                    width: 12, height: 12,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 1.5,
+                        color: AppColors.textSecondary.withValues(alpha: 0.6)),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text('Waiting for monitor readings from the camera…',
+                        style: GoogleFonts.dmSans(
+                            color: AppColors.textSecondary,
+                            fontSize: 11.5,
+                            fontStyle: FontStyle.italic)),
+                  ),
+                ],
+              )
+            else
+              Row(
+                children: [
+                  _miniVital('HR', p.vitals[VitalType.hr]?.round().toString() ?? '-', p.thresholds[VitalType.hr]?.severity(p.vitals[VitalType.hr] ?? 0) ?? 'stable'),
+                  _miniVital('SpO₂', '${p.vitals[VitalType.spo2]?.round() ?? '-'}%', p.thresholds[VitalType.spo2]?.severity(p.vitals[VitalType.spo2] ?? 0) ?? 'stable'),
+                  _miniVital('RR', p.vitals[VitalType.rr]?.round().toString() ?? '-', p.thresholds[VitalType.rr]?.severity(p.vitals[VitalType.rr] ?? 0) ?? 'stable'),
+                  _miniVitalBP(p),
+                ],
+              ),
             if (lastAlert != null) ...[
               const SizedBox(height: 8),
               Row(

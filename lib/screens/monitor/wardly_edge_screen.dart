@@ -369,6 +369,11 @@ class _EdgeDashboard extends StatelessWidget {
     final monitor = context.watch<MonitorProvider>();
     final cameras = context.watch<CameraProvider>();
     final patients = monitor.patients;
+    // Camera-assigned patients show real readings only — no simulation.
+    monitor.syncLiveOnly({
+      for (final p in patients)
+        if (cameras.cameras.any((c) => c.watchesPatient(p.id, p.name))) p.id,
+    });
 
     // Most common ward name among monitored patients, for the header.
     String wardName = 'Ward Dashboard';
@@ -711,16 +716,21 @@ class _BedTile extends StatelessWidget {
   }
 
   Widget _sevChip(String sev) {
-    final label = sev == 'critical'
-        ? 'CRIT'
-        : sev == 'warning'
-            ? 'WARN'
-            : 'STABLE';
-    final color = sev == 'critical'
-        ? AppColors.danger
-        : sev == 'warning'
-            ? AppColors.warningColor
-            : AppColors.accent;
+    final waiting = patient.vitals.isEmpty;
+    final label = waiting
+        ? 'WAITING'
+        : sev == 'critical'
+            ? 'CRIT'
+            : sev == 'warning'
+                ? 'WARN'
+                : 'STABLE';
+    final color = waiting
+        ? AppColors.textSecondary
+        : sev == 'critical'
+            ? AppColors.danger
+            : sev == 'warning'
+                ? AppColors.warningColor
+                : AppColors.accent;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(

@@ -406,6 +406,9 @@ class _EdgeCameraViewerState extends State<EdgeCameraViewer> {
           file.readAsBytesSync(),
           fit: BoxFit.cover,
           gaplessPlayback: true,
+          // A frame mid-write can be a truncated JPEG — keep the last
+          // good frame instead of flashing an error.
+          errorBuilder: (_, __, ___) => const SizedBox.expand(),
         );
       },
     );

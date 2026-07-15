@@ -10,6 +10,7 @@ class FrameCaptureService {
   Timer? _timer;
   bool _capturing = false;
   String? _lastFramePath;
+  Process? _webcamProc;
   final ValueNotifier<String?> frameNotifier = ValueNotifier(null);
   final ValueNotifier<String?> errorNotifier = ValueNotifier(null);
 
@@ -85,13 +86,77 @@ class FrameCaptureService {
 
   void startPeriodicCapture(CameraConfig camera, {Duration interval = const Duration(seconds: 1)}) {
     stop();
+    if (camera.isWebcam) {
+      // One persistent ffmpeg keeps the camera open and rewrites the frame
+      // file once a second — smooth preview, no LED blinking, no repeated
+      // device opens.
+      _startWebcamContinuous(camera);
+      return;
+    }
     captureFrame(camera);
     _timer = Timer.periodic(interval, (_) => captureFrame(camera));
+  }
+
+  Future<void> _startWebcamContinuous(CameraConfig camera) async {
+    final dir = _framesDir();
+    final outPath = '$dir/${camera.id}.jpg';
+    final ffmpeg = Platform.isMacOS ? '/usr/local/bin/ffmpeg' : 'ffmpeg';
+    try {
+      final proc = await Process.start(ffmpeg, [
+        '-f', 'avfoundation',
+        '-framerate', '30',
+        '-i', '0',
+        '-vf', 'fps=1',
+        '-update', '1',
+        '-y',
+        outPath,
+      ]);
+      _webcamProc = proc;
+      proc.stdout.drain<void>();
+      final stderrBuf = StringBuffer();
+      proc.stderr.transform(utf8.decoder).listen((s) {
+        stderrBuf.write(s);
+        if (stderrBuf.length > 4000) {
+          final str = stderrBuf.toString();
+          stderrBuf
+            ..clear()
+            ..write(str.substring(str.length - 2000));
+        }
+      });
+      proc.exitCode.then((code) {
+        if (_webcamProc != proc) return; // stopped on purpose
+        _webcamProc = null;
+        final lines = stderrBuf.toString().trim().split('\n');
+        errorNotifier.value = lines.lastWhere(
+          (l) => l.trim().isNotEmpty,
+          orElse: () => 'webcam capture ended (exit $code)',
+        );
+      });
+    } catch (e) {
+      errorNotifier.value = e.toString();
+      return;
+    }
+
+    // Watch the frame file and publish each update.
+    DateTime? lastMod;
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      final f = File(outPath);
+      if (!f.existsSync()) return;
+      final m = f.lastModifiedSync();
+      if (lastMod == null || m.isAfter(lastMod!)) {
+        lastMod = m;
+        _lastFramePath = outPath;
+        frameNotifier.value = '$outPath?t=${m.millisecondsSinceEpoch}';
+      }
+    });
   }
 
   void stop() {
     _timer?.cancel();
     _timer = null;
+    final p = _webcamProc;
+    _webcamProc = null;
+    p?.kill();
   }
 
   void dispose() {
