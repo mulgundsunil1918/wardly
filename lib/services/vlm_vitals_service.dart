@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -125,15 +127,32 @@ class VlmVitalsService {
     }
   }
 
-  /// Send one full monitor frame to the VLM. Returns null on any failure
+  /// Send one monitor frame to the VLM. Returns null on any failure
   /// (callers fall back to the regex OCR path). Skips if a read is already
   /// in flight — never queue frames behind a minutes-long inference.
-  Future<VlmVitals?> processFile(File imageFile) async {
+  ///
+  /// [cropRegion] is a normalized (0–1) rect. Pass the monitor-screen area
+  /// (NOT a single-digit zone — the model needs the whole screen's labels
+  /// and layout, it was trained on full monitor photos). Cropping away the
+  /// room background means fewer image tokens → several times faster reads
+  /// and sharper digits at the same token budget.
+  Future<VlmVitals?> processFile(File imageFile,
+      {ui.Rect? cropRegion}) async {
     if (_busy) return null;
     _busy = true;
     try {
       final base = await _baseUrl();
-      final b64 = base64Encode(await imageFile.readAsBytes());
+      var bytes = await imageFile.readAsBytes();
+      var mime = 'image/jpeg';
+      if (cropRegion != null) {
+        try {
+          bytes = await _cropToRegion(bytes, cropRegion);
+          mime = 'image/png';
+        } catch (_) {
+          // Crop failure is never fatal — send the full frame instead.
+        }
+      }
+      final b64 = base64Encode(bytes);
       final body = jsonEncode({
         'temperature': 0.1,
         'max_tokens': 128,
@@ -143,7 +162,7 @@ class VlmVitalsService {
             'content': [
               {
                 'type': 'image_url',
-                'image_url': {'url': 'data:image/jpeg;base64,$b64'},
+                'image_url': {'url': 'data:$mime;base64,$b64'},
               },
               {'type': 'text', 'text': prompt},
             ],
@@ -169,6 +188,39 @@ class VlmVitalsService {
       return null;
     } finally {
       _busy = false;
+    }
+  }
+
+  /// Crop [bytes] to the normalized [region] using the Flutter engine
+  /// (no extra image package needed). Returns PNG bytes.
+  Future<Uint8List> _cropToRegion(Uint8List bytes, ui.Rect region) async {
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    final img = frame.image;
+    try {
+      final src = ui.Rect.fromLTWH(
+        (region.left.clamp(0.0, 1.0)) * img.width,
+        (region.top.clamp(0.0, 1.0)) * img.height,
+        (region.width.clamp(0.0, 1.0)) * img.width,
+        (region.height.clamp(0.0, 1.0)) * img.height,
+      );
+      final w = src.width.round().clamp(16, img.width);
+      final h = src.height.round().clamp(16, img.height);
+      final recorder = ui.PictureRecorder();
+      final canvas = ui.Canvas(recorder);
+      canvas.drawImageRect(
+        img,
+        src,
+        ui.Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble()),
+        ui.Paint(),
+      );
+      final out = await recorder.endRecording().toImage(w, h);
+      final data = await out.toByteData(format: ui.ImageByteFormat.png);
+      out.dispose();
+      if (data == null) throw StateError('PNG encode failed');
+      return data.buffer.asUint8List();
+    } finally {
+      img.dispose();
     }
   }
 

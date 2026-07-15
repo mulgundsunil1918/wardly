@@ -107,8 +107,10 @@ class _EdgeCameraViewerState extends State<EdgeCameraViewer> {
     // One read can take minutes on CPU — skip frames while it works.
     if (_vlmOnline) {
       if (_vlm.isBusy) return;
-      setState(() => _ocrStatus = 'AI reading frame…');
-      final vlm = await _vlm.processFile(file);
+      final crop = _monitorCropRegion();
+      setState(() => _ocrStatus =
+          crop == null ? 'AI reading frame…' : 'AI reading monitor area…');
+      final vlm = await _vlm.processFile(file, cropRegion: crop);
       if (!mounted) return;
       if (vlm != null && vlm.hasAnyVital) {
         context
@@ -129,6 +131,33 @@ class _EdgeCameraViewerState extends State<EdgeCameraViewer> {
     if (!mounted) return;
     context.read<MonitorProvider>().injectOcrVitals(widget.patientId, parsed.toVitalMap());
     setState(() => _ocrStatus = 'OCR  $parsed');
+  }
+
+  /// Bounding box around all drawn vital zones, padded outward — i.e. the
+  /// monitor-screen area of the frame. The AI gets this crop instead of the
+  /// full room: several times fewer image tokens (faster reads), sharper
+  /// digits, and still the whole screen layout the model was trained on.
+  /// Never a single-digit zone. Null when no zones are drawn (full frame).
+  Rect? _monitorCropRegion() {
+    final roi = _camera?.roi;
+    if (roi == null || roi.isEmpty) return null;
+    var left = 1.0, top = 1.0, right = 0.0, bottom = 0.0;
+    for (final r in roi.values) {
+      if (r.left < left) left = r.left;
+      if (r.top < top) top = r.top;
+      if (r.left + r.width > right) right = r.left + r.width;
+      if (r.top + r.height > bottom) bottom = r.top + r.height;
+    }
+    if (right <= left || bottom <= top) return null;
+    // Pad by 25% of the zone-box size so the monitor's labels, alarm
+    // limits, and edges stay in view around the outermost zones.
+    final padX = (right - left) * 0.25;
+    final padY = (bottom - top) * 0.25;
+    left = (left - padX).clamp(0.0, 1.0);
+    top = (top - padY).clamp(0.0, 1.0);
+    right = (right + padX).clamp(0.0, 1.0);
+    bottom = (bottom + padY).clamp(0.0, 1.0);
+    return Rect.fromLTRB(left, top, right, bottom);
   }
 
   void _scheduleTimeout() {
