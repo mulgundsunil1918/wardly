@@ -7,6 +7,7 @@ import '../../models/monitored_patient.dart';
 import '../../models/monitor_vitals.dart';
 import '../../providers/camera_provider.dart';
 import '../../providers/monitor_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../services/patient_service.dart';
 import '../../services/vlm_server_manager.dart';
 import '../../utils/app_theme.dart';
@@ -19,20 +20,6 @@ import 'roi_editor_screen.dart';
 //  Ward dashboard (live bed tiles) + camera
 //  management — add, edit, toggle, ROI, delete.
 // ─────────────────────────────────────────────
-
-/// Fixed dark palette for the station dashboard — Edge is an always-on
-/// wall/desk display, so it stays dark regardless of the app theme.
-class _EdgeColors {
-  static const bg = Color(0xFF0A0F1C);
-  static const bg2 = Color(0xFF0D1526);
-  static const card = Color(0xFF121E33);
-  static const divider = Color(0xFF1E2C46);
-  static const text = Color(0xFFE5EEF9);
-  static const text2 = Color(0xFF93A7BF);
-  static const accent = Color(0xFF00C896);
-  static const danger = Color(0xFFFF6464);
-  static const warning = Color(0xFFF5A623);
-}
 
 class WardlyEdgeScreen extends StatefulWidget {
   const WardlyEdgeScreen({super.key});
@@ -53,22 +40,23 @@ class _WardlyEdgeScreenState extends State<WardlyEdgeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
     final cameras = context.watch<CameraProvider>();
 
     return Scaffold(
-      backgroundColor: _dashboard ? _EdgeColors.bg : AppColors.surface,
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
-        backgroundColor: _dashboard ? _EdgeColors.bg2 : AppColors.appBarBg,
+        backgroundColor: AppColors.appBarBg,
+        iconTheme: IconThemeData(color: AppColors.textPrimary),
         title: Row(
           children: [
-            Icon(Icons.settings_input_antenna,
-                color: _dashboard ? _EdgeColors.accent : AppColors.primary,
-                size: 20),
+            const Icon(Icons.settings_input_antenna,
+                color: AppColors.primary, size: 20),
             const SizedBox(width: 8),
             Text('Wardly Edge',
                 style: GoogleFonts.dmSans(
                     fontWeight: FontWeight.w800,
-                    color: _dashboard ? _EdgeColors.text : AppColors.primary,
+                    color: AppColors.primary,
                     fontSize: 18)),
           ],
         ),
@@ -80,8 +68,7 @@ class _WardlyEdgeScreenState extends State<WardlyEdgeScreen> {
             icon: const Icon(Icons.add, size: 18),
             label: const Text('Add Camera'),
             style: TextButton.styleFrom(
-              foregroundColor:
-                  _dashboard ? _EdgeColors.accent : AppColors.primary,
+              foregroundColor: AppColors.primary,
               textStyle: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 13),
             ),
           ),
@@ -108,9 +95,7 @@ class _WardlyEdgeScreenState extends State<WardlyEdgeScreen> {
   Widget _viewToggle() {
     return Container(
       decoration: BoxDecoration(
-        color: _dashboard
-            ? Colors.white.withValues(alpha: 0.06)
-            : AppColors.primary.withValues(alpha: 0.08),
+        color: AppColors.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
       ),
       padding: const EdgeInsets.all(3),
@@ -126,27 +111,25 @@ class _WardlyEdgeScreenState extends State<WardlyEdgeScreen> {
 
   Widget _toggleChip(String label, IconData icon, bool forDashboard) {
     final selected = _dashboard == forDashboard;
-    final selBg = _dashboard ? _EdgeColors.card : Colors.white;
-    final selFg = _dashboard ? _EdgeColors.text : AppColors.primary;
-    final unselFg = _dashboard ? _EdgeColors.text2 : AppColors.textSecondary;
+    final fg = selected ? Colors.white : AppColors.textSecondary;
     return InkWell(
       onTap: () => setState(() => _dashboard = forDashboard),
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: selected ? selBg : Colors.transparent,
+          color: selected ? AppColors.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 14, color: selected ? selFg : unselFg),
+            Icon(icon, size: 14, color: fg),
             const SizedBox(width: 5),
             Text(label,
                 style: GoogleFonts.dmSans(
                     fontSize: 12,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    color: selected ? selFg : unselFg)),
+                    color: fg)),
           ],
         ),
       ),
@@ -255,6 +238,7 @@ class _EdgeDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
     final monitor = context.watch<MonitorProvider>();
     final cameras = context.watch<CameraProvider>();
     final patients = monitor.patients;
@@ -286,7 +270,7 @@ class _EdgeDashboard extends StatelessWidget {
                 child: Text('Wardly Edge · $wardName',
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.dmSans(
-                        color: _EdgeColors.text,
+                        color: AppColors.textPrimary,
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.3)),
@@ -304,7 +288,7 @@ class _EdgeDashboard extends StatelessWidget {
                     'No monitored patients yet.\nAdd patients in the Monitor tab of the Wardly app.',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.dmSans(
-                        color: _EdgeColors.text2, fontSize: 13, height: 1.6),
+                        color: AppColors.textSecondary, fontSize: 13, height: 1.6),
                   ),
                 )
               : GridView.builder(
@@ -338,17 +322,18 @@ class _AiEngineChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
     return ValueListenableBuilder<VlmEngineStatus>(
       valueListenable: VlmServerManager.instance.status,
       builder: (context, status, _) {
         final (label, color, pulsing) = switch (status) {
           VlmEngineStatus.running ||
           VlmEngineStatus.external =>
-            ('AI ONLINE', _EdgeColors.accent, false),
+            ('AI ONLINE', AppColors.accent, false),
           VlmEngineStatus.starting =>
-            ('AI STARTING…', _EdgeColors.warning, true),
-          VlmEngineStatus.error => ('AI ERROR', _EdgeColors.danger, false),
-          VlmEngineStatus.off => ('AI OFF', _EdgeColors.text2, false),
+            ('AI STARTING…', AppColors.warningColor, true),
+          VlmEngineStatus.error => ('AI ERROR', AppColors.danger, false),
+          VlmEngineStatus.off => ('AI OFF', AppColors.textSecondary, false),
         };
         return Tooltip(
           message: status == VlmEngineStatus.error
@@ -400,8 +385,9 @@ class _LiveCamerasChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
     final live = activeCount > 0;
-    final color = live ? _EdgeColors.danger : _EdgeColors.text2;
+    final color = live ? AppColors.danger : AppColors.textSecondary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -412,7 +398,7 @@ class _LiveCamerasChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (live) const _PulsingDot(color: _EdgeColors.danger),
+          if (live) const _PulsingDot(color: AppColors.danger),
           if (live) const SizedBox(width: 6),
           Text(
             live
@@ -422,7 +408,7 @@ class _LiveCamerasChip extends StatelessWidget {
                 fontSize: 9,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1,
-                color: live ? const Color(0xFFFFD7D7) : _EdgeColors.text2),
+                color: live ? AppColors.danger : AppColors.textSecondary),
           ),
         ],
       ),
@@ -478,14 +464,15 @@ class _BedTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
     final sev = patient.worstSeverity;
     final isCrit = sev == 'critical';
     final isWarn = sev == 'warning';
     final borderColor = isCrit
-        ? _EdgeColors.danger.withValues(alpha: 0.55)
+        ? AppColors.danger.withValues(alpha: 0.55)
         : isWarn
-            ? _EdgeColors.warning.withValues(alpha: 0.45)
-            : _EdgeColors.divider;
+            ? AppColors.warningColor.withValues(alpha: 0.45)
+            : AppColors.divider;
 
     return InkWell(
       onTap: () => Navigator.push(
@@ -497,13 +484,13 @@ class _BedTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: _EdgeColors.card,
+          color: AppColors.card,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: borderColor),
           boxShadow: isCrit
               ? [
                   BoxShadow(
-                    color: _EdgeColors.danger.withValues(alpha: 0.18),
+                    color: AppColors.danger.withValues(alpha: 0.18),
                     blurRadius: 20,
                   ),
                 ]
@@ -517,7 +504,7 @@ class _BedTile extends StatelessWidget {
                 if (patient.bed.isNotEmpty) ...[
                   Text(patient.bed,
                       style: GoogleFonts.dmSans(
-                          color: _EdgeColors.text,
+                          color: AppColors.textPrimary,
                           fontSize: 12,
                           fontWeight: FontWeight.w800)),
                   const SizedBox(width: 6),
@@ -526,13 +513,13 @@ class _BedTile extends StatelessWidget {
                   child: Text(patient.name,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.dmSans(
-                          color: _EdgeColors.text2, fontSize: 11)),
+                          color: AppColors.textSecondary, fontSize: 11)),
                 ),
                 if (hasCamera)
                   const Padding(
                     padding: EdgeInsets.only(right: 6),
                     child: Icon(Icons.videocam,
-                        size: 12, color: _EdgeColors.accent),
+                        size: 12, color: AppColors.accent),
                   ),
                 _sevChip(sev),
               ],
@@ -553,7 +540,7 @@ class _BedTile extends StatelessWidget {
               const SizedBox(height: 8),
               Text('⚠ ${_critLabel()}',
                   style: GoogleFonts.dmSans(
-                      color: _EdgeColors.danger,
+                      color: AppColors.danger,
                       fontSize: 9,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.8)),
@@ -567,14 +554,14 @@ class _BedTile extends StatelessWidget {
   Color _vitalColor(VitalType vt) {
     final t = patient.thresholds[vt];
     final v = patient.vitals[vt];
-    if (t == null || v == null) return _EdgeColors.text;
+    if (t == null || v == null) return AppColors.textPrimary;
     switch (t.severity(v)) {
       case 'critical':
-        return _EdgeColors.danger;
+        return AppColors.danger;
       case 'warning':
-        return _EdgeColors.warning;
+        return AppColors.warningColor;
       default:
-        return _EdgeColors.text;
+        return AppColors.textPrimary;
     }
   }
 
@@ -604,10 +591,10 @@ class _BedTile extends StatelessWidget {
             ? 'WARN'
             : 'STABLE';
     final color = sev == 'critical'
-        ? _EdgeColors.danger
+        ? AppColors.danger
         : sev == 'warning'
-            ? _EdgeColors.warning
-            : _EdgeColors.accent;
+            ? AppColors.warningColor
+            : AppColors.accent;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
@@ -630,7 +617,7 @@ class _BedTile extends StatelessWidget {
         children: [
           Text(label,
               style: GoogleFonts.dmSans(
-                  color: _EdgeColors.text2,
+                  color: AppColors.textSecondary,
                   fontSize: 8.5,
                   fontWeight: FontWeight.w600)),
           Text(value == null ? '--' : '${value.round()}',
@@ -646,11 +633,11 @@ class _BedTile extends StatelessWidget {
     final dbp = patient.vitals[VitalType.dbp];
     final sbpColor = _vitalColor(VitalType.sbp);
     final dbpColor = _vitalColor(VitalType.dbp);
-    final worst = sbpColor == _EdgeColors.danger || dbpColor == _EdgeColors.danger
-        ? _EdgeColors.danger
-        : sbpColor == _EdgeColors.warning || dbpColor == _EdgeColors.warning
-            ? _EdgeColors.warning
-            : _EdgeColors.text;
+    final worst = sbpColor == AppColors.danger || dbpColor == AppColors.danger
+        ? AppColors.danger
+        : sbpColor == AppColors.warningColor || dbpColor == AppColors.warningColor
+            ? AppColors.warningColor
+            : AppColors.textPrimary;
     final text = (sbp == null || dbp == null)
         ? '--'
         : '${sbp.round()}/${dbp.round()}';
@@ -660,7 +647,7 @@ class _BedTile extends StatelessWidget {
         children: [
           Text('BP',
               style: GoogleFonts.dmSans(
-                  color: _EdgeColors.text2,
+                  color: AppColors.textSecondary,
                   fontSize: 8.5,
                   fontWeight: FontWeight.w600)),
           Text(text,
@@ -678,6 +665,7 @@ class _AddCameraTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>(); // rebuild on theme change
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -685,7 +673,7 @@ class _AddCameraTile extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: _EdgeColors.divider,
+            color: AppColors.divider,
             width: 1.4,
             strokeAlign: BorderSide.strokeAlignInside,
           ),
@@ -694,11 +682,11 @@ class _AddCameraTile extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.add, size: 16, color: _EdgeColors.text2),
+              Icon(Icons.add, size: 16, color: AppColors.textSecondary),
               const SizedBox(width: 6),
               Text('Add camera',
                   style: GoogleFonts.dmSans(
-                      color: _EdgeColors.text2,
+                      color: AppColors.textSecondary,
                       fontSize: 12,
                       fontWeight: FontWeight.w600)),
             ],
