@@ -12,6 +12,7 @@ import '../../services/patient_service.dart';
 import '../../services/vlm_server_manager.dart';
 import '../../utils/app_theme.dart';
 import 'edge_setup_screen.dart';
+import 'monitor_zones_screen.dart';
 import 'patient_monitor_screen.dart';
 import 'roi_editor_screen.dart';
 
@@ -305,9 +306,8 @@ class _EdgeDashboard extends StatelessWidget {
                       return _AddCameraTile(onTap: onAddCamera);
                     }
                     final p = patients[i];
-                    final hasCamera = cameras.cameras.any((c) =>
-                        c.patientId == p.id ||
-                        (c.patientName.isNotEmpty && c.patientName == p.name));
+                    final hasCamera = cameras.cameras
+                        .any((c) => c.watchesPatient(p.id, p.name));
                     return _BedTile(patient: p, hasCamera: hasCamera);
                   },
                 ),
@@ -830,6 +830,35 @@ class _CameraCard extends StatelessWidget {
                           ],
                         ),
                       ],
+                      if (camera.hasMonitorZones) ...[
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          children: [
+                            for (final m in camera.monitors)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary
+                                      .withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(5),
+                                ),
+                                child: Text(
+                                  m.patientName.isEmpty
+                                      ? m.name
+                                      : '${m.name} → ${m.patientName}',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -853,6 +882,18 @@ class _CameraCard extends StatelessWidget {
                   label: camera.hasRoi ? 'Edit Zones' : 'Define Zones',
                   color: camera.hasRoi ? AppColors.stable : AppColors.warningColor,
                   onTap: () => _openRoiEditor(context, camera, cp),
+                ),
+                _divider(),
+                _actionBtn(
+                  context,
+                  icon: Icons.monitor_outlined,
+                  label: camera.hasMonitorZones
+                      ? 'Monitors (${camera.monitors.length})'
+                      : 'Monitors',
+                  color: camera.hasMonitorZones
+                      ? AppColors.stable
+                      : AppColors.primary,
+                  onTap: () => _openMonitorZones(context, camera, cp),
                 ),
                 _divider(),
                 _actionBtn(
@@ -1109,6 +1150,19 @@ class _CameraCard extends StatelessWidget {
         );
       }
     }
+  }
+
+  void _openMonitorZones(
+      BuildContext context, CameraConfig cam, CameraProvider cp) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MonitorZonesScreen(
+          camera: cam,
+          onSave: (monitors) => cp.update(cam.copyWith(monitors: monitors)),
+        ),
+      ),
+    );
   }
 
   void _openRoiEditor(BuildContext context, CameraConfig cam, CameraProvider cp) {

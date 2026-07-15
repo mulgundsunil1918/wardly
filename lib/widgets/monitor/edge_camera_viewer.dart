@@ -64,9 +64,16 @@ class _EdgeCameraViewerState extends State<EdgeCameraViewer> {
 
   void _findCameraAndStart() {
     final cameras = context.read<CameraProvider>().cameras;
+    // Direct assignment first, then multi-monitor cameras whose zones
+    // include this patient (one camera can cover 2-3 beds).
     var match = cameras.where((c) => c.patientId == widget.patientId && c.isEnabled);
     if (match.isEmpty) {
       match = cameras.where((c) => c.patientName == widget.patientName && c.isEnabled);
+    }
+    if (match.isEmpty) {
+      match = cameras.where((c) =>
+          c.isEnabled &&
+          c.zoneForPatient(widget.patientId, widget.patientName) != null);
     }
     if (match.isNotEmpty) {
       _camera = match.first;
@@ -133,12 +140,28 @@ class _EdgeCameraViewerState extends State<EdgeCameraViewer> {
     setState(() => _ocrStatus = 'OCR  $parsed');
   }
 
-  /// Bounding box around all drawn vital zones, padded outward — i.e. the
-  /// monitor-screen area of the frame. The AI gets this crop instead of the
-  /// full room: several times fewer image tokens (faster reads), sharper
-  /// digits, and still the whole screen layout the model was trained on.
-  /// Never a single-digit zone. Null when no zones are drawn (full frame).
+  /// The frame region the AI should read for THIS patient.
+  ///
+  /// Priority: the patient's own named monitor zone (multi-bed cameras,
+  /// "Monitors in view" editor) padded 10%; otherwise the bounding box of
+  /// all drawn vital zones padded 25% (single-monitor cameras). Either way
+  /// it is a whole-screen crop — never a single digit — since the model
+  /// was trained on full monitor photos and needs the labels/layout.
+  /// Null when nothing is drawn (full frame).
   Rect? _monitorCropRegion() {
+    final zone =
+        _camera?.zoneForPatient(widget.patientId, widget.patientName);
+    if (zone != null) {
+      final r = zone.rect;
+      final padX = r.width * 0.10;
+      final padY = r.height * 0.10;
+      return Rect.fromLTRB(
+        (r.left - padX).clamp(0.0, 1.0),
+        (r.top - padY).clamp(0.0, 1.0),
+        (r.left + r.width + padX).clamp(0.0, 1.0),
+        (r.top + r.height + padY).clamp(0.0, 1.0),
+      );
+    }
     final roi = _camera?.roi;
     if (roi == null || roi.isEmpty) return null;
     var left = 1.0, top = 1.0, right = 0.0, bottom = 0.0;
