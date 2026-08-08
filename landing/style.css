@@ -21,6 +21,42 @@
   --max: 1180px;
 }
 
+/* ══════════ Bridgr ecosystem strip ══════════
+   Sits ABOVE everything else so it scrolls away on its own while the
+   launch banner + nav keep sticking to top: 0. */
+.eco-bar {
+  display: block;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--primary-2) 55%, var(--accent-2) 100%);
+  color: #fff;
+  text-decoration: none;
+  text-align: center;
+  padding: 28px 20px;
+  transition: filter 0.18s;
+}
+.eco-bar:hover { filter: brightness(1.12); }
+.eco-inner {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 22px; flex-wrap: wrap;
+}
+.eco-text { font-size: 26px; font-weight: 600; color: rgba(255,255,255,0.82); letter-spacing: -0.01em; }
+.eco-brand { font-size: 32px; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
+.eco-cta {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.3);
+  padding: 12px 24px; border-radius: 999px;
+  font-size: 18px; font-weight: 700; color: #fff;
+  white-space: nowrap;
+}
+.eco-cta svg { width: 18px; height: 18px; }
+@media (max-width: 700px) {
+  .eco-bar { padding: 20px 16px; }
+  .eco-inner { gap: 12px; }
+  .eco-text { font-size: 18px; }
+  .eco-brand { font-size: 22px; }
+  .eco-cta { font-size: 14px; padding: 9px 16px; }
+}
+
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 html, body { margin: 0; padding: 0; }
