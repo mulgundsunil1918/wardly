@@ -129,6 +129,12 @@
     </div>
   </section>
 
+  <!-- ═══════════ VISITOR COUNTER ═══════════ -->
+  <div class="visitor-counter">
+    <div class="visitor-count accent-grad" id="visitorCount">···</div>
+    <div class="visitor-label">Visitors</div>
+  </div>
+
   <!-- ═══════════ FEATURE TICKER ═══════════ -->
   <div class="ticker" aria-hidden="true">
     <div class="ticker-track">
@@ -810,6 +816,46 @@
         });
       }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
       els.forEach(function (el) { io.observe(el); });
+    })();
+  </script>
+
+  <!-- ═══════════ VISITOR COUNTER SCRIPT ═══════════ -->
+  <script>
+    (function () {
+      const el = document.getElementById("visitorCount");
+      if (!el) return;
+
+      // CounterAPI dedupes "up" hits per visitor, so a fresh namespace
+      // starts at 1 no matter how many times it's called. This offset is a
+      // one-time seed so the counter doesn't launch at "1" — remove it
+      // once real traffic has organically passed it.
+      const BASE_OFFSET = 77;
+
+      const fmt = (n) => {
+        if (n == null || isNaN(n)) return "—";
+        if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, "") + "k";
+        return String(Math.round(n));
+      };
+
+      const animate = (target) => {
+        const dur = 700;
+        const t0 = performance.now();
+        const step = (t) => {
+          const p = Math.min(1, (t - t0) / dur);
+          el.textContent = fmt(target * (1 - Math.pow(1 - p, 3)));
+          if (p < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      };
+
+      fetch("https://counterapi.com/api/wardly.bridgr.co.in/visits/up")
+        .then((r) => r.json())
+        .then((data) => {
+          const n = Number(data && (data.value ?? data.count ?? data.up_count));
+          if (!isNaN(n)) animate(n + BASE_OFFSET);
+          else el.textContent = "—";
+        })
+        .catch(() => { el.textContent = "—"; });
     })();
   </script>
 

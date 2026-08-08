@@ -225,6 +225,25 @@ em { font-style: normal; color: var(--accent); font-weight: 700; }
 }
 .hero-web-link a:hover { color: var(--text); border-color: var(--text-2); }
 
+/* ══════════ Visitor counter ══════════ */
+.visitor-counter {
+  position: relative; z-index: 1;
+  text-align: center;
+  padding: 36px 20px 40px;
+}
+.visitor-count {
+  font-size: clamp(40px, 6vw, 60px);
+  font-weight: 900; line-height: 1;
+  letter-spacing: -1.5px;
+  font-feature-settings: 'tnum';
+}
+.visitor-label {
+  margin-top: 6px;
+  font-size: 12px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: var(--text-2);
+}
+
 /* ECG line across hero */
 .ecg-line {
   position: absolute;
